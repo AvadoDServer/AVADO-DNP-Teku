@@ -4,7 +4,7 @@
   "upstream": "22.3.0",
   "title": "Teku",
   "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
-  "avatar": "/ipfs/QmP5fDSbQUWbTujEFANxUZWRvti1csqJyuvNWZDdmS1JvJ",
+  "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
   "type": "service",
   "autoupdate": true,
   "image": {
@@ -12,7 +12,8 @@
       "data:/data"
     ],
     "environment": [
-      "NETWORK=mainnet"
+      "NETWORK=prater",
+      "EXTRA_OPTS="
     ],
     "restart": "always"
   },

@@ -1,6 +1,6 @@
 import React from 'react';
 import Dashboard from "./components/Dashboard";
-import { BrowserRouter, Route, Switch, Link } from "react-router-dom";
+import { BrowserRouter, Route, Switch } from "react-router-dom";
 import "./css/style.sass";
 import "./App.css";
 

@@ -9,7 +9,7 @@ services:
     volumes:
       - 'data:/data'
     environment:
-      - NETWORK=mainnet
+      - NETWORK=prater
       - EXTRA_OPTS=
 volumes:
   data: {}
