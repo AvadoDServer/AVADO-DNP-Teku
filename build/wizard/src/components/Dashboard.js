@@ -12,11 +12,10 @@ export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
     const [wampSession, setWampSession] = React.useState();
-    const [network, setNetwork] = React.useState("");
     const [apiToken, setApiToken] = React.useState("");
     const [validators, setValidators] = React.useState("");
     const [configuration, setConfiguration] = React.useState("");
-
+    const [settings, setSettings] = React.useState();
 
     React.useEffect(() => {
         const url = "ws://wamp.my.ava.do:8080/ws";
@@ -36,11 +35,6 @@ const Comp = () => {
         };
         connection.open();
     }, []);
-
-    React.useEffect(() => {
-        if (wampSession)
-            getNetwork();
-    }, [wampSession]) // eslint-disable-line
 
     function dataUriToBlob(dataURI) {
         if (!dataURI || typeof dataURI !== "string")
@@ -121,17 +115,9 @@ const Comp = () => {
         }
     }
 
-    const getNetwork = async () => {
-        const packagesRaw = await wampSession.call("listPackages.dappmanager.dnp.dappnode.eth", [],);
-        const packages = JSON.parse(packagesRaw);
-        if (packages.success) {
-            setNetwork(packages.result.find(r => r.name === packageName).envs.NETWORK)
-        }
-    }
-
     return (
         <div className="dashboard has-text-white">
-            <NetworkBanner network={network} />
+            <NetworkBanner network={settings?.network} />
 
             {!wampSession && (
                 <section className="hero is-danger">
@@ -146,11 +132,11 @@ const Comp = () => {
                     <div className="column">
                         <Header />
 
-                        <Validators pubKeys={validators} network={network} apiToken={apiToken} updateValidators={updateValidators} />
+                        <Validators pubKeys={validators} network={settings?.network} apiToken={apiToken} updateValidators={updateValidators} />
 
                         <AddValidator apiToken={apiToken} updateValidators={updateValidators} />
 
-                        <Settings getFileContent={getFileContent} wampSession={wampSession} />
+                        <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings}/>
 
                         <h2 className="title is-2 has-text-white">Debug</h2>
                         <div className="content">

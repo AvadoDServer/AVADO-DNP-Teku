@@ -13,7 +13,7 @@ const NetworkBanner = ({network}) => {
             {network && network !== "prater" && network !== "mainnet" && (
                 <section className="hero is-danger">
                     <div className="hero-body is-small">
-                        <p className="has-text-centered">Wrongly configured NETWORK environment variable: Using mainnet</p>
+                        <p className="has-text-centered">Wrong configuration</p>
                     </div>
                 </section>
             )}

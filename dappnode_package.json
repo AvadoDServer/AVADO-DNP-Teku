@@ -12,7 +12,6 @@
       "data:/data"
     ],
     "environment": [
-      "NETWORK=prater",
       "EXTRA_OPTS="
     ],
     "restart": "always"

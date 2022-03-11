@@ -9,9 +9,7 @@ import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 
-const Comp = ({ getFileContent, wampSession }) => {
-
-    const [settings, setSettings] = React.useState();
+const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
 
     const defaultSettings = {
         //TODO MAINENET default
