@@ -1,5 +1,7 @@
 # AVADO Teku
 
+Teku ETH2 beacon chain & validator on AVADO
+
 ## Development
 
 Install the AVADO SDK:
