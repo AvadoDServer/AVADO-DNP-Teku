@@ -138,7 +138,7 @@ const Comp = () => {
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings}/>
 
-                        <h2 className="title is-2 has-text-white">Debug</h2>
+                        {/* <h2 className="title is-2 has-text-white">Debug</h2>
                         <div className="content">
                             <ul>
                                 <li>
@@ -150,14 +150,14 @@ const Comp = () => {
 
                                 </li>
                             </ul>
-                        </div>
+                        </div> */}
 
-                        <h2 className="title is-2 has-text-white">configuration</h2>
+                        {/* <h2 className="title is-2 has-text-white">configuration</h2>
                         <div className="container">
                             <pre className="transcript">
                                 {configuration}
                             </pre>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </section>

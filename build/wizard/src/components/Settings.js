@@ -261,14 +261,14 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
                                 </div>
                             </div>
 
-                            <div>
+                            {/* <div>
                                 <div className="container">
                                     <pre className="transcript">
                                         Errors : {JSON.stringify(errors)}<br />
                                         Touched : {JSON.stringify(touched)}
                                     </pre>
                                 </div>
-                            </div>
+                            </div> */}
 
                             <div className="field is-grouped">
                                 <div className="control">
@@ -286,11 +286,11 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
                 </Formik>
             </div>
         )}
-        <h2 className="title is-2 has-text-white">Debug</h2>
+        {/* <h2 className="title is-2 has-text-white">Debug</h2>
         <div className="field">
             <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
             <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
-        </div>
+        </div> */}
     </>
 }
 
