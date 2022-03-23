@@ -13,7 +13,7 @@ Options:
                                Default: <data-base-path>/beacon
       --data-path, --data-base-path=<FILENAME>
                              Path to the base directory for storage
-                               Default: /Users/heeckhau/Library/teku
+                               Default: /root/.local/share/teku
       --data-storage-mode=<STORAGE_MODE>
                              Sets the strategy for handling historical chain
                                data.  (Valid values: ARCHIVE, PRUNE)
@@ -24,6 +24,12 @@ Options:
       --data-validator-path=<FILENAME>
                              Path to validator client data
                                Default: <data-base-path>/validator
+      --ee-endpoint=<NETWORK>
+                             URL for Execution Engine node.
+      --ee-jwt-secret-file=<FILENAME>
+                             Location of the file specifying the hex-encoded
+                               256 bit secret key to be used for
+                               verifying/generating jwt tokens
       --eth1-deposit-contract-address=<ADDRESS>
                              Contract address for the deposit contract. Only
                                required when creating a custom network.
@@ -83,7 +89,7 @@ Options:
       --metrics-interface=<NETWORK>
                              Metrics network interface to expose metrics for
                                Prometheus
-                               Default: 127.0.0.1
+                               Default: 0.0.0.0
       --metrics-port=<INTEGER>
                              Metrics port to expose metrics for Prometheus
                                Default: 8008
@@ -156,7 +162,7 @@ Options:
                                Default: [127.0.0.1, localhost]
       --rest-api-interface=<NETWORK>
                              Interface of Beacon Rest API
-                               Default: 127.0.0.1
+                               Default: 0.0.0.0
       --rest-api-port=<INTEGER>
                              Port number of Beacon Rest API
                                Default: 5051
@@ -177,7 +183,7 @@ Options:
                                Default: [127.0.0.1, localhost]
       --validator-api-interface=<NETWORK>
                              Interface of Validator Rest API
-                               Default: 127.0.0.1
+                               Default: 0.0.0.0
       --validator-api-keystore-file=<keystoreFile>
                              Keystore used for ssl for the validator api.
       --validator-api-keystore-password-file=<keystorePasswordFile>
@@ -246,6 +252,17 @@ Options:
                              Set strategy for handling performance tracking.
                                Valid values: LOGGING, METRICS, ALL, NONE
                                Default: ALL
+      --validators-proposer-config[=<STRING>]
+                             remote URL or local file path to load proposer
+                               configuration from
+      --validators-proposer-config-refresh-enabled[=<BOOLEAN>]
+                             Enable the proposer configuration reload on every
+                               proposer preparation (once per epoch)
+                               Default: false
+      --validators-proposer-default-fee-recipient[=<ADDRESS>]
+                             Default fee recipient sent to the execution
+                               engine, which could use it as fee recipient when
+                               producing a new execution block.
       --ws-checkpoint=<STRING>
                              A recent checkpoint within the weak subjectivity
                                period. Should be a string containing

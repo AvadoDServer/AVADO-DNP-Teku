@@ -30,7 +30,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required')
     });
 
-    const supportedNetworks = ["mainnet", "prater"];
+    const supportedNetworks = ["mainnet", "prater", "kiln"];
 
     const getSettingsFromContainer = async (wampSession) => {
         const settings = await getFileContent(wampSession, "/data/settings.json");
