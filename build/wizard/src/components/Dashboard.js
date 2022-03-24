@@ -2,10 +2,9 @@ import React from "react";
 import autobahn from "autobahn-browser";
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
-import AddValidator from "./AddValidator";
-import axios from "axios";
 import Validators from "./Validators";
 import Settings from "./Settings";
+import xmlrpc from "xmlrpc";
 
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
@@ -13,8 +12,7 @@ export const packageName = "teku.avado.dnp.dappnode.eth";
 const Comp = () => {
     const [wampSession, setWampSession] = React.useState();
     const [apiToken, setApiToken] = React.useState("");
-    const [validators, setValidators] = React.useState("");
-    const [configuration, setConfiguration] = React.useState("");
+    const [configuration, setConfiguration] = React.useState("");  // eslint-disable-line
     const [settings, setSettings] = React.useState();
 
     React.useEffect(() => {
@@ -87,33 +85,52 @@ const Comp = () => {
         getFileContent(wampSession, "/data/data-prater/validator/key-manager/validator-api-bearer").then(
             (apiToken) => setApiToken(apiToken)
         )
+    }, [wampSession]) // eslint-disable-line
+
+
+    React.useEffect(() => {
+        if (!wampSession)
+            return;
         getFileContent(wampSession, "/data/config.yml").then(
             (config) => setConfiguration(config)
         )
-    }, [wampSession]) // eslint-disable-line
+    }, [settings,wampSession]) // eslint-disable-line
 
-    React.useEffect(() => {
-        if (apiToken)
-            updateValidators();
-    }, [apiToken])
-
-
-
-    const updateValidators = async () => {
-        if (apiToken) {
-            return await axios.get("https://teku.my.ava.do:5052/eth/v1/keystores", {
-                headers: {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${apiToken}`
+    // methods: http://supervisord.org/api.html
+    // ['supervisor.addProcessGroup', 'supervisor.clearAllProcessLogs', 'supervisor.clearLog', 'supervisor.clearProcessLog',
+    //     'supervisor.clearProcessLogs', 'supervisor.getAPIVersion', 'supervisor.getAllConfigInfo', 'supervisor.getAllProcessInfo',
+    //     'supervisor.getIdentification', 'supervisor.getPID', 'supervisor.getProcessInfo', 'supervisor.getState', 'supervisor.getSupervisorVersion',
+    //     'supervisor.getVersion', 'supervisor.readLog', 'supervisor.readMainLog', 'supervisor.readProcessLog', 'supervisor.readProcessStderrLog',
+    //     'supervisor.readProcessStdoutLog', 'supervisor.reloadConfig', 'supervisor.removeProcessGroup', 'supervisor.restart', 'supervisor.sendProcessStdin',
+    //     'supervisor.sendRemoteCommEvent', 'supervisor.shutdown', 'supervisor.signalAllProcesses', 'supervisor.signalProcess', 'supervisor.signalProcessGroup',
+    //     'supervisor.startAllProcesses', 'supervisor.startProcess', 'supervisor.startProcessGroup', 'supervisor.stopAllProcesses', 'supervisor.stopProcess',
+    //     'supervisor.stopProcessGroup', 'supervisor.tailProcessLog', 'supervisor.tailProcessStderrLog', 'supervisor.tailProcessStdoutLog',
+    //     'system.listMethods', 'system.methodHelp', 'system.methodSignature', 'system.multicall']
+    const supervisorCtl = (method, params) => {
+        if (wampSession) {
+            const client = xmlrpc.createClient({ host: 'teku.my.ava.do', port: 5556, path: '/RPC2' })
+            client.methodCall(method, params, function (error, value) {
+                if (error) {
+                    console.log('supervisorCtl Teku error:', error);
+                    console.log('req headers:', error.req && error.req._header);
+                    console.log('res code:', error.res && error.res.statusCode);
+                    console.log('res body:', error.body);
+                } else {
+                    console.log('supervisorCtl Teku: ', value);
+                    return value;
                 }
-            }).then((res) => {
-                if (res.status === 200) {
-                    setValidators(res.data.data.map(d => d.validating_pubkey))
-                }
-            });
-
+            })
         }
     }
+
+    const toggleTeku = (enable) => { // eslint-disable-line
+        const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
+        supervisorCtl(method, ["teku"]);
+    }
+
+    React.useEffect(() => {
+        supervisorCtl("supervisor.getState", [])
+    }, [wampSession]) // eslint-disable-line
 
     return (
         <div className="dashboard has-text-white">
@@ -132,11 +149,9 @@ const Comp = () => {
                     <div className="column">
                         <Header />
 
-                        <Validators pubKeys={validators} network={settings?.network} apiToken={apiToken} updateValidators={updateValidators} />
+                        <Validators network={settings?.network} apiToken={apiToken} />
 
-                        <AddValidator apiToken={apiToken} updateValidators={updateValidators} />
-
-                        <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings}/>
+                        <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 
                         {/* <h2 className="title is-2 has-text-white">Debug</h2>
                         <div className="content">

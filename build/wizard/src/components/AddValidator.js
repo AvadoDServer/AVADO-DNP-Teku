@@ -84,9 +84,9 @@ const AddValidator = ({ apiToken, updateValidators }) => {
                     <div className="card has-text-black">
                         <header className="card-header" onClick={() => setCollapsed(!collapsed)}>
                             <p className="card-header-title">Add validator</p>
-                            <a className="card-header-icon card-toggle">
+                            <div className="card-header-icon card-toggle">
                                 <FontAwesomeIcon icon={collapsed ? faAngleDown : faAngleUp} />
-                            </a>
+                            </div>
                         </header>
                         <div className={"card-content" + (collapsed ? " is-hidden" : "")}>
                             <div className="content">
