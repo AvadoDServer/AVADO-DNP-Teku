@@ -10,8 +10,42 @@ const Comp = () => {
     const [peerCount, setPeerCount] = React.useState();
     const [peers, setPeers] = React.useState();
 
+    const serverBaseURL = "http://teku.my.ava.do:5051";
+
+    // const [data, setData] = React.useState([]);
+    // React.useEffect(() => {
+    //     const topics = ["head", "finalized_checkpoint", "chain_reorg", "block", "attestation", "voluntary_exit", "contribution_and_proof"]
+    //     const eventSource = new EventSource(`${serverBaseURL}/eth/v1/events?topics=`+topics.join(","));
+    //     // eventSource.addEventListener('head', (event) => {
+    //     //     // console.dir(event);
+    //     //     const data = event.data;
+    //     //     console.log(JSON.parse(data));
+    //     // }, false);
+    //     // eventSource.addEventListener('block', (event) => {
+    //     //     // console.dir(event);
+    //     //     const data = event.data;
+    //     //     console.log(JSON.parse(data));
+    //     // }, false);
+    //     // eventSource.addEventListener('finalized_checkpoint', (event) => {
+    //     //     // console.dir(event);
+    //     //     const data = event.data;
+    //     //     console.log(JSON.parse(data));
+    //     // }, false);
+    //     // eventSource.addEventListener('contribution_and_proof', (event) => {
+    //     //     // console.dir(event);
+    //     //     const data = event.data;
+    //     //     console.log(JSON.parse(data));
+    //     // }, false);
+    //     // eventSource.addEventListener('attestation', (event) => {
+    //     //     // console.dir(event);
+    //     //     const data = event.data;
+    //     //     console.log(JSON.parse(data));
+    //     // }, false);
+    //     // eventSource.addEventListener('', (event) => {console.dir(event)}, false);
+    // }, []);
+
     const updateStats = () => {
-        axios.get(`http://teku.my.ava.do:5051/eth/v1/node/syncing`)
+        axios.get(`${serverBaseURL}/eth/v1/node/syncing`)
             .then(res => {
                 if (res.status === 200) {
                     setError(null);
@@ -25,7 +59,7 @@ const Comp = () => {
                 setSyncData(null);
             });
 
-        axios.get(`http://teku.my.ava.do:5051/eth/v1/node/peer_count`)
+        axios.get(`${serverBaseURL}/eth/v1/node/peer_count`)
             .then(res => {
                 if (res.status === 200) {
                     setPeerCount(res.data.data)
@@ -33,7 +67,7 @@ const Comp = () => {
             }).catch((e) => {
                 //ignore
             });
-        axios.get(`http://teku.my.ava.do:5051/eth/v1/node/peers`)
+        axios.get(`${serverBaseURL}/eth/v1/node/peers`)
             .then(res => {
                 if (res.status === 200) {
                     setPeers(res.data.data)
@@ -85,11 +119,11 @@ const Comp = () => {
                                         )}
                                         <br />
                                         connected peers: {peerCount.connected}
-                                        <br/>
+                                        <br />
                                         {(peers &&
-                                            <> (Inbound: {peers.filter(p=>p.direction==="inbound").length}/Outbound: {peers.filter(p=>p.direction==="outbound").length})</>
-                                        )} 
-                                        
+                                            <> (Inbound: {peers.filter(p => p.direction === "inbound").length}/Outbound: {peers.filter(p => p.direction === "outbound").length})</>
+                                        )}
+
                                         <br />
                                         epoch: {Math.floor(syncData.head_slot / 32)}, slot {syncData.head_slot}
                                     </>

@@ -1,23 +1,19 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { packageName } from "./Dashboard"
-import ReactDOM from 'react-dom';
-import { Formik, Field, Form, FieldArray, ErrorMessage } from 'formik';
-import xmlrpc from "xmlrpc";
+import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 
-const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
+const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCtl }) => {
 
     const defaultSettings = {
-        //TODO MAINENET default
-        // network: "mainnet",
-        // eth1_endpoints: ["http://geth.my.ava.do:8545"]3
 
-        network: "prater",
-        eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
+        network: "mainnet",
+        eth1_endpoints: ["http://geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
+        // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
         p2p_peer_upper_bound: 74
@@ -30,7 +26,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required')
     });
 
-    const supportedNetworks = ["mainnet", "prater"];
+    const supportedNetworks = ["mainnet", "prater", "kiln"];
 
     const getSettingsFromContainer = async (wampSession) => {
         const settings = await getFileContent(wampSession, "/data/settings.json");
@@ -59,42 +55,10 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
         return pushData();
     }
 
-    // methods: http://supervisord.org/api.html
-    // ['supervisor.addProcessGroup', 'supervisor.clearAllProcessLogs', 'supervisor.clearLog', 'supervisor.clearProcessLog',
-    //     'supervisor.clearProcessLogs', 'supervisor.getAPIVersion', 'supervisor.getAllConfigInfo', 'supervisor.getAllProcessInfo',
-    //     'supervisor.getIdentification', 'supervisor.getPID', 'supervisor.getProcessInfo', 'supervisor.getState', 'supervisor.getSupervisorVersion',
-    //     'supervisor.getVersion', 'supervisor.readLog', 'supervisor.readMainLog', 'supervisor.readProcessLog', 'supervisor.readProcessStderrLog',
-    //     'supervisor.readProcessStdoutLog', 'supervisor.reloadConfig', 'supervisor.removeProcessGroup', 'supervisor.restart', 'supervisor.sendProcessStdin',
-    //     'supervisor.sendRemoteCommEvent', 'supervisor.shutdown', 'supervisor.signalAllProcesses', 'supervisor.signalProcess', 'supervisor.signalProcessGroup',
-    //     'supervisor.startAllProcesses', 'supervisor.startProcess', 'supervisor.startProcessGroup', 'supervisor.stopAllProcesses', 'supervisor.stopProcess',
-    //     'supervisor.stopProcessGroup', 'supervisor.tailProcessLog', 'supervisor.tailProcessStderrLog', 'supervisor.tailProcessStdoutLog',
-    //     'system.listMethods', 'system.methodHelp', 'system.methodSignature', 'system.multicall']
-    const supervisorCtl = (method, params) => {
-        if (wampSession) {
-            const client = xmlrpc.createClient({ host: 'teku.my.ava.do', port: 5556, path: '/RPC2' })
-            client.methodCall(method, params, function (error, value) {
-                if (error) {
-                    console.log('supervisorCtl Teku error:', error);
-                    console.log('req headers:', error.req && error.req._header);
-                    console.log('res code:', error.res && error.res.statusCode);
-                    console.log('res body:', error.body);
-                } else {
-                    console.log('supervisorCtl Teku: ', value);
-                    return value;
-                }
-            })
-        }
-    }
-
-    const toggleTeku = (enable) => {
-        const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
-        supervisorCtl(method, ["teku"]);
-    }
-
     React.useEffect(() => {
-        console.log("id", packageName)
         if (!wampSession)
             return;
+        console.log("id", packageName)
         getSettingsFromContainer(wampSession).then(
             settings => {
                 if (settings) {
@@ -107,17 +71,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
                 }
             }
         )
-
-        supervisorCtl("supervisor.getState", [])
-
     }, [wampSession]) // eslint-disable-line
-
-
-    React.useEffect(() => {
-        if (settings)
-            console.log("Change:", settings)
-
-    }, [settings]) // eslint-disable-line
 
     const confirmResetDefaults = () => {
         confirmAlert({
@@ -140,7 +94,10 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings }) => {
     const applyChanges = (newSettings) => {
         setSettings(newSettings)
         writeSettingsToContainer(wampSession, newSettings)
-        supervisorCtl('supervisor.restart', [])
+        //wait a bit to make sure the settings file is written      
+        setTimeout(function () {
+            supervisorCtl('supervisor.restart', [])
+        }, 5000);
     }
 
 
