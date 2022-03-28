@@ -70,6 +70,15 @@ const Validators = ({ network, apiToken }) => {
         });
     }
 
+    const downloadSlashingData = (data) => {
+        const element = document.createElement("a");
+        const file = new Blob([data], { type: 'text/json' });
+        element.href = URL.createObjectURL(file);
+        element.download = "slashing_protection.json";
+        document.body.appendChild(element); // Required for this to work in FireFox
+        element.click();
+    }
+
     const removeValidator = (pubKey) => {
         //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
         const apiCall = async (pubKey) => {
@@ -79,6 +88,7 @@ const Validators = ({ network, apiToken }) => {
             }).then((res) => {
                 console.dir(res)
                 console.log(res)
+                downloadSlashingData(res.data.slashing_protection)
                 if (res.status === 200) {
                     updateValidators();
                 }
