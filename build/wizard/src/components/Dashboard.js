@@ -82,10 +82,12 @@ const Comp = () => {
     React.useEffect(() => {
         if (!wampSession)
             return;
-        getFileContent(wampSession, "/data/data-prater/validator/key-manager/validator-api-bearer").then(
+        const dataPath=`/data/data-${settings?.network}`
+
+        getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => setApiToken(apiToken)
         )
-    }, [wampSession]) // eslint-disable-line
+    }, [wampSession, settings]) // eslint-disable-line
 
 
     React.useEffect(() => {
@@ -94,7 +96,7 @@ const Comp = () => {
         getFileContent(wampSession, "/data/config.yml").then(
             (config) => setConfiguration(config)
         )
-    }, [settings,wampSession]) // eslint-disable-line
+    }, [settings, wampSession]) // eslint-disable-line
 
     // methods: http://supervisord.org/api.html
     // ['supervisor.addProcessGroup', 'supervisor.clearAllProcessLogs', 'supervisor.clearLog', 'supervisor.clearProcessLog',

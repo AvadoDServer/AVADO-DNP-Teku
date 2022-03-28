@@ -10,12 +10,10 @@ import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCtl }) => {
 
     const defaultSettings = {
-        //TODO MAINENET default
-        // network: "mainnet",
-        // eth1_endpoints: ["http://geth.my.ava.do:8545"]3
 
-        network: "prater",
-        eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
+        network: "mainnet",
+        eth1_endpoints: ["http://geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
+        // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
         p2p_peer_upper_bound: 74
@@ -59,7 +57,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     React.useEffect(() => {
         if (!wampSession)
-        return;
+            return;
         console.log("id", packageName)
         getSettingsFromContainer(wampSession).then(
             settings => {
@@ -96,7 +94,10 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
     const applyChanges = (newSettings) => {
         setSettings(newSettings)
         writeSettingsToContainer(wampSession, newSettings)
-        supervisorCtl('supervisor.restart', [])
+        //wait a bit to make sure the settings file is written      
+        setTimeout(function () {
+            supervisorCtl('supervisor.restart', [])
+        }, 5000);
     }
 
 
