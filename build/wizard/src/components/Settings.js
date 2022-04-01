@@ -11,7 +11,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const defaultSettings = {
         network: "mainnet",
-        eth1_endpoints: ["http://geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
+        eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
