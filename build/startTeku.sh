@@ -15,6 +15,7 @@ GRAFFITI=$(cat ${SETTINGSFILE}| jq '."validators_graffiti"' | tr -d '"')
 ETH1_ENDPOINTS=$(cat ${SETTINGSFILE}| jq '."eth1_endpoints"' | tr -d '"')
 P2P_PEER_LOWER_BOUND=$(cat ${SETTINGSFILE}| jq '."p2p_peer_lower_bound"' | tr -d '"')
 P2P_PEER_UPPER_BOUND=$(cat ${SETTINGSFILE}| jq '."p2p_peer_upper_bound"' | tr -d '"')
+INITIAL_STATE=$(cat ${SETTINGSFILE}| jq '."initial_state"' | tr -d '"')
 
 DATA_PATH="/data/data-${NETWORK}"
 
@@ -25,6 +26,7 @@ CONFIG_JSON=$(cat <<EOF
 
 # network
 network: "${NETWORK}"
+initial-state: "${INITIAL_STATE}"
 
 # p2p
 p2p-enabled: true

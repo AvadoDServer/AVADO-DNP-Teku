@@ -10,20 +10,21 @@ import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCtl }) => {
 
     const defaultSettings = {
-
         network: "mainnet",
-        eth1_endpoints: ["http://geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
+        eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 74
+        p2p_peer_upper_bound: 74,
+        initial_state: "https://snapshots.ava.do/state.ssz"
     }
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
-        validators_graffiti: yup.string().label("validators-graffit").max(32, 'The graffiti can be maximum 32 characters long'),
+        validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
-        p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required')
+        p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
+        initial_state: yup.string().label("initial-state").url().required('Optional')
     });
 
     const supportedNetworks = ["mainnet", "prater", "kiln"];
@@ -138,6 +139,16 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
                                         <p className="help is-danger">{errors.p2p_peer_upper_bound}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="initial_state">Initial State: Start Teku from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
+                                <div className="control">
+                                    <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
+                                    {errors.initial_state ? (
+                                        <p className="help is-danger">{errors.initial_state}</p>
                                     ) : null}
                                 </div>
                             </div>
