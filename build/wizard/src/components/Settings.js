@@ -24,7 +24,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
-        initial_state: yup.string().label("initial-state").url().required('Optional')
+        initial_state: yup.string().label("initial-state").url().optional('Optional')
     });
 
     const supportedNetworks = ["mainnet", "prater", "kiln"];
