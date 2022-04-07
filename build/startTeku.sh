@@ -9,6 +9,13 @@ if [ ! -f "${SETTINGSFILE}" ]; then
 fi
 while [ ! -f "${SETTINGSFILE}" ]; do sleep 1; done
 
+BEACONCHAIN_API_KEY=$(cat ${SETTINGSFILE}| jq '."beaconchain_api_key"' | tr -d '"')
+if [ $BEACONCHAIN_API_KEY ]
+then
+    METRICS_PUBLISH_ENDPOINT="https://beaconcha.in/api/v1/client/metrics?apikey=${BEACONCHAIN_API_KEY}"
+else
+    METRICS_PUBLISH_ENDPOINT=""
+fi
 
 # Create config file
 NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"') \
@@ -18,6 +25,7 @@ P2P_PEER_LOWER_BOUND=$(cat ${SETTINGSFILE} | jq '."p2p_peer_lower_bound"' | tr -
 P2P_PEER_UPPER_BOUND=$(cat ${SETTINGSFILE} | jq '."p2p_peer_upper_bound"' | tr -d '"') \
 INITIAL_STATE=$(cat ${SETTINGSFILE} | jq '."initial_state"' | tr -d '"') \
 DATA_PATH="/data/data-${NETWORK}" \
+METRICS_PUBLISH_ENDPOINT="${METRICS_PUBLISH_ENDPOINT}" \
     envsubst < $(dirname "$0")/teku-config.template > $TARGETCONFIGFILE
 
 # Start teku

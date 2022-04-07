@@ -16,7 +16,8 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
         p2p_peer_upper_bound: 74,
-        initial_state: "https://snapshots.ava.do/state.ssz"
+        initial_state: "https://snapshots.ava.do/state.ssz",
+        beaconchain_api_key: ""
     }
 
     const settingsSchema = yup.object().shape({
@@ -24,7 +25,8 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
-        initial_state: yup.string().label("initial-state").url().optional('Optional')
+        initial_state: yup.string().label("initial-state").url().optional('Optional'),
+        beaconchain_api_key: yup.string().label("beaconcha.in API Key").optional('Optional')
     });
 
     const supportedNetworks = ["mainnet", "prater", "kiln"];
@@ -149,6 +151,16 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (
                                         <p className="help is-danger">{errors.initial_state}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="beaconchain_api_key">Beaconcha.in <a href="https://beaconcha.in/user/settings#api">API key</a> for node monitoring</label>
+                                <div className="control">
+                                    <Field className={"input" + (errors?.beaconchain_api_key ? " is-danger" : "")} id="beaconchain_api_key" name="beaconchain_api_key" />
+                                    {errors.beaconchain_api_key ? (
+                                        <p className="help is-danger">{errors.beaconchain_api_key}</p>
                                     ) : null}
                                 </div>
                             </div>

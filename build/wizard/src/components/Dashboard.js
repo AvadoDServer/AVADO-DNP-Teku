@@ -6,6 +6,7 @@ import Validators from "./Validators";
 import Settings from "./Settings";
 import xmlrpc from "xmlrpc";
 
+const debug = true;
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
@@ -82,7 +83,7 @@ const Comp = () => {
     React.useEffect(() => {
         if (!wampSession)
             return;
-        const dataPath=`/data/data-${settings?.network}`
+        const dataPath = `/data/data-${settings?.network}`
 
         getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => setApiToken(apiToken)
@@ -155,26 +156,31 @@ const Comp = () => {
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 
-                        {/* <h2 className="title is-2 has-text-white">Debug</h2>
-                        <div className="content">
-                            <ul>
-                                <li>
-                                    <a href="http://teku.my.ava.do:5051/swagger-ui" target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
+                        {debug && (
+                            <>
+                                <h2 className="title is-2 has-text-white">Debug</h2>
+                                <div className="content">
+                                    <ul>
+                                        <li>
+                                            <a href="http://teku.my.ava.do:5051/swagger-ui" target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
 
-                                </li>
-                                <li>
-                                    <a href="http://my.ava.do/#/Packages/teku.avado.dnp.dappnode.eth/detail" target="_blank" rel="noopener noreferrer">Avado pacakge management page</a>
+                                        </li>
+                                        <li>
+                                            <a href="http://my.ava.do/#/Packages/teku.avado.dnp.dappnode.eth/detail" target="_blank" rel="noopener noreferrer">Avado pacakge management page</a>
 
-                                </li>
-                            </ul>
-                        </div> */}
+                                        </li>
+                                    </ul>
+                                </div>
 
-                        {/* <h2 className="title is-2 has-text-white">configuration</h2>
-                        <div className="container">
-                            <pre className="transcript">
-                                {configuration}
-                            </pre>
-                        </div> */}
+
+                                <h2 className="title is-2 has-text-white">configuration</h2>
+                                <div className="container">
+                                    <pre className="transcript">
+                                        {configuration}
+                                    </pre>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </section>

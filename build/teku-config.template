@@ -19,8 +19,7 @@ validators-graffiti: "${GRAFFITI}"
 eth1-endpoint: ${ETH1_ENDPOINTS}
 
 # metrics
-metrics-enabled: false # TODO: beaconchain monitor
-metrics-categories: ["BEACON","LIBP2P","NETWORK"]
+metrics-publish-endpoint: "${METRICS_PUBLISH_ENDPOINT}"
 
 # database
 data-path: "${DATA_PATH}"
