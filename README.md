@@ -1,6 +1,9 @@
-# AVADO Teku
+# AVADO Nimbus
 
-Teku ETH2 beacon chain & validator on AVADO
+Nimubs ETH2 beacon chain & validator on AVADO
+
+* Releases: https://github.com/status-im/nimbus-eth2/releases
+* Command line options: https://nimbus.guide/options.html
 
 ## Development
 

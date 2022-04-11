@@ -42,7 +42,7 @@ const Validators = ({ network, apiToken }) => {
     React.useEffect(() => {
         const getValidatorData = async (pubKey) => {
             try {
-                const res = await axios.get(`http://teku.my.ava.do:5051/eth/v1/beacon/states/finalized/validators/${pubKey}`);
+                const res = await axios.get(`http://teku.my.ava.do:5052/eth/v1/beacon/states/finalized/validators/${pubKey}`);
                 if (res.status === 200) {
                     // console.dir(res.data.data);
                     return (res.data.data);

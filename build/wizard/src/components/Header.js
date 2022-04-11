@@ -10,39 +10,7 @@ const Comp = () => {
     const [peerCount, setPeerCount] = React.useState();
     const [peers, setPeers] = React.useState();
 
-    const serverBaseURL = "http://teku.my.ava.do:5051";
-
-    // const [data, setData] = React.useState([]);
-    // React.useEffect(() => {
-    //     const topics = ["head", "finalized_checkpoint", "chain_reorg", "block", "attestation", "voluntary_exit", "contribution_and_proof"]
-    //     const eventSource = new EventSource(`${serverBaseURL}/eth/v1/events?topics=`+topics.join(","));
-    //     // eventSource.addEventListener('head', (event) => {
-    //     //     // console.dir(event);
-    //     //     const data = event.data;
-    //     //     console.log(JSON.parse(data));
-    //     // }, false);
-    //     // eventSource.addEventListener('block', (event) => {
-    //     //     // console.dir(event);
-    //     //     const data = event.data;
-    //     //     console.log(JSON.parse(data));
-    //     // }, false);
-    //     // eventSource.addEventListener('finalized_checkpoint', (event) => {
-    //     //     // console.dir(event);
-    //     //     const data = event.data;
-    //     //     console.log(JSON.parse(data));
-    //     // }, false);
-    //     // eventSource.addEventListener('contribution_and_proof', (event) => {
-    //     //     // console.dir(event);
-    //     //     const data = event.data;
-    //     //     console.log(JSON.parse(data));
-    //     // }, false);
-    //     // eventSource.addEventListener('attestation', (event) => {
-    //     //     // console.dir(event);
-    //     //     const data = event.data;
-    //     //     console.log(JSON.parse(data));
-    //     // }, false);
-    //     // eventSource.addEventListener('', (event) => {console.dir(event)}, false);
-    // }, []);
+    const serverBaseURL = "http://nimbus.my.ava.do:5052";
 
     const updateStats = () => {
         axios.get(`${serverBaseURL}/eth/v1/node/syncing`)

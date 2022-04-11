@@ -1,10 +1,10 @@
 {
-  "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.6",
-  "upstream": "22.4.0",
-  "title": "Teku",
-  "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
-  "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
+  "name": "nimbus.avado.dnp.dappnode.eth",
+  "version": "0.0.1",
+  "upstream": "v22.3.0",
+  "title": "Nimbus",
+  "description": "Nimbus-eth2 is an extremely efficient consensus layer (eth2) client implementation.",
+  "avatar": "/ipfs/QmPCB9g8ajvstqmGSfbM9jSHUpBK1UEg4Y4gCWVZX9c49k",
   "type": "service",
   "autoupdate": true,
   "image": {
@@ -16,8 +16,7 @@
       "9000:9000"
     ],
     "environment": [
-      "EXTRA_OPTS=",
-      "JAVA_OPTS=-Xmx3g"
+      "EXTRA_OPTS="
     ],
     "restart": "always"
   },
@@ -25,7 +24,7 @@
   "license": "Apache(c)",
   "dependencies": {},
   "links": {
-    "OnboardingWizard": "http://teku.my.ava.do",
-    "HomePage": "https://docs.teku.consensys.net/en/22.3.2/"
+    "OnboardingWizard": "http://nimbus.my.ava.do",
+    "HomePage": "https://nimbus.guide/"
   }
 }

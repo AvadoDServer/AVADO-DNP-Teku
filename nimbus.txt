@@ -1,0 +1,231 @@
+Nimbus beacon node v22.3.0-13b264-stateofus
+
+[0m[33mUsage: 
+[0m[1m
+[36mnimbus_beacon_node[0m [OPTIONS]... command
+
+The following options are available:
+
+     [34m[1m--config-file           [0m  Loads the configuration from a TOML file.[0m
+     [34m[1m--log-level             [0m  Sets the log level for process and topics (e.g. "DEBUG; TRACE:discv5,libp2p;
+                               REQUIRED:none; DISABLED:none") [=INFO].[0m
+     [34m[1m--log-file              [0m  Specifies a path for the written Json log file (deprecated).[0m
+     [34m[1m--network               [0m  The Eth2 network to join [=mainnet].[0m
+ [34m[1m-d, [0m[34m[1m--data-dir              [0m  The directory where nimbus will store all blockchain data.[0m
+     [34m[1m--validators-dir        [0m  A directory containing validator keystores.[0m
+     [34m[1m--secrets-dir           [0m  A directory containing validator keystore passwords.[0m
+     [34m[1m--wallets-dir           [0m  A directory containing wallet files.[0m
+     [34m[1m--web3-url              [0m  One or more Web3 provider URLs used for obtaining deposit contract data.[0m
+     [34m[1m--non-interactive       [0m  Do not display interative prompts. Quit on missing configuration.[0m
+     [34m[1m--netkey-file           [0m  Source of network (secp256k1) private key file (random|<path>) [=random].[0m
+     [34m[1m--insecure-netkey-password[0m  Use pre-generated INSECURE password for network private key file [=false].[0m
+     [34m[1m--agent-string          [0m  Node agent string which is used as identifier in network [=nimbus].[0m
+     [34m[1m--subscribe-all-subnets [0m  Subscribe to all subnet topics when gossiping [=false].[0m
+     [34m[1m--num-threads           [0m  Number of worker threads (set this to 0 to use as many threads as there are CPU
+                               cores available) [=1].[0m
+ [34m[1m-b, [0m[34m[1m--bootstrap-node        [0m  Specifies one or more bootstrap nodes to use when connecting to the network.[0m
+     [34m[1m--bootstrap-file        [0m  Specifies a line-delimited file of bootstrap Ethereum network addresses.[0m
+     [34m[1m--listen-address        [0m  Listening address for the Ethereum LibP2P and Discovery v5 traffic [=0.0.0.0].[0m
+     [34m[1m--tcp-port              [0m  Listening TCP port for Ethereum LibP2P traffic [=9000].[0m
+     [34m[1m--udp-port              [0m  Listening UDP port for node discovery [=9000].[0m
+     [34m[1m--max-peers             [0m  The maximum number of peers to connect to [=160].[0m
+     [34m[1m--nat                   [0m  Specify method to use for determining public address. Must be one of: any, none,
+                               upnp, pmp, extip:<IP> [=any].[0m
+     [34m[1m--enr-auto-update       [0m  Discovery can automatically update its ENR with the IP address and UDP port as
+                               seen by other nodes it communicates with. This option allows to enable/disable
+                               this functionality [=false].[0m
+     [34m[1m--weak-subjectivity-checkpoint[0m  Weak subjectivity checkpoint in the format block_root:epoch_number.[0m
+     [34m[1m--finalized-checkpoint-state[0m  SSZ file specifying a recent finalized state.[0m
+     [34m[1m--finalized-checkpoint-block[0m  SSZ file specifying a recent finalized block.[0m
+     [34m[1m--node-name             [0m  A name for this node that will appear in the logs. If you set this to 'auto', a
+                               persistent automatically generated ID will be selected for each --data-dir
+                               folder.[0m
+     [34m[1m--graffiti              [0m  The graffiti value that will appear in proposed blocks. You can use a
+                               0x-prefixed hex encoded string to specify raw bytes.[0m
+     [34m[1m--metrics               [0m  Enable the metrics server [=false].[0m
+     [34m[1m--metrics-address       [0m  Listening address of the metrics server [=127.0.0.1].[0m
+     [34m[1m--metrics-port          [0m  Listening HTTP port of the metrics server [=8008].[0m
+     [34m[1m--status-bar            [0m  Display a status bar at the bottom of the terminal screen [=true].[0m
+     [34m[1m--status-bar-contents   [0m  Textual template for the contents of the status bar.[0m
+     [34m[1m--rpc                   [0m  Enable the JSON-RPC server (deprecated) [=false].[0m
+     [34m[1m--rpc-port              [0m  HTTP port for the JSON-RPC service [=9190].[0m
+     [34m[1m--rpc-address           [0m  Listening address of the RPC server [=127.0.0.1].[0m
+     [34m[1m--rest                  [0m  Enable the REST server [=false].[0m
+     [34m[1m--rest-port             [0m  Port for the REST server [=5052].[0m
+     [34m[1m--rest-address          [0m  Listening address of the REST server [=127.0.0.1].[0m
+     [34m[1m--rest-allow-origin     [0m  Limit the access to the REST API to a particular hostname (for CORS-enabled
+                               clients such as browsers).[0m
+     [34m[1m--rest-statecache-size  [0m  The maximum number of recently accessed states that are kept in memory. Speeds
+                               up requests obtaining information for consecutive slots or epochs. [=3].[0m
+     [34m[1m--rest-statecache-ttl   [0m  The number of seconds to keep recently accessed states in memory [=60].[0m
+     [34m[1m--rest-request-timeout  [0m  The number of seconds to wait until complete REST request will be received
+                               [=infinite].[0m
+     [34m[1m--rest-max-body-size    [0m  Maximum size of REST request body (kilobytes) [=16384].[0m
+     [34m[1m--rest-max-headers-size [0m  Maximum size of REST request headers (kilobytes) [=64].[0m
+     [34m[1m--keymanager            [0m  Enable the REST keymanager API (BETA version) [=false].[0m
+     [34m[1m--keymanager-port       [0m  Listening port for the REST keymanager API [=5052].[0m
+     [34m[1m--keymanager-address    [0m  Listening port for the REST keymanager API [=127.0.0.1].[0m
+     [34m[1m--keymanager-allow-origin[0m  Limit the access to the Keymanager API to a particular hostname (for
+                               CORS-enabled clients such as browsers).[0m
+     [34m[1m--keymanager-token-file [0m  A file specifying the authorization token required for accessing the keymanager
+                               API.[0m
+     [34m[1m--in-process-validators [0m  Disable the push model (the beacon node tells a signing process with the private
+                               keys of the validators what to sign and when) and load the validators in the
+                               beacon node itself [=true].[0m
+     [34m[1m--discv5                [0m  Enable Discovery v5 [=true].[0m
+     [34m[1m--dump                  [0m  Write SSZ dumps of blocks, attestations and states to data dir [=false].[0m
+     [34m[1m--direct-peer           [0m  The list of priviledged, secure and known peers to connect and maintain the
+                               connection to, this requires a not random netkey-file. In the complete
+                               multiaddress format like: /ip4/<address>/tcp/<port>/p2p/<peerId-public-key>.
+                               Peering agreements are established out of band and must be reciprocal..[0m
+     [34m[1m--doppelganger-detection[0m  If enabled, the beacon node prudently listens for 2 epochs for attestations from
+                               a validator with the same index (a doppelganger), before sending an attestation
+                               itself. This protects against slashing (due to double-voting) but means you will
+                               miss two attestations when restarting. [=true].[0m
+     [34m[1m--validator-monitor-auto[0m  Automatically monitor locally active validators (BETA) [=false].[0m
+     [34m[1m--validator-monitor-pubkey[0m  One or more validators to monitor - works best when --subscribe-all-subnets is
+                               enabled (BETA).[0m
+     [34m[1m--validator-monitor-totals[0m  Publish metrics to single 'totals' label for better collection performance when
+                               monitoring many validators (BETA) [=false].[0m
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node createTestnet[0m [OPTIONS]...
+
+The following options are available:
+
+     [34m[1m--deposits-file         [0m  A LaunchPad deposits file for the genesis state validators.[0m
+     [34m[1m--total-validators      [0m  The number of validator deposits in the newly created chain.[0m
+     [34m[1m--bootstrap-address     [0m  The public IP address that will be advertised as a bootstrap node for the
+                               testnet [=127.0.0.1].[0m
+     [34m[1m--bootstrap-port        [0m  The TCP/UDP port that will be used by the bootstrap node [=9000].[0m
+     [34m[1m--genesis-offset        [0m  Seconds from now to add to genesis time [=5].[0m
+     [34m[1m--output-genesis        [0m  Output file where to write the initial state snapshot.[0m
+     [34m[1m--output-bootstrap-file [0m  Output file with list of bootstrap nodes for the network.[0m
+[1m
+[36mnimbus_beacon_node deposits[0m command
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node deposits createTestnetDeposits[0m [OPTIONS]...
+
+Creates validator keystores and deposits for testnet usage.
+[0m
+The following options are available:
+
+     [34m[1m--count                 [0m  Number of deposits to generate [=1].[0m
+     [34m[1m--wallet                [0m  An existing wallet ID. If not specified, a new wallet will be created.[0m
+     [34m[1m--out-validators-dir    [0m  Output folder for validator keystores [=validators].[0m
+     [34m[1m--out-secrets-dir       [0m  Output folder for randomly generated keystore passphrases [=secrets].[0m
+     [34m[1m--out-deposits-file     [0m  The name of generated deposits file.[0m
+     [34m[1m--new-wallet-name       [0m  An easy-to-remember name for the wallet of your choice.[0m
+     [34m[1m--new-wallet-file       [0m  Output wallet file.[0m
+[1m
+[36mnimbus_beacon_node deposits import[0m <importedDepositsDir>[0m
+
+Imports password-protected keystores interactively.
+[0m
+[34m[1m <importedDepositsDir>[0m        [0m  A directory with keystores to import.[0m
+[1m
+[36mnimbus_beacon_node deposits exit[0m [OPTIONS]...
+
+Submits a validator voluntary exit.
+[0m
+The following options are available:
+
+     [34m[1m--validator             [0m  Validator index or a public key of the exited validator.[0m
+     [34m[1m--epoch                 [0m  The desired exit epoch.[0m
+     [34m[1m--rest-url              [0m  URL of the beacon node REST service.[0m
+     [34m[1m--rpc-url               [0m  URL of the beacon node JSON-RPC service.[0m
+[1m
+[36mnimbus_beacon_node wallets[0m command
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node wallets create[0m [OPTIONS]...
+
+Creates a new EIP-2386 wallet.
+[0m
+The following options are available:
+
+     [34m[1m--next-account          [0m  Initial value for the 'nextaccount' property of the wallet.[0m
+     [34m[1m--name                  [0m  An easy-to-remember name for the wallet of your choice.[0m
+     [34m[1m--out                   [0m  Output wallet file.[0m
+[1m
+[36mnimbus_beacon_node wallets restore[0m [OPTIONS]...
+
+Restores a wallet from cold storage.
+[0m
+The following options are available:
+
+     [34m[1m--name                  [0m  An easy-to-remember name for the wallet of your choice.[0m
+     [34m[1m--out                   [0m  Output wallet file.[0m
+     [34m[1m--deposits              [0m  Expected number of deposits to recover. If not specified, Nimbus will try to
+                               guess the number by inspecting the latest beacon state.[0m
+[1m
+[36mnimbus_beacon_node wallets list[0m
+
+Lists details about all wallets.
+[0m[1m
+[36mnimbus_beacon_node record[0m command
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node record create[0m [OPTIONS]...
+
+Create a new ENR.
+[0m
+The following options are available:
+
+     [34m[1m--ip                    [0m  External IP address.[0m
+     [34m[1m--tcp-port              [0m  External TCP port.[0m
+     [34m[1m--udp-port              [0m  External UDP port.[0m
+     [34m[1m--seq-number            [0m  Record sequence number [=1].[0m
+     [34m[1m--field                 [0m  Additional record key pairs, provide as <string>:<bytes in hex>.[0m
+[1m
+[36mnimbus_beacon_node record print[0m <enr>[0m
+
+Print the content of a given ENR.
+[0m
+[34m[1m <enr>[0m                        [0m  ENR URI of the record to print.[0m
+[1m
+[36mnimbus_beacon_node web3[0m command
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node web3 test[0m <url>[0m
+
+Test a web3 provider.
+[0m
+[34m[1m <url>[0m                        [0m  The web3 provider URL to test.[0m
+[1m
+[36mnimbus_beacon_node slashingdb[0m command
+[33m
+Available sub-commands:
+[0m[1m
+[36mnimbus_beacon_node slashingdb import[0m <importedInterchangeFile>[0m
+
+Import a EIP-3076 slashing protection interchange file.
+[0m
+[34m[1m <importedInterchangeFile>[0m    [0m  EIP-3076 slashing protection interchange file to import.[0m
+[1m
+[36mnimbus_beacon_node slashingdb export[0m [OPTIONS]... <exportedInterchangeFile>[0m
+
+Export a EIP-3076 slashing protection interchange file.
+[0m
+[34m[1m <exportedInterchangeFile>[0m    [0m  EIP-3076 slashing protection interchange file to export.[0m
+
+The following options are available:
+
+ [34m[1m-v, [0m[34m[1m--validator             [0m  Limit the export to specific validators (specified as numeric indices or public
+                               keys).[0m
+[1m
+[36mnimbus_beacon_node trustedNodeSync[0m [OPTIONS]...
+
+The following options are available:
+
+     [34m[1m--trusted-node-url      [0m  URL of the REST API to sync from [=http://localhost:5052].[0m
+     [34m[1m--blockId               [0m  Block id to sync to - this can be a block root, slot number, "finalized" or
+                               "head" [=finalized].[0m
+     [34m[1m--backfill              [0m  Backfill blocks directly from REST server instead of fetching via API [=true].[0m
+
