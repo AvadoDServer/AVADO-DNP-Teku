@@ -19,13 +19,15 @@ const Validators = ({ network, apiToken }) => {
     }
 
     const updateValidators = async () => {
+        console.log(apiToken)
         if (apiToken) {
-            return await axios.get("https://teku.my.ava.do:5052/eth/v1/keystores", {
+            return await axios.get("http://nimbus.my.ava.do:5555/eth/v1/keystores", {
                 headers: {
                     Accept: "application/json",
                     Authorization: `Bearer ${apiToken}`
                 }
             }).then((res) => {
+                console.log(res)
                 if (res.status === 200) {
                     setValidators(res.data.data.map(d => d.validating_pubkey))
                 }
@@ -42,7 +44,7 @@ const Validators = ({ network, apiToken }) => {
     React.useEffect(() => {
         const getValidatorData = async (pubKey) => {
             try {
-                const res = await axios.get(`http://teku.my.ava.do:5052/eth/v1/beacon/states/finalized/validators/${pubKey}`);
+                const res = await axios.get(`http://nimbus.my.ava.do:5555/eth/v1/beacon/states/finalized/validators/${pubKey}`);
                 if (res.status === 200) {
                     // console.dir(res.data.data);
                     return (res.data.data);
@@ -100,7 +102,7 @@ const Validators = ({ network, apiToken }) => {
     const removeValidator = (pubKey) => {
         //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
         const apiCall = async (pubKey) => {
-            return await axios.delete("https://teku.my.ava.do:5052/eth/v1/keystores", {
+            return await axios.delete("http://nimbus.my.ava.do:5555/eth/v1/keystores", {
                 headers: { Authorization: `Bearer ${apiToken}` },
                 data: { pubkeys: [pubKey] }
             }).then((res) => {

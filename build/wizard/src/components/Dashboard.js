@@ -83,7 +83,7 @@ const Comp = () => {
             return;
         const dataPath=`/data/data-${settings?.network}`
 
-        getFileContent(wampSession, `${dataPath}/KEY-API-TOKEN`).then(
+        getFileContent(wampSession, `/data/KEY-API-TOKEN`).then(
             (apiToken) => setApiToken(apiToken)
         )
     }, [wampSession, settings]) // eslint-disable-line

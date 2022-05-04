@@ -10,7 +10,7 @@ const Comp = () => {
     const [peerCount, setPeerCount] = React.useState();
     const [peers, setPeers] = React.useState();
 
-    const serverBaseURL = "http://nimbus.my.ava.do:5052";
+    const serverBaseURL = "http://nimbus.my.ava.do:5555";
 
     const updateStats = () => {
         axios.get(`${serverBaseURL}/eth/v1/node/syncing`)

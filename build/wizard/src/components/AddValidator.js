@@ -35,7 +35,7 @@ const AddValidator = ({ apiToken, updateValidators }) => {
 
         console.log(message)
 
-        return await axios.post("https://teku.my.ava.do:5052/eth/v1/keystores", message, {
+        return await axios.post("http://nimbus.my.ava.do:5555/eth/v1/keystores", message, {
             headers: { Authorization: `Bearer ${apiToken}` }
         }).then((res) => {
             //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/ImportKeystores

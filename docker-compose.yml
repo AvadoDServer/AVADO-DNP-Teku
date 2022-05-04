@@ -5,7 +5,11 @@ services:
     build:
       context: ./build
       args:
-        NIMBUS_VERSION: v22.3.0
+        NIMBUS_VERSION: v22.4.0
+    ports:
+      - '9000:9000/udp'
+      - '9000:9000'
+      - '5555'
     volumes:
       - 'data:/data'
     environment:
