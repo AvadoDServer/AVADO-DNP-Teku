@@ -41,10 +41,28 @@ const Validators = ({ network, apiToken }) => {
 
     React.useEffect(() => {
         const getValidatorData = async (pubKey) => {
-            const res = await axios.get(`http://teku.my.ava.do:5051/eth/v1/beacon/states/finalized/validators/${pubKey}`);
-            if (res.status === 200) {
-                // console.dir(res.data.data);
-                return (res.data.data);
+            try {
+                const res = await axios.get(`http://teku.my.ava.do:5051/eth/v1/beacon/states/finalized/validators/${pubKey}`);
+                if (res.status === 200) {
+                    // console.dir(res.data.data);
+                    return (res.data.data);
+                }
+            } catch (err) {
+                return {
+                    "index": "0",
+                    "balance": "0",
+                    "status": "pending_initialized",
+                    "validator": {
+                        "pubkey": pubKey,
+                        "withdrawal_credentials": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                        "effective_balance": "00000000000",
+                        "slashed": false,
+                        "activation_eligibility_epoch": "0",
+                        "activation_epoch": "0",
+                        "exit_epoch": "0",
+                        "withdrawable_epoch": "0"
+                    }
+                };
             }
         }
 

@@ -1,0 +1,11 @@
+{
+    "network": "mainnet",
+    "eth1_endpoints": [
+        "http://ethchain-geth.my.ava.do:8545",
+        "https://mainnet.eth.cloud.ava.do"
+    ],
+    "validators_graffiti": "Avado Teku",
+    "p2p_peer_lower_bound": 64,
+    "p2p_peer_upper_bound": 74,
+    "initial_state": "https://snapshots.ava.do/state.ssz"
+}
