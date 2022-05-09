@@ -13,7 +13,7 @@ Options:
                                Default: <data-base-path>/beacon
       --data-path, --data-base-path=<FILENAME>
                              Path to the base directory for storage
-                               Default: /root/.local/share/teku
+                               Default: /home/avado/.local/share/teku
       --data-storage-mode=<STORAGE_MODE>
                              Sets the strategy for handling historical chain
                                data.  (Valid values: ARCHIVE, PRUNE)
@@ -89,7 +89,7 @@ Options:
       --metrics-interface=<NETWORK>
                              Metrics network interface to expose metrics for
                                Prometheus
-                               Default: 0.0.0.0
+                               Default: 127.0.0.1
       --metrics-port=<INTEGER>
                              Metrics port to expose metrics for Prometheus
                                Default: 8008
@@ -162,7 +162,7 @@ Options:
                                Default: [127.0.0.1, localhost]
       --rest-api-interface=<NETWORK>
                              Interface of Beacon Rest API
-                               Default: 0.0.0.0
+                               Default: 127.0.0.1
       --rest-api-port=<INTEGER>
                              Port number of Beacon Rest API
                                Default: 5051
@@ -183,7 +183,7 @@ Options:
                                Default: [127.0.0.1, localhost]
       --validator-api-interface=<NETWORK>
                              Interface of Validator Rest API
-                               Default: 0.0.0.0
+                               Default: 127.0.0.1
       --validator-api-keystore-file=<keystoreFile>
                              Keystore used for ssl for the validator api.
       --validator-api-keystore-password-file=<keystorePasswordFile>
@@ -279,9 +279,9 @@ Commands:
                           validator client.
   migrate-database      Migrate the database to a specified version.
   debug-tools           Utilities for debugging issues
-  validator-client, vc  Run a Validator Client that connects to a remote Beacon
-                          Node
   voluntary-exit        Create and sign a voluntary exit for a specified
                           validator.
+  validator-client, vc  Run a Validator Client that connects to a remote Beacon
+                          Node
 
 Teku is licensed under the Apache License 2.0
