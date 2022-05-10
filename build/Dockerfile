@@ -11,7 +11,7 @@ RUN rm -Rf build && yarn run build
 FROM consensys/teku:${TEKU_VERSION}
 
 USER root
-RUN apt-get -y update && apt-get -y upgrade && apt-get -y install curl supervisor nginx sudo jq
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y install curl supervisor nginx sudo jq gettext
 RUN rm -rf /var/lib/api/lists/*ß
 RUN useradd -s /bin/false nginx
 
