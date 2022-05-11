@@ -18,15 +18,11 @@ const AddValidator = ({ apiToken, updateValidators }) => {
 
         const createMessage = async () => {
             const keyStore = await keyStoreFile.text();
-            const slashingProtection = slashingProtectionFile ? await slashingProtectionFile?.text() : {
-                metadata: {},
-                data: []
-            };
-
+            const slashingProtection = slashingProtectionFile ? await slashingProtectionFile?.text() : null
             return {
                 keystores: [keyStore],
                 passwords: [password],
-                slashing_protection: slashingProtection
+                ...(slashingProtection && {slashing_protection: slashingProtection})
             }
         }
 

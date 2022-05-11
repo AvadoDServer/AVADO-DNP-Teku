@@ -1,6 +1,6 @@
 {
   "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "upstream": "22.5.0",
   "title": "Teku",
   "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
