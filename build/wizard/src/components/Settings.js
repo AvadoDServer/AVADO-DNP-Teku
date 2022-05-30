@@ -11,6 +11,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const defaultSettings = {
         network: "mainnet",
+        ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
         eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
@@ -21,6 +22,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
+        ee_endpoint: yup.string().label("ee-endpoint").required('Required').url(),
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
@@ -63,6 +65,10 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         getSettingsFromContainer(wampSession).then(
             settings => {
                 if (settings) {
+                    if (!settings.ee_endpoint) {
+                        settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545",":8551") // intialize with first eth1-endpoint if not set yet
+                        writeSettingsToContainer(wampSession, settings)
+                    }
                     setSettings(settings)
                     console.log(settings);
                 }
@@ -216,16 +222,27 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                         </>
                                     )}
                                 </FieldArray>
-                                <div className="field">
-                                    <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
-                                    <div className="control">
-                                        <Field name="network" as="select" className="select">
-                                            {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                        </Field>
-                                        {values.network !== settings.network ? (
-                                            <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
-                                        ) : null}
-                                    </div>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="ee_endpoint">Execution client's engine json-rpc url. This replaces the <em>eth1-endpoints</em> after The Merge.</label>
+                                <div className="control">
+                                    <Field className={"input" + (errors?.ee_endpoint ? " is-danger" : "")} id="ee_endpoint" name="ee_endpoint" />
+                                    {errors.ee_endpoint ? (
+                                        <p className="help is-danger">{errors.ee_endpoint}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                <div className="control">
+                                    <Field name="network" as="select" className="select">
+                                        {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
+                                    </Field>
+                                    {values.network !== settings.network ? (
+                                        <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
+                                    ) : null}
                                 </div>
                             </div>
 

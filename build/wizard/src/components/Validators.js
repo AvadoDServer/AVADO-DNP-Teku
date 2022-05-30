@@ -14,6 +14,7 @@ const Validators = ({ network, apiToken }) => {
         const beaconChainBaseUrl = ({
             "prater": "https://prater.beaconcha.in",
             "mainnet": "https://beaconcha.in",
+            "kiln": "https://beaconchain.kiln.themerge.dev/"
         })[network] || "https://beaconcha.in"
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }

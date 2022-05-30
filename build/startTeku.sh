@@ -13,6 +13,7 @@ while [ ! -f "${SETTINGSFILE}" ]; do sleep 1; done
 # Create config file
 NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"') \
 GRAFFITI=$(cat ${SETTINGSFILE} | jq '."validators_graffiti"' | tr -d '"') \
+EE_ENDPOINT=$(cat ${SETTINGSFILE} | jq '."ee_endpoint"' | tr -d '"') \
 ETH1_ENDPOINTS=$(cat ${SETTINGSFILE} | jq '."eth1_endpoints"' | tr -d '"') \
 P2P_PEER_LOWER_BOUND=$(cat ${SETTINGSFILE} | jq '."p2p_peer_lower_bound"' | tr -d '"') \
 P2P_PEER_UPPER_BOUND=$(cat ${SETTINGSFILE} | jq '."p2p_peer_upper_bound"' | tr -d '"') \
