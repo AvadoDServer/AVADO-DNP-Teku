@@ -21,4 +21,5 @@ DATA_PATH="/data/data-${NETWORK}" \
     envsubst < $(dirname "$0")/teku-config.template > $TARGETCONFIGFILE
 
 # Start teku
+echo "***** Launching Teku version $(/opt/teku/bin/teku --version) *****"
 /opt/teku/bin/teku --config-file="$TARGETCONFIGFILE" ${EXTRA_OPTS}

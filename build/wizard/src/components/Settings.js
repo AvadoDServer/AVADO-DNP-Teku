@@ -15,7 +15,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 74,
+        p2p_peer_upper_bound: 100,
         initial_state: "https://snapshots.ava.do/state.ssz"
     }
 
