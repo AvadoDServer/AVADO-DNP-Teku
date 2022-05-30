@@ -9,6 +9,7 @@ const Comp = () => {
     const [error, setError] = React.useState();
     const [peerCount, setPeerCount] = React.useState();
     const [peers, setPeers] = React.useState();
+    const [version, setVersion] = React.useState();
 
     const serverBaseURL = "http://teku.my.ava.do:5051";
 
@@ -77,8 +78,24 @@ const Comp = () => {
             });
     }
 
+    const getVersion = () => {
+        axios.get(`${serverBaseURL}/eth/v1/node/version`)
+            .then(res => {
+                if (res.status === 200) {
+                    const rawversion = res.data.data.version
+                    const version = rawversion.replace(/teku\/(v[\d.]+)\/.*/,"$1")
+                    setVersion(version);
+                } else {
+                    setVersion(null);
+                }
+            }).catch((e) => {
+                setVersion(null);
+            });
+    }
+
     React.useEffect(() => {
         updateStats();
+        getVersion();
         const interval = setInterval(() => {
             updateStats();
         }, 5 * 1000); // 5 seconds refresh
@@ -117,6 +134,7 @@ const Comp = () => {
                                         ) ? (<span className="tag is-success">in sync</span>
                                         ) : (<><span className="tag is-warning">syncing {getSyncPercentage(syncData)}</span>, sync distance: {syncData.sync_distance}</>
                                         )}
+                                        {(version && <><br />version: {version}</>)}
                                         <br />
                                         connected peers: {peerCount.connected}
                                         <br />
