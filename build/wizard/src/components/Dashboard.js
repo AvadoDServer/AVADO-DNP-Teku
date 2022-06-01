@@ -151,7 +151,7 @@ const Comp = () => {
                     <div className="column">
                         <Header />
 
-                        <Validators network={settings?.network} apiToken={apiToken} />
+                        <Validators network={settings?.network} apiToken={apiToken} validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} />
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 

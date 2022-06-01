@@ -11,17 +11,21 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const defaultSettings = {
         network: "mainnet",
+        ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
         eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
         validators_graffiti: "Avado Teku",
         p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 74,
+        p2p_peer_upper_bound: 100,
+        validators_proposer_default_fee_recipient: "",
         initial_state: "https://snapshots.ava.do/state.ssz"
     }
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
-        validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
+        ee_endpoint: yup.string().label("ee-endpoint").required('Required').url(),
+        validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional('Optional'),
+        validators_proposer_default_fee_recipient: yup.string().label("validators-proposer-default-fee-recipient").matches(/^0x[a-fA-F0-9]{40}$/).required('Required'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
         initial_state: yup.string().label("initial-state").url().optional('Optional')
@@ -59,12 +63,19 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
     React.useEffect(() => {
         if (!wampSession)
             return;
-        console.log("id", packageName)
+        // console.log("id", packageName)
         getSettingsFromContainer(wampSession).then(
             settings => {
                 if (settings) {
+                    if (!settings.ee_endpoint) {
+                        settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
+                        writeSettingsToContainer(wampSession, settings)
+                    }
+                    if (!settings.validators_proposer_default_fee_recipient) {
+                        settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+                    }
                     setSettings(settings)
-                    console.log(settings);
+                    console.log("Loaded settings: ", settings);
                 }
                 else {
                     setSettings(defaultSettings)
@@ -109,6 +120,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                 <Formik
                     initialValues={settings}
                     validationSchema={settingsSchema}
+                    validateOnMount
                     enableReinitialize
                 >
                     {({ values, errors, touched, isValid, dirty, setValues }) => {
@@ -216,16 +228,43 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                         </>
                                     )}
                                 </FieldArray>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="ee_endpoint">Execution client's engine json-rpc url. This replaces the <em>eth1-endpoints</em> after The Merge.</label>
+                                <div className="control">
+                                    <Field className={"input" + (errors?.ee_endpoint ? " is-danger" : "")} id="ee_endpoint" name="ee_endpoint" />
+                                    {errors.ee_endpoint ? (
+                                        <p className="help is-danger">{errors.ee_endpoint}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            {/* eslint-disable-next-line */}
+                            <a name="validators_proposer_default_fee_recipient">
                                 <div className="field">
-                                    <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators (after the Merge). The fee recipient can be overriden per validator by clicking the fee recipient value of any validator in the validator list above.</label>
                                     <div className="control">
-                                        <Field name="network" as="select" className="select">
-                                            {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                        </Field>
-                                        {values.network !== settings.network ? (
-                                            <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
+                                        <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
+                                            id="validators_proposer_default_fee_recipient"
+                                            name="validators_proposer_default_fee_recipient"
+                                            placeholder="TODO: enter fee recipient address here" />
+                                        {errors.validators_proposer_default_fee_recipient ? (
+                                            <p className="help is-danger">{errors.validators_proposer_default_fee_recipient}</p>
                                         ) : null}
                                     </div>
+                                </div>
+                            </a>
+
+                            <div className="field">
+                                <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                <div className="control">
+                                    <Field name="network" as="select" className="select">
+                                        {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
+                                    </Field>
+                                    {values.network !== settings.network ? (
+                                        <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
+                                    ) : null}
                                 </div>
                             </div>
 
