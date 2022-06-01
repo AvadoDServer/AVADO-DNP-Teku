@@ -6,6 +6,7 @@ import Validators from "./Validators";
 import Settings from "./Settings";
 import xmlrpc from "xmlrpc";
 
+import tekulogo from "../assets/teku.png";
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
@@ -149,7 +150,7 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header />
+                        <Header beacon_node_api_url="http://teku.my.ava.do:5051" logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator"/>
 
                         <Validators network={settings?.network} apiToken={apiToken} validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} />
 
