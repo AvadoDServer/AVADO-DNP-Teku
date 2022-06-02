@@ -2,20 +2,20 @@ import React from "react";
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
 import Validators from "./Validators";
-import Settings from "./Settings";
-import xmlrpc from "xmlrpc";
+import Settings from "./SettingsForm";
 
 import tekulogo from "../assets/teku.png";
 import { SettingsType } from "./Types";
 import { RestApi } from "./RestApi";
-
-const autobahn = require('autobahn-browser')
+import { SupervisorCtl } from "./SupervisorCtl";
+import { WampConnection } from "./WampConnection";
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
-    const [wampSession, setWampSession] = React.useState();
-    const [configuration, setConfiguration] = React.useState<string | undefined>();  // eslint-disable-line
+    const [newSession, setNewSession] = React.useState<WampConnection>();
+    const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
+
     const [settings, setSettings] = React.useState<SettingsType>();
 
     const [restApi, setRestApi] = React.useState<RestApi>();
@@ -25,74 +25,28 @@ const Comp = () => {
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
     React.useEffect(() => {
-        const url = "ws://wamp.my.ava.do:8080/ws";
-        const realm = "dappnode_admin";
-        const connection = new autobahn.Connection({ url, realm });
-        connection.onopen = (session: any) => {
-            console.debug("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
-            setWampSession(session);
-        };
-        // connection closed, lost or unable to connect
-        connection.onclose = (reason: any, details: any) => {
-            console.error("CONNECTION_CLOSE", { reason, details });
-        };
-        connection.open();
+        setNewSession(new WampConnection(packageName));
     }, []);
 
-    function dataUriToBlob(dataURI: string) {
-        if (!dataURI || typeof dataURI !== "string")
-            throw Error("dataUri must be a string");
-
-        // Credit: https://stackoverflow.com/questions/12168909/blob-from-dataurl
-        // convert base64 to raw binary data held in a string
-        // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
-        const byteString = atob(dataURI.split(",")[1]);
-        // separate out the mime component
-        // dataURI = data:application/zip;base64,UEsDBBQAAAg...
-        const mimeString = dataURI
-            .split(",")[0]
-            .split(":")[1]
-            .split(";")[0];
-        // write the bytes of the string to an ArrayBuffer
-        const ab = new ArrayBuffer(byteString.length);
-        // create a view into the buffer
-        const ia = new Uint8Array(ab);
-        // set the bytes of the buffer to the correct values
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        // write the ArrayBuffer to a blob, and you're done
-        const blob = new Blob([ab], { type: mimeString });
-        return blob;
-    }
-
-    const getFileContent = (wampSession: any, pathInContainer: string) => {
-        const fetchData = async () => {
-            const res = JSON.parse(await wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
-                {
-                    id: packageName,
-                    fromPath: pathInContainer
+    React.useEffect(() => {
+        newSession?.getFileContent("/data/settings.json")
+            .then(
+                (settings) => {
+                    if (settings)
+                        setSettings(JSON.parse(settings));
                 }
-            ));
-            if (res.success !== true) return;
-            const dataUri = res.result;
-            if (!dataUri) return;
-            const data = await dataUriToBlob(dataUri).text();
-
-            return data
-        }
-        return fetchData();
-    }
+            )
+    }, [newSession]);
 
     React.useEffect(() => {
-        if (!wampSession || !settings)
+        if (!newSession || !settings)
             return;
-            
+
         const dataPath = `/data/data-${settings?.network}`
 
         setRestApi(new RestApi(restApiUrl))
 
-        getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
+        newSession.getFileContent(`${dataPath}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => {
                 if (apiToken) {
                     console.log("API token:", apiToken)
@@ -100,57 +54,31 @@ const Comp = () => {
                 }
             }
         )
-    }, [wampSession, settings]) // eslint-disable-line
-
-    React.useEffect(() => {
-        if (!wampSession)
-            return;
-        getFileContent(wampSession, "/data/config.yml").then(
-            (config) => setConfiguration(config)
-        )
-    }, [settings, wampSession]) // eslint-disable-line
-
-    // methods: http://supervisord.org/api.html
-    // ['supervisor.addProcessGroup', 'supervisor.clearAllProcessLogs', 'supervisor.clearLog', 'supervisor.clearProcessLog',
-    //     'supervisor.clearProcessLogs', 'supervisor.getAPIVersion', 'supervisor.getAllConfigInfo', 'supervisor.getAllProcessInfo',
-    //     'supervisor.getIdentification', 'supervisor.getPID', 'supervisor.getProcessInfo', 'supervisor.getState', 'supervisor.getSupervisorVersion',
-    //     'supervisor.getVersion', 'supervisor.readLog', 'supervisor.readMainLog', 'supervisor.readProcessLog', 'supervisor.readProcessStderrLog',
-    //     'supervisor.readProcessStdoutLog', 'supervisor.reloadConfig', 'supervisor.removeProcessGroup', 'supervisor.restart', 'supervisor.sendProcessStdin',
-    //     'supervisor.sendRemoteCommEvent', 'supervisor.shutdown', 'supervisor.signalAllProcesses', 'supervisor.signalProcess', 'supervisor.signalProcessGroup',
-    //     'supervisor.startAllProcesses', 'supervisor.startProcess', 'supervisor.startProcessGroup', 'supervisor.stopAllProcesses', 'supervisor.stopProcess',
-    //     'supervisor.stopProcessGroup', 'supervisor.tailProcessLog', 'supervisor.tailProcessStderrLog', 'supervisor.tailProcessStdoutLog',
-    //     'system.listMethods', 'system.methodHelp', 'system.methodSignature', 'system.multicall']
-    const supervisorCtl = (method: string, params: any[]) => {
-        if (wampSession) {
-            const client = xmlrpc.createClient({ host: 'teku.my.ava.do', port: 5556, path: '/RPC2' })
-            client.methodCall(method, params, (error: any, value) => {
-                if (error) {
-                    console.log('supervisorCtl Teku error:', error);
-                    console.log('req headers:', error.req && error.req._header);
-                    console.log('res code:', error.res && error.res.statusCode);
-                    console.log('res body:', error.body);
-                } else {
-                    console.log('supervisorCtl Teku: ', value);
-                    return value;
-                }
-            })
-        }
-    }
+    }, [newSession, settings]) // eslint-disable-line
 
     const toggleTeku = (enable: boolean) => { // eslint-disable-line
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
-        supervisorCtl(method, ["teku"]);
+        supervisorCtl?.callMethod(method, ["teku"]);
     }
 
     React.useEffect(() => {
-        supervisorCtl("supervisor.getState", [])
-    }, [wampSession]) // eslint-disable-line
+        const supervisorCtl = new SupervisorCtl('teku.my.ava.do', 5556, '/RPC2')
+        setSupervisorCtl(supervisorCtl)
+        supervisorCtl.callMethod("supervisor.getState", [])
+    }, [])
+
+    const writeSettingsToContainer = (settings: any) => {
+        const fileName = "settings.json"
+        const pathInContainer = "/data/"
+
+        newSession?.writeFileToContainer(fileName, pathInContainer, JSON.stringify(settings))
+    }
 
     return (
         <div className="dashboard has-text-white">
             <NetworkBanner network={settings?.network ?? "mainnet"} />
 
-            {!wampSession && (
+            {!newSession?.getSession() && (
                 <section className="hero is-danger">
                     <div className="hero-body is-small">
                         <p className="has-text-centered">Avado Connection problem. Check your browser's console log for more details.</p>
@@ -163,38 +91,34 @@ const Comp = () => {
                     <div className="column">
                         <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
 
-                        {restApi && keyManagerAPI && (<Validators
+                        {restApi && keyManagerAPI && settings && (<Validators
                             settings={settings}
                             restAPI={restApi}
                             keyManagerAPI={keyManagerAPI}
                         />)}
 
-                        <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
+                        {supervisorCtl && (<Settings settings={settings} setSettings={setSettings} writeSettingsToContainer={writeSettingsToContainer} supervisorCtl={supervisorCtl} />)}
 
-                        {/* <h2 className="title is-2 has-text-white">Debug</h2>
+                        <h2 className="title is-2 has-text-white">Debug</h2>
                         <div className="content">
                             <ul>
                                 <li>
-                                    <a href="http://teku.my.ava.do:5051/swagger-ui" target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
+                                    <a href={`${restApiUrl}/swagger-ui`} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
 
                                 </li>
                                 <li>
-                                    <a href="http://my.ava.do/#/Packages/teku.avado.dnp.dappnode.eth/detail" target="_blank" rel="noopener noreferrer">Avado pacakge management page</a>
+                                    <a href={`http://my.ava.do/#/Packages/${packageName}/detail`} target="_blank" rel="noopener noreferrer">Avado pacakge management page</a>
 
                                 </li>
                             </ul>
-                        </div> */}
-
-                        {/* <h2 className="title is-2 has-text-white">configuration</h2>
-                        <div className="container">
-                            <pre className="transcript">
-                                {configuration}
-                            </pre>
-                        </div> */}
+                            <div className="field">
+                                <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
+                                <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
-
         </div>
     )
 }

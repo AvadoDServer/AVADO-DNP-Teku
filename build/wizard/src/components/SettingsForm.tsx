@@ -1,29 +1,28 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { packageName } from "./Dashboard"
 import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import { SettingsType } from "./Types";
+import { SupervisorCtl } from "./SupervisorCtl";
 
 interface Props {
-    getFileContent: (wampSession: any, pathInContainer: string) => Promise<string | undefined>
-    wampSession: any
-    settings: SettingsType|undefined,
+    settings: SettingsType | undefined,
+    writeSettingsToContainer: (settings: any) => void
     setSettings: (settings: any) => void
-    supervisorCtl: (method: any, params: any) => void
+    supervisorCtl: SupervisorCtl
 }
 
-const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCtl }: Props) => {
+const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }: Props) => {
 
     const defaultSettings = {
         network: "mainnet",
         ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
         eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
-        validators_graffiti: "Avado Teku",
+        validators_graffiti: "Avado",
         p2p_peer_lower_bound: 64,
         p2p_peer_upper_bound: 100,
         validators_proposer_default_fee_recipient: "",
@@ -42,57 +41,28 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const supportedNetworks = ["mainnet", "prater", "kiln"];
 
-    const getSettingsFromContainer = async (wampSession: any) => {
-        const settings = await getFileContent(wampSession, "/data/settings.json");
-        if (settings)
-            return JSON.parse(settings)
-    }
-
-    const writeSettingsToContainer = (wampSession: any, settings: any) => {
-        const fileName = "settings.json"
-        const pathInContainer = "/data/"
-        const pushData = async () => {
-            const base64Data = Buffer.from(JSON.stringify(settings)).toString("base64");
-            const dataUri = `data:application/json",${base64Data}`
-            const res = JSON.parse(await wampSession.call("copyFileTo.dappmanager.dnp.dappnode.eth", [],
-                {
-                    id: packageName,
-                    dataUri: dataUri,
-                    filename: fileName,
-                    toPath: pathInContainer
-                }));
-            console.log("write result", res)
-            if (res.success !== true) return;
-
-            return res
-        }
-        return pushData();
-    }
-
     React.useEffect(() => {
-        if (!wampSession)
+        if (settings === undefined)
             return;
+
         // console.log("id", packageName)
-        getSettingsFromContainer(wampSession).then(
-            settings => {
-                if (settings) {
-                    if (!settings.ee_endpoint) {
-                        settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
-                        writeSettingsToContainer(wampSession, settings)
-                    }
-                    if (!settings.validators_proposer_default_fee_recipient) {
-                        settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
-                    }
-                    setSettings(settings)
-                    console.log("Loaded settings: ", settings);
-                }
-                else {
-                    setSettings(defaultSettings)
-                    writeSettingsToContainer(wampSession, defaultSettings)
-                }
+        if (settings) {
+            if (!settings.ee_endpoint) {
+                settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
+                writeSettingsToContainer(settings)
             }
-        )
-    }, [wampSession]) // eslint-disable-line
+            if (!settings.validators_proposer_default_fee_recipient) {
+                settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+            }
+            setSettings(settings)
+            console.log("Loaded settings: ", settings);
+        }
+        else {
+            setSettings(defaultSettings)
+            writeSettingsToContainer(defaultSettings)
+        }
+
+    }, [settings]) // eslint-disable-line
 
     const confirmResetDefaults = () => {
         confirmAlert({
@@ -114,10 +84,10 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
 
     const applyChanges = (newSettings: any) => {
         setSettings(newSettings)
-        writeSettingsToContainer(wampSession, newSettings)
+        writeSettingsToContainer(newSettings)
         //wait a bit to make sure the settings file is written      
         setTimeout(function () {
-            supervisorCtl('supervisor.restart', [])
+            supervisorCtl.callMethod('supervisor.restart', [])
         }, 5000);
     }
 
@@ -201,12 +171,12 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                                                     </p>
                                                                     {
                                                                         // @ts-ignore
-                                                                        errors?.eth1_endpoints?.at(index)                                                                        
-                                                                         ? (
-                                                                            <p className="help is-danger">{
-                                                                                //@ts-ignore
-                                                                                errors.eth1_endpoints[index]}</p>
-                                                                        ) : null
+                                                                        errors?.eth1_endpoints?.at(index)
+                                                                            ? (
+                                                                                <p className="help is-danger">{
+                                                                                    //@ts-ignore
+                                                                                    errors.eth1_endpoints[index]}</p>
+                                                                            ) : null
                                                                     }
                                                                     {/* <ErrorMessage
                                                                         name={`eth1_endpoints.${index}.eth1_endpoint`}
@@ -309,11 +279,6 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                 </Formik>
             </div>
         )}
-        {/* <h2 className="title is-2 has-text-white">Debug</h2>
-        <div className="field">
-            <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
-            <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
-        </div> */}
     </>
 }
 
