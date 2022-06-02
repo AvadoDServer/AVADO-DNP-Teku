@@ -15,25 +15,25 @@ export const packageName = "teku.avado.dnp.dappnode.eth";
 const Comp = () => {
     const [wampSession, setWampSession] = React.useState();
     const [apiToken, setApiToken] = React.useState<string>("");
-    const [configuration, setConfiguration] = React.useState<string|undefined>();  // eslint-disable-line
+    const [configuration, setConfiguration] = React.useState<string | undefined>();  // eslint-disable-line
     const [settings, setSettings] = React.useState<SettingsType>();
 
     React.useEffect(() => {
         const url = "ws://wamp.my.ava.do:8080/ws";
         const realm = "dappnode_admin";
-        const connection = new autobahn.Connection({url,realm});
-        connection.onopen = (session:any) => {
+        const connection = new autobahn.Connection({ url, realm });
+        connection.onopen = (session: any) => {
             console.debug("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
             setWampSession(session);
         };
         // connection closed, lost or unable to connect
-        connection.onclose = (reason:any, details:any) => {            
+        connection.onclose = (reason: any, details: any) => {
             console.error("CONNECTION_CLOSE", { reason, details });
         };
         connection.open();
     }, []);
 
-    function dataUriToBlob(dataURI:string) {
+    function dataUriToBlob(dataURI: string) {
         if (!dataURI || typeof dataURI !== "string")
             throw Error("dataUri must be a string");
 
@@ -60,7 +60,7 @@ const Comp = () => {
         return blob;
     }
 
-    const getFileContent = (wampSession:any, pathInContainer:string) => {
+    const getFileContent = (wampSession: any, pathInContainer: string) => {
         const fetchData = async () => {
             const res = JSON.parse(await wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
                 {
@@ -81,13 +81,12 @@ const Comp = () => {
     React.useEffect(() => {
         if (!wampSession)
             return;
-        const dataPath=`/data/data-${settings?.network}`
+        const dataPath = `/data/data-${settings?.network}`
 
         getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => setApiToken(apiToken ?? "")
         )
     }, [wampSession, settings]) // eslint-disable-line
-
 
     React.useEffect(() => {
         if (!wampSession)
@@ -107,10 +106,10 @@ const Comp = () => {
     //     'supervisor.startAllProcesses', 'supervisor.startProcess', 'supervisor.startProcessGroup', 'supervisor.stopAllProcesses', 'supervisor.stopProcess',
     //     'supervisor.stopProcessGroup', 'supervisor.tailProcessLog', 'supervisor.tailProcessStderrLog', 'supervisor.tailProcessStdoutLog',
     //     'system.listMethods', 'system.methodHelp', 'system.methodSignature', 'system.multicall']
-    const supervisorCtl = (method:string, params:any[]) => {
+    const supervisorCtl = (method: string, params: any[]) => {
         if (wampSession) {
             const client = xmlrpc.createClient({ host: 'teku.my.ava.do', port: 5556, path: '/RPC2' })
-            client.methodCall(method, params, (error:any, value) => {
+            client.methodCall(method, params, (error: any, value) => {
                 if (error) {
                     console.log('supervisorCtl Teku error:', error);
                     console.log('req headers:', error.req && error.req._header);
@@ -124,7 +123,7 @@ const Comp = () => {
         }
     }
 
-    const toggleTeku = (enable:boolean) => { // eslint-disable-line
+    const toggleTeku = (enable: boolean) => { // eslint-disable-line
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
         supervisorCtl(method, ["teku"]);
     }
@@ -135,7 +134,7 @@ const Comp = () => {
 
     return (
         <div className="dashboard has-text-white">
-            <NetworkBanner network={settings?.network??"mainnet"} />
+            <NetworkBanner network={settings?.network ?? "mainnet"} />
 
             {!wampSession && (
                 <section className="hero is-danger">
@@ -148,9 +147,14 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header beacon_node_api_url="http://teku.my.ava.do:5051" logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator"/>
+                        <Header beacon_node_api_url="http://teku.my.ava.do:5051" logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
 
-                        <Validators settings={settings} apiToken={apiToken} />
+                        <Validators
+                            settings={settings}
+                            apiToken={apiToken}
+                            restAPIUrl="http://teku.my.ava.do:5051"
+                            keyManagerAPIUrl="https://teku.my.ava.do:5052"
+                        />
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 

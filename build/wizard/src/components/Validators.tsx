@@ -6,10 +6,14 @@ import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
 import { SettingsType } from "./Types";
+import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
+import { KeyManagerAPI } from "./KeyManagerAPI";
 
 interface Props {
-    settings: SettingsType|undefined
+    settings: SettingsType | undefined
     apiToken: string
+    restAPIUrl : string
+    keyManagerAPIUrl: string
 }
 
 interface ValidatorData {
@@ -33,89 +37,68 @@ interface ConfiguringfeeRecipient {
     feerecipient: string
 }
 
-const Validators = ({ settings, apiToken }: Props) => {
+const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
+    const [keyManagerAPI, setKeyManagerAPI] = React.useState<KeyManagerAPI>();
 
-    const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient|null>();
-    const [feeRecepientFieldValue, setFeeRecepientFieldValue] = React.useState<string>("");
-    const [feeRecepientFieldValueError, setFeeRecepientFieldValueError] = React.useState<string|null>(null);
+    const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
 
     const beaconchainUrl = (validatorPubkey: string, text: any) => {
         const beaconChainBaseUrl = ({
             "prater": "https://prater.beaconcha.in",
             "mainnet": "https://beaconcha.in",
             "kiln": "https://beaconchain.kiln.themerge.dev/"
-        })[settings?.network??"mainnet"]
+        })[settings?.network ?? "mainnet"]
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }
 
     const updateValidators = async () => {
-        if (apiToken) {
-            return await axios.get("https://teku.my.ava.do:5052/eth/v1/keystores", {
-                headers: {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${apiToken}`
-                }
-            }).then((res) => {
-                if (res.status === 200) {
-                    setValidators(res.data.data.map((d: any) => d.validating_pubkey))
-                }
-            });
+        if (keyManagerAPI) {
+            keyManagerAPI.get("/eth/v1/keystores",
+                (res) => {
+                    if (res.status === 200) {
+                        setValidators(res.data.data.map((d: any) => d.validating_pubkey))
+                    }
+                }, (e) => { });
         }
     }
 
     React.useEffect(() => {
         if (apiToken) {
-            updateValidators();
-            // console.log(apiToken)
+            setKeyManagerAPI(new KeyManagerAPI(keyManagerAPIUrl, apiToken))            
+            console.log("API token:", apiToken)
         }
     }, [apiToken]) // eslint-disable-line
 
     React.useEffect(() => {
-        window.addEventListener('keyup', (e) => { if (e.key === "Escape") setConfiguringfeeRecipient(null) });
-    }, [])
-
-
-    // React.useEffect(() => {
-    //     if (validatorData) {
-    //         console.dir(validatorData);
-    //     }
-    // }, [validatorData])
-
-
-    // React.useEffect(() => {
-    //     if (feeRecipients) {
-    //         console.dir(feeRecipients);
-    //     }
-    // }, [feeRecipients])
+        if (keyManagerAPI) {
+            updateValidators();
+        }
+    }, [keyManagerAPI]) // eslint-disable-line
 
     React.useEffect(() => {
+        if (!keyManagerAPI)
+            return;
 
         const getFeeRecipient = async (pubKey: string) => {
-            try {
-                if (!settings?.validators_proposer_default_fee_recipient) {
-                    return "Configure default setting first!"
-                }
-                return await axios.get(`https://teku.my.ava.do:5052/eth/v1/validator/${pubKey}/feerecipient`, {
-                    headers: {
-                        Accept: "application/json",
-                        Authorization: `Bearer ${apiToken}`
-                    }
-                }).then((res) => {
+            if (!settings?.validators_proposer_default_fee_recipient) {
+                return "Configure default setting first!"
+            }
+
+            return keyManagerAPI.get<string>(`/eth/v1/validator/${pubKey}/feerecipient`,
+                (res) => {
                     if (res.status === 200) {
                         // console.log(res)
                         return res.data.data.ethaddress
                     } else {
                         return settings?.validators_proposer_default_fee_recipient
                     }
+                }, (err) => {
+                    console.log("Error in validators_proposer_default_fee_recipient", err)
+                    return settings?.validators_proposer_default_fee_recipient
                 });
-            } catch (err) {
-                console.log("Error in validators_proposer_default_fee_recipient", err)
-                return settings?.validators_proposer_default_fee_recipient
-            }
-
         }
 
         const getValidatorData = async (pubKey: string): Promise<ValidatorData> => {
@@ -135,7 +118,7 @@ const Validators = ({ settings, apiToken }: Props) => {
                 }
             };
             try {
-                const res = await axios.get(`http://teku.my.ava.do:5051/eth/v1/beacon/states/finalized/validators/${pubKey}`);
+                const res = await axios.get(`${restAPIUrl}/eth/v1/beacon/states/finalized/validators/${pubKey}`);
                 if (res.status === 200) {
                     // console.log(res.data.data)
                     return (res.data.data as ValidatorData);
@@ -144,14 +127,13 @@ const Validators = ({ settings, apiToken }: Props) => {
             } catch (err) {
                 return nullValue
             }
-
         }
 
         if (validators) {
             Promise.all(validators.map(pubKey => getValidatorData(pubKey))).then(result => setValidatorData(result))
             Promise.all(validators.map(pubKey => getFeeRecipient(pubKey))).then(result => setFeeRecipients(result))
         }
-    }, [validators, apiToken, settings?.validators_proposer_default_fee_recipient]);
+    }, [validators, apiToken, settings?.validators_proposer_default_fee_recipient, keyManagerAPI, restAPIUrl]);
 
     function askConfirmationRemoveValidator(pubKey: string) {
         confirmAlert({
@@ -169,7 +151,7 @@ const Validators = ({ settings, apiToken }: Props) => {
         });
     }
 
-    const downloadSlashingData = (data:string) => {
+    const downloadSlashingData = (data: string) => {
         const element = document.createElement("a");
         const file = new Blob([data], { type: 'text/json' });
         element.href = URL.createObjectURL(file);
@@ -178,29 +160,25 @@ const Validators = ({ settings, apiToken }: Props) => {
         element.click();
     }
 
-    const removeValidator = (pubKey:string) => {
-        //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
-        const apiCall = async (pubKey:string) => {
-            return await axios.delete("https://teku.my.ava.do:5052/eth/v1/keystores", {
-                headers: { Authorization: `Bearer ${apiToken}` },
-                data: { pubkeys: [pubKey] }
-            }).then((res) => {
-                console.dir(res)
-                console.log(res)
-                downloadSlashingData(res.data.slashing_protection)
-                if (res.status === 200) {
-                    updateValidators();
-                }
-            }).catch((e) => {
-                console.log(e)
-                console.dir(e)
-            });
-        }
+    const removeValidator = (pubKey: string) => {
+        if (!keyManagerAPI)
+            return;
         console.log("Deleting " + pubKey + " with token " + apiToken);
-        apiCall(pubKey);
+        //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
+        keyManagerAPI.delete("/eth/v1/keystores", { pubkeys: [pubKey] }, (res) => {
+            console.dir(res)
+            console.log(res)
+            downloadSlashingData(res.data.slashing_protection)
+            if (res.status === 200) {
+                updateValidators();
+            }
+        }, (e) => {
+            console.log(e)
+            console.dir(e)
+        });
     }
 
-    const getStatusColor = (status:string) => {
+    const getStatusColor = (status: string) => {
         switch (status) {
             // https://ethereum.github.io/beacon-APIs/#/ValidatorRequiredApi/getStateValidator
             case "pending_initialized": return "is-info" // When the first deposit is processed, but not enough funds are available (or not yet the end of the first epoch) to get validator into the activation queue.
@@ -216,10 +194,9 @@ const Validators = ({ settings, apiToken }: Props) => {
         }
     }
 
-    const configureFeeRecipient = (pubKey:string, feeRecipient:string) => {
+    const configureFeeRecipient = (pubKey: string, feeRecipient: string) => {
         if (settings?.validators_proposer_default_fee_recipient) {
             setConfiguringfeeRecipient({ pubKey: pubKey, feerecipient: feeRecipient })
-            setFeeRecepientFieldValue(feeRecipient)
         } else {
             const element = document.getElementById("validators_proposer_default_fee_recipient");
             if (element) {
@@ -228,85 +205,18 @@ const Validators = ({ settings, apiToken }: Props) => {
         }
     }
 
-    const saveFeeRecipient = async (pubKey:string, feeRecipientAddress:string) => {
-        if (feeRecipientAddress) {
-            try {
-                return await axios.post(`https://teku.my.ava.do:5052/eth/v1/validator/${pubKey}/feerecipient`, {
-                    "ethaddress": feeRecipientAddress
-                }, {
-                    headers: {
-                        Authorization: `Bearer ${apiToken}`
-                    }
-                }).then((res) => {
-                    if (res.status !== 202) {
-                        setFeeRecepientFieldValueError(res.data.message)
-                        console.log(res.data)
-                    } else {
-                        console.log("Configured fee recepient via key manager: ", res)
-                        setFeeRecepientFieldValueError(null)
-                        setConfiguringfeeRecipient(null)
-                        updateValidators()
-                    }
-                });
-            } catch (e:any) {
-                console.log("error", e.response.data.message)
-                setFeeRecepientFieldValueError(e.response.data.message)
-            }
-        } else {
-            try {
-                return await axios.delete(`https://teku.my.ava.do:5052/eth/v1/validator/${pubKey}/feerecipient`, {
-                    headers: {
-                        Authorization: `Bearer ${apiToken}`
-                    }
-                }).then((res) => {
-                    if (res.status !== 204) {
-                        setFeeRecepientFieldValueError(res.data.message)
-                        console.log(res.data)
-                    } else {
-                        console.log("Configured fee recipient via key manager: ", res)
-                        setFeeRecepientFieldValueError(null)
-                        setConfiguringfeeRecipient(null)
-                        updateValidators()
-                    }
-                });
-            } catch (e:any) {
-                console.log("error", e.response.data.message)
-                setFeeRecepientFieldValueError(e.response.data.message)
-            }
-        }
-    }
-
     return (
         <div>
             {validators && validatorData && feeRecipients && (
                 <>
-                    <div id="modal-js-example" className={"modal is-clipped" + (configuringfeeRecipient ? " is-active" : "")}>
-                        <div className="modal-background"></div>
-
-                        <div className="modal-content">
-                            <div className="box">
-                                {configuringfeeRecipient && (<p>Configure the <b>fee recepient address</b> for {beaconchainUrl("/validator/" + configuringfeeRecipient.pubKey, <abbr title={configuringfeeRecipient.pubKey}>{configuringfeeRecipient.pubKey.substring(0, 10) + "…"}</abbr>)}</p>)}
-                                <br />
-                                <p>Enter a valid address to set a fee recipient for this specific validator, or enter an empty address to use the default fee recipient setting ({settings?.validators_proposer_default_fee_recipient}):</p>
-
-                                <div className="field">
-                                    {/* <label className="label has-text-black">Fee recipient address</label> */}
-                                    <div className="control">
-                                        <input className={"input has-text-black" + (feeRecepientFieldValueError ? " is-danger" : "")} type="text" value={feeRecepientFieldValue === settings?.validators_proposer_default_fee_recipient ? "" : feeRecepientFieldValue} onChange={e => setFeeRecepientFieldValue(e.target.value)} />
-                                    </div>
-                                    {feeRecepientFieldValueError && (
-                                        <p className="help is-danger">{feeRecepientFieldValueError}</p>
-                                    )}
-                                </div>
-
-                                <button className="button" onClick={() => setConfiguringfeeRecipient(null)}>Cancel</button>
-                                {configuringfeeRecipient && (<button className="button" onClick={() => saveFeeRecipient(configuringfeeRecipient.pubKey, feeRecepientFieldValue)}>Save</button>)}
-
-                            </div>
-                        </div>
-
-                        <button className="modal-close is-large" aria-label="close" onClick={() => setConfiguringfeeRecipient(null)}></button>
-                    </div>
+                    <OverrideVallidatorFeeRecipientModal
+                        network={settings?.network ?? "mainnet"}
+                        updateValidators={updateValidators}
+                        keyManagerAPI={keyManagerAPI}
+                        validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
+                        configuringfeeRecipient={configuringfeeRecipient}
+                        setConfiguringfeeRecipient={setConfiguringfeeRecipient}
+                    />
                     <div className="notification is-success">
                         {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
                     </div>
@@ -349,7 +259,7 @@ const Validators = ({ settings, apiToken }: Props) => {
                     </table>
                 </>
             )}
-            <AddValidator apiToken={apiToken} updateValidators={updateValidators} />
+            {keyManagerAPI && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI}/>)}
         </div>
     );
 };

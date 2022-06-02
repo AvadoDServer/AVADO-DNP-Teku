@@ -1,11 +1,11 @@
 import React from "react";
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUpload, faEye, faEyeSlash, faAngleDown, faAngleUp } from "@fortawesome/free-solid-svg-icons";
+import { KeyManagerAPI } from "./KeyManagerAPI";
 
 interface Props {
-    apiToken: string
     updateValidators: () => void
+    keyManagerAPI: KeyManagerAPI
 }
 
 type result = {
@@ -15,7 +15,7 @@ type result = {
 
 type PassWordFieldType = "text" | "password"
 
-const AddValidator = ({ apiToken, updateValidators }: Props) => {
+const AddValidator = ({ updateValidators, keyManagerAPI }: Props) => {
     const [keyStoreFile, setKeyStoreFile] = React.useState<File | null>();
     const [password, setPassword] = React.useState<string>("");
     const [passwordFieldType, setPasswordFieldType] = React.useState<PassWordFieldType>("password");
@@ -44,13 +44,9 @@ const AddValidator = ({ apiToken, updateValidators }: Props) => {
         }
 
         const message = await createMessage();
-
-
         console.log(message)
 
-        return await axios.post("https://teku.my.ava.do:5052/eth/v1/keystores", message, {
-            headers: { Authorization: `Bearer ${apiToken}` }
-        }).then((res) => {
+        keyManagerAPI.post("/eth/v1/keystores", message, (res) => {
             //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/ImportKeystores
             const status = res.data.data[0].status
 
@@ -61,13 +57,10 @@ const AddValidator = ({ apiToken, updateValidators }: Props) => {
                 default: setResult({ status: "error", message: res.data.data[0].message }); break; // Any other status different to the above: decrypting error, I/O errors, etc.
             }
             updateValidators();
-        }).catch((e) => {
+        },(e) => {
             console.log(e)
-            console.dir(e)
             setResult({ status: "error", message: e.message + ". Please check the input files" });
         });
-        ;
-
     }
 
     React.useEffect(() => {
