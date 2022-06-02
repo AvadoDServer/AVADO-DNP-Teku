@@ -5,17 +5,45 @@ import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
+import { Network } from "./Networks";
 
-const Validators = ({ network, apiToken, validators_proposer_default_fee_recipient }) => {
-    const [validatorData, setValidatorData] = React.useState();
-    const [validators, setValidators] = React.useState("");
-    const [feeRecipients, setFeeRecipients] = React.useState();
+interface Props {
+    network: Network
+    apiToken: string
+    validators_proposer_default_fee_recipient: string
+}
 
-    const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState(false);
-    const [feeRecepientFieldValue, setFeeRecepientFieldValue] = React.useState("");
-    const [feeRecepientFieldValueError, setFeeRecepientFieldValueError] = React.useState("");
+interface ValidatorData {
+    "index": string
+    "balance": string,
+    "status": string,
+    "validator": {
+        "pubkey": string,
+        "withdrawal_credentials": string,
+        "effective_balance": string,
+        "slashed": boolean,
+        "activation_eligibility_epoch": string,
+        "activation_epoch": string,
+        "exit_epoch": string,
+        "withdrawable_epoch": string
+    }
+}
 
-    const beaconchainUrl = (validatorPubkey, text) => {
+interface ConfiguringfeeRecipient {
+    pubKey: string
+    feerecipient: string
+}
+
+const Validators = ({ network, apiToken, validators_proposer_default_fee_recipient }: Props) => {
+    const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
+    const [validators, setValidators] = React.useState<string[]>();
+    const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
+
+    const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient|null>();
+    const [feeRecepientFieldValue, setFeeRecepientFieldValue] = React.useState<string>("");
+    const [feeRecepientFieldValueError, setFeeRecepientFieldValueError] = React.useState<string|null>(null);
+
+    const beaconchainUrl = (validatorPubkey: string, text: any) => {
         const beaconChainBaseUrl = ({
             "prater": "https://prater.beaconcha.in",
             "mainnet": "https://beaconcha.in",
@@ -33,7 +61,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                 }
             }).then((res) => {
                 if (res.status === 200) {
-                    setValidators(res.data.data.map(d => d.validating_pubkey))
+                    setValidators(res.data.data.map((d: any) => d.validating_pubkey))
                 }
             });
         }
@@ -47,7 +75,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
     }, [apiToken]) // eslint-disable-line
 
     React.useEffect(() => {
-        window.addEventListener('keyup', (e) => { if (e.key === "Escape") setConfiguringfeeRecipient(false) });
+        window.addEventListener('keyup', (e) => { if (e.key === "Escape") setConfiguringfeeRecipient(null) });
     }, [])
 
 
@@ -66,7 +94,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
 
     React.useEffect(() => {
 
-        const getFeeRecipient = async (pubKey) => {
+        const getFeeRecipient = async (pubKey: string) => {
             try {
                 if (!validators_proposer_default_fee_recipient) {
                     return "Configure default setting first!"
@@ -91,30 +119,33 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
 
         }
 
-        const getValidatorData = async (pubKey) => {
+        const getValidatorData = async (pubKey: string): Promise<ValidatorData> => {
+            const nullValue = {
+                "index": "0",
+                "balance": "0",
+                "status": "pending_initialized",
+                "validator": {
+                    "pubkey": pubKey,
+                    "withdrawal_credentials": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "effective_balance": "00000000000",
+                    "slashed": false,
+                    "activation_eligibility_epoch": "0",
+                    "activation_epoch": "0",
+                    "exit_epoch": "0",
+                    "withdrawable_epoch": "0"
+                }
+            };
             try {
                 const res = await axios.get(`http://teku.my.ava.do:5051/eth/v1/beacon/states/finalized/validators/${pubKey}`);
                 if (res.status === 200) {
                     // console.log(res.data.data)
-                    return (res.data.data);
-                }
+                    return (res.data.data as ValidatorData);
+                } else
+                    return nullValue
             } catch (err) {
-                return {
-                    "index": "0",
-                    "balance": "0",
-                    "status": "pending_initialized",
-                    "validator": {
-                        "pubkey": pubKey,
-                        "withdrawal_credentials": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                        "effective_balance": "00000000000",
-                        "slashed": false,
-                        "activation_eligibility_epoch": "0",
-                        "activation_epoch": "0",
-                        "exit_epoch": "0",
-                        "withdrawable_epoch": "0"
-                    }
-                };
+                return nullValue
             }
+
         }
 
         if (validators) {
@@ -123,7 +154,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         }
     }, [validators, apiToken, validators_proposer_default_fee_recipient]);
 
-    function askConfirmationRemoveValidator(pubKey) {
+    function askConfirmationRemoveValidator(pubKey: string) {
         confirmAlert({
             message: `Are you sure you want to remove validator "${pubKey}"?`,
             buttons: [
@@ -139,7 +170,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         });
     }
 
-    const downloadSlashingData = (data) => {
+    const downloadSlashingData = (data:string) => {
         const element = document.createElement("a");
         const file = new Blob([data], { type: 'text/json' });
         element.href = URL.createObjectURL(file);
@@ -148,9 +179,9 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         element.click();
     }
 
-    const removeValidator = (pubKey) => {
+    const removeValidator = (pubKey:string) => {
         //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
-        const apiCall = async (pubKey) => {
+        const apiCall = async (pubKey:string) => {
             return await axios.delete("https://teku.my.ava.do:5052/eth/v1/keystores", {
                 headers: { Authorization: `Bearer ${apiToken}` },
                 data: { pubkeys: [pubKey] }
@@ -170,7 +201,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         apiCall(pubKey);
     }
 
-    const getStatusColor = (status) => {
+    const getStatusColor = (status:string) => {
         switch (status) {
             // https://ethereum.github.io/beacon-APIs/#/ValidatorRequiredApi/getStateValidator
             case "pending_initialized": return "is-info" // When the first deposit is processed, but not enough funds are available (or not yet the end of the first epoch) to get validator into the activation queue.
@@ -186,7 +217,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         }
     }
 
-    const configureFeeRecipient = (pubKey, feeRecipient) => {
+    const configureFeeRecipient = (pubKey:string, feeRecipient:string) => {
         if (validators_proposer_default_fee_recipient) {
             setConfiguringfeeRecipient({ pubKey: pubKey, feerecipient: feeRecipient })
             setFeeRecepientFieldValue(feeRecipient)
@@ -198,7 +229,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
         }
     }
 
-    const saveFeeRecipient = async (pubKey, feeRecipientAddress) => {
+    const saveFeeRecipient = async (pubKey:string, feeRecipientAddress:string) => {
         if (feeRecipientAddress) {
             try {
                 return await axios.post(`https://teku.my.ava.do:5052/eth/v1/validator/${pubKey}/feerecipient`, {
@@ -209,16 +240,16 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                     }
                 }).then((res) => {
                     if (res.status !== 202) {
-                        setFeeRecepientFieldValueError(res)
+                        setFeeRecepientFieldValueError(res.data.message)
                         console.log(res.data)
                     } else {
                         console.log("Configured fee recepient via key manager: ", res)
-                        setFeeRecepientFieldValueError(false)
-                        setConfiguringfeeRecipient(false)
+                        setFeeRecepientFieldValueError(null)
+                        setConfiguringfeeRecipient(null)
                         updateValidators()
                     }
                 });
-            } catch (e) {
+            } catch (e:any) {
                 console.log("error", e.response.data.message)
                 setFeeRecepientFieldValueError(e.response.data.message)
             }
@@ -230,16 +261,16 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                     }
                 }).then((res) => {
                     if (res.status !== 204) {
-                        setFeeRecepientFieldValueError(res)
+                        setFeeRecepientFieldValueError(res.data.message)
                         console.log(res.data)
                     } else {
-                        console.log("Configured fee recepient via key manager: ", res)
-                        setFeeRecepientFieldValueError(false)
-                        setConfiguringfeeRecipient(false)
+                        console.log("Configured fee recipient via key manager: ", res)
+                        setFeeRecepientFieldValueError(null)
+                        setConfiguringfeeRecipient(null)
                         updateValidators()
                     }
                 });
-            } catch (e) {
+            } catch (e:any) {
                 console.log("error", e.response.data.message)
                 setFeeRecepientFieldValueError(e.response.data.message)
             }
@@ -256,7 +287,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                         <div className="modal-content">
                             <div className="box">
                                 {configuringfeeRecipient && (<p>Configure the <b>fee recepient address</b> for {beaconchainUrl("/validator/" + configuringfeeRecipient.pubKey, <abbr title={configuringfeeRecipient.pubKey}>{configuringfeeRecipient.pubKey.substring(0, 10) + "…"}</abbr>)}</p>)}
-                                <br/>
+                                <br />
                                 <p>Enter a valid address to set a fee recipient for this specific validator, or enter an empty address to use the default fee recipient setting ({validators_proposer_default_fee_recipient}):</p>
 
                                 <div className="field">
@@ -269,13 +300,13 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                                     )}
                                 </div>
 
-                                <button className="button" onClick={() => setConfiguringfeeRecipient(false)}>Cancel</button>
-                                <button className="button" onClick={() => saveFeeRecipient(configuringfeeRecipient.pubKey, feeRecepientFieldValue)}>Save</button>
+                                <button className="button" onClick={() => setConfiguringfeeRecipient(null)}>Cancel</button>
+                                {configuringfeeRecipient && (<button className="button" onClick={() => saveFeeRecipient(configuringfeeRecipient.pubKey, feeRecepientFieldValue)}>Save</button>)}
 
                             </div>
                         </div>
 
-                        <button className="modal-close is-large" aria-label="close" onClick={() => setConfiguringfeeRecipient(false)}></button>
+                        <button className="modal-close is-large" aria-label="close" onClick={() => setConfiguringfeeRecipient(null)}></button>
                     </div>
                     <div className="notification is-success">
                         {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
@@ -301,14 +332,14 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                                     <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
                                     <td>{beaconchainUrl("/validator/" + validator.index, <abbr title={validator.validator.pubkey}>{validator.validator.pubkey.substring(0, 10) + "…"}</abbr>)}</td>
                                     <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
-                                    <td>{parseFloat(validator.balance / 1000000000).toFixed(4)}</td>
-                                    <td>{parseFloat(validator.validator.effective_balance / 1000000000).toFixed(4)}</td>
+                                    <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
+                                    <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
                                     {/* <td>{validator.validator.activation_epoch}</td> */}
                                     {/* <td>{validator.validator.exit_epoch}</td> */}
                                     <td>
                                         {/* eslint-disable-next-line */}
                                         <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
-                                            <abbr title={feeRecipients[i]}>{feeRecipients[i].substring(0, 10) + "…"}</abbr>
+                                            <abbr title={feeRecipients[i]}>{feeRecipients[i]?.substring(0, 10) + "…"}</abbr>
                                         </a>
                                     </td>
                                     <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>

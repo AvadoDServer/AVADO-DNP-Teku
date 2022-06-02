@@ -3,18 +3,35 @@ import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUpload, faEye, faEyeSlash, faAngleDown, faAngleUp } from "@fortawesome/free-solid-svg-icons";
 
-const AddValidator = ({ apiToken, updateValidators }) => {
-    const [keyStoreFile, setKeyStoreFile] = React.useState();
-    const [password, setPassword] = React.useState();
-    const [passwordFieldType, setPasswordFieldType] = React.useState("password");
+interface Props {
+    apiToken: string
+    updateValidators: () => void
+}
+
+type result = {
+    status: "imported" | "duplicate" | "error" | null
+    message: string
+}
+
+type PassWordFieldType = "text" | "password"
+
+const AddValidator = ({ apiToken, updateValidators }: Props) => {
+    const [keyStoreFile, setKeyStoreFile] = React.useState<File | null>();
+    const [password, setPassword] = React.useState<string>("");
+    const [passwordFieldType, setPasswordFieldType] = React.useState<PassWordFieldType>("password");
     const [passwordFieldIcon, setPasswordFieldIcon] = React.useState(faEyeSlash);
-    const [slashingProtectionFile, setSlashingProtectionFile] = React.useState();
+    const [slashingProtectionFile, setSlashingProtectionFile] = React.useState<File | null>();
     const [addButtonEnabled, setAddButtonEnabled] = React.useState(false);
-    const [result, setResult] = React.useState();
+    const [result, setResult] = React.useState<result>({ status: null, message: "" });
 
     const [collapsed, setCollapsed] = React.useState(true);
 
     const addValidator = async () => {
+        if (!keyStoreFile) {
+            console.log("KeyStoreFile not set")
+            setResult({ status: "error", message: "Please check the input files" });
+            return
+        }
 
         const createMessage = async () => {
             const keyStore = await keyStoreFile.text();
@@ -22,7 +39,7 @@ const AddValidator = ({ apiToken, updateValidators }) => {
             return {
                 keystores: [keyStore],
                 passwords: [password],
-                ...(slashingProtection && {slashing_protection: slashingProtection})
+                ...(slashingProtection && { slashing_protection: slashingProtection })
             }
         }
 
@@ -88,7 +105,7 @@ const AddValidator = ({ apiToken, updateValidators }) => {
                             <div className="content">
                                 <div className="file has-name">
                                     <label className="file-label">
-                                        Keystore file (required): <input className="file-input" type="file" name="keystore" id="keystore" onChange={e => setKeyStoreFile(e.target.files[0])} />
+                                        Keystore file (required): <input className="file-input" type="file" name="keystore" id="keystore" onChange={e => setKeyStoreFile(e.target?.files?.item(0))} />
                                         <span className="file-cta">
                                             <span className="file-icon">
                                                 <FontAwesomeIcon icon={faUpload} />
@@ -116,7 +133,7 @@ const AddValidator = ({ apiToken, updateValidators }) => {
                                 </div>
                                 <div className="file has-name">
                                     <label className="file-label">
-                                        Slashing protection (optional): <input className="file-input" type="file" name="slashing" id="slashing" onChange={e => setSlashingProtectionFile(e.target.files[0])} />
+                                        Slashing protection (optional): <input className="file-input" type="file" name="slashing" id="slashing" onChange={e => setSlashingProtectionFile(e.target?.files?.item(0))} />
                                         <span className="file-cta">
                                             <span className="file-icon">
                                                 <FontAwesomeIcon icon={faUpload} />
@@ -132,7 +149,7 @@ const AddValidator = ({ apiToken, updateValidators }) => {
                                 </div>
                                 <button className="button" onClick={addValidator} disabled={!addButtonEnabled}>Add validator</button>
                                 <br />
-                                {result && (<p className={"tag " + getResultTag()}>{result.message}</p>)}
+                                {result.message && (<p className={"tag " + getResultTag()}>{result.message}</p>)}
 
                             </div>
                         </div>
