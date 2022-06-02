@@ -1,5 +1,4 @@
 import React from "react";
-import autobahn from "autobahn-browser";
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
 import Validators from "./Validators";
@@ -7,35 +6,34 @@ import Settings from "./Settings";
 import xmlrpc from "xmlrpc";
 
 import tekulogo from "../assets/teku.png";
+import { SettingsType } from "./Types";
+
+const autobahn = require('autobahn-browser')
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
     const [wampSession, setWampSession] = React.useState();
-    const [apiToken, setApiToken] = React.useState("");
-    const [configuration, setConfiguration] = React.useState("");  // eslint-disable-line
-    const [settings, setSettings] = React.useState();
+    const [apiToken, setApiToken] = React.useState<string>("");
+    const [configuration, setConfiguration] = React.useState<string|undefined>();  // eslint-disable-line
+    const [settings, setSettings] = React.useState<SettingsType>();
 
     React.useEffect(() => {
         const url = "ws://wamp.my.ava.do:8080/ws";
         const realm = "dappnode_admin";
-        const connection = new autobahn.Connection({
-            url,
-            realm
-        });
-        connection.onopen = session => {
+        const connection = new autobahn.Connection({url,realm});
+        connection.onopen = (session:any) => {
             console.debug("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
             setWampSession(session);
         };
         // connection closed, lost or unable to connect
-        connection.onclose = (reason, details) => {
-            this.setState({ connectedToDAppNode: false });
+        connection.onclose = (reason:any, details:any) => {            
             console.error("CONNECTION_CLOSE", { reason, details });
         };
         connection.open();
     }, []);
 
-    function dataUriToBlob(dataURI) {
+    function dataUriToBlob(dataURI:string) {
         if (!dataURI || typeof dataURI !== "string")
             throw Error("dataUri must be a string");
 
@@ -62,7 +60,7 @@ const Comp = () => {
         return blob;
     }
 
-    const getFileContent = (wampSession, pathInContainer) => {
+    const getFileContent = (wampSession:any, pathInContainer:string) => {
         const fetchData = async () => {
             const res = JSON.parse(await wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
                 {
@@ -86,7 +84,7 @@ const Comp = () => {
         const dataPath=`/data/data-${settings?.network}`
 
         getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
-            (apiToken) => setApiToken(apiToken)
+            (apiToken) => setApiToken(apiToken ?? "")
         )
     }, [wampSession, settings]) // eslint-disable-line
 
@@ -109,10 +107,10 @@ const Comp = () => {
     //     'supervisor.startAllProcesses', 'supervisor.startProcess', 'supervisor.startProcessGroup', 'supervisor.stopAllProcesses', 'supervisor.stopProcess',
     //     'supervisor.stopProcessGroup', 'supervisor.tailProcessLog', 'supervisor.tailProcessStderrLog', 'supervisor.tailProcessStdoutLog',
     //     'system.listMethods', 'system.methodHelp', 'system.methodSignature', 'system.multicall']
-    const supervisorCtl = (method, params) => {
+    const supervisorCtl = (method:string, params:any[]) => {
         if (wampSession) {
             const client = xmlrpc.createClient({ host: 'teku.my.ava.do', port: 5556, path: '/RPC2' })
-            client.methodCall(method, params, function (error, value) {
+            client.methodCall(method, params, (error:any, value) => {
                 if (error) {
                     console.log('supervisorCtl Teku error:', error);
                     console.log('req headers:', error.req && error.req._header);
@@ -126,7 +124,7 @@ const Comp = () => {
         }
     }
 
-    const toggleTeku = (enable) => { // eslint-disable-line
+    const toggleTeku = (enable:boolean) => { // eslint-disable-line
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
         supervisorCtl(method, ["teku"]);
     }
@@ -137,7 +135,7 @@ const Comp = () => {
 
     return (
         <div className="dashboard has-text-white">
-            <NetworkBanner network={settings?.network} />
+            <NetworkBanner network={settings?.network??"mainnet"} />
 
             {!wampSession && (
                 <section className="hero is-danger">
@@ -152,7 +150,7 @@ const Comp = () => {
                     <div className="column">
                         <Header beacon_node_api_url="http://teku.my.ava.do:5051" logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator"/>
 
-                        <Validators network={settings?.network} apiToken={apiToken} validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} />
+                        <Validators settings={settings} apiToken={apiToken} />
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 

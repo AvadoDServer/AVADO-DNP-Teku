@@ -1,5 +1,5 @@
 import React from "react";
-import { Network } from "./Networks";
+import { Network } from "./Types";
 
 const NetworkBanner = ({network}: {network:Network}) => {
     return (

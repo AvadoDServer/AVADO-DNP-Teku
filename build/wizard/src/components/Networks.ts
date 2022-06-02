@@ -1,1 +1,0 @@
-export type Network = "prater" | "mainnet" | "kiln"

@@ -5,12 +5,11 @@ import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
-import { Network } from "./Networks";
+import { SettingsType } from "./Types";
 
 interface Props {
-    network: Network
+    settings: SettingsType|undefined
     apiToken: string
-    validators_proposer_default_fee_recipient: string
 }
 
 interface ValidatorData {
@@ -34,7 +33,7 @@ interface ConfiguringfeeRecipient {
     feerecipient: string
 }
 
-const Validators = ({ network, apiToken, validators_proposer_default_fee_recipient }: Props) => {
+const Validators = ({ settings, apiToken }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
@@ -48,7 +47,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
             "prater": "https://prater.beaconcha.in",
             "mainnet": "https://beaconcha.in",
             "kiln": "https://beaconchain.kiln.themerge.dev/"
-        })[network] || "https://beaconcha.in"
+        })[settings?.network??"mainnet"]
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }
 
@@ -96,7 +95,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
 
         const getFeeRecipient = async (pubKey: string) => {
             try {
-                if (!validators_proposer_default_fee_recipient) {
+                if (!settings?.validators_proposer_default_fee_recipient) {
                     return "Configure default setting first!"
                 }
                 return await axios.get(`https://teku.my.ava.do:5052/eth/v1/validator/${pubKey}/feerecipient`, {
@@ -109,12 +108,12 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                         // console.log(res)
                         return res.data.data.ethaddress
                     } else {
-                        return validators_proposer_default_fee_recipient
+                        return settings?.validators_proposer_default_fee_recipient
                     }
                 });
             } catch (err) {
                 console.log("Error in validators_proposer_default_fee_recipient", err)
-                return validators_proposer_default_fee_recipient
+                return settings?.validators_proposer_default_fee_recipient
             }
 
         }
@@ -152,7 +151,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
             Promise.all(validators.map(pubKey => getValidatorData(pubKey))).then(result => setValidatorData(result))
             Promise.all(validators.map(pubKey => getFeeRecipient(pubKey))).then(result => setFeeRecipients(result))
         }
-    }, [validators, apiToken, validators_proposer_default_fee_recipient]);
+    }, [validators, apiToken, settings?.validators_proposer_default_fee_recipient]);
 
     function askConfirmationRemoveValidator(pubKey: string) {
         confirmAlert({
@@ -218,7 +217,7 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
     }
 
     const configureFeeRecipient = (pubKey:string, feeRecipient:string) => {
-        if (validators_proposer_default_fee_recipient) {
+        if (settings?.validators_proposer_default_fee_recipient) {
             setConfiguringfeeRecipient({ pubKey: pubKey, feerecipient: feeRecipient })
             setFeeRecepientFieldValue(feeRecipient)
         } else {
@@ -288,12 +287,12 @@ const Validators = ({ network, apiToken, validators_proposer_default_fee_recipie
                             <div className="box">
                                 {configuringfeeRecipient && (<p>Configure the <b>fee recepient address</b> for {beaconchainUrl("/validator/" + configuringfeeRecipient.pubKey, <abbr title={configuringfeeRecipient.pubKey}>{configuringfeeRecipient.pubKey.substring(0, 10) + "…"}</abbr>)}</p>)}
                                 <br />
-                                <p>Enter a valid address to set a fee recipient for this specific validator, or enter an empty address to use the default fee recipient setting ({validators_proposer_default_fee_recipient}):</p>
+                                <p>Enter a valid address to set a fee recipient for this specific validator, or enter an empty address to use the default fee recipient setting ({settings?.validators_proposer_default_fee_recipient}):</p>
 
                                 <div className="field">
                                     {/* <label className="label has-text-black">Fee recipient address</label> */}
                                     <div className="control">
-                                        <input className={"input has-text-black" + (feeRecepientFieldValueError ? " is-danger" : "")} type="text" value={feeRecepientFieldValue === validators_proposer_default_fee_recipient ? "" : feeRecepientFieldValue} onChange={e => setFeeRecepientFieldValue(e.target.value)} />
+                                        <input className={"input has-text-black" + (feeRecepientFieldValueError ? " is-danger" : "")} type="text" value={feeRecepientFieldValue === settings?.validators_proposer_default_fee_recipient ? "" : feeRecepientFieldValue} onChange={e => setFeeRecepientFieldValue(e.target.value)} />
                                     </div>
                                     {feeRecepientFieldValueError && (
                                         <p className="help is-danger">{feeRecepientFieldValueError}</p>
