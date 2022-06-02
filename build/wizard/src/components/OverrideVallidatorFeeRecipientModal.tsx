@@ -1,11 +1,11 @@
 import React from "react";
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import { Network } from "./Types";
-import { KeyManagerAPI } from "./KeyManagerAPI"
+import { RestApi } from "./RestApi"
 
 interface Props {
     network: Network
-    keyManagerAPI: KeyManagerAPI | undefined
+    keyManagerAPI: RestApi | undefined
     validators_proposer_default_fee_recipient: string | undefined
     updateValidators: () => void
     configuringfeeRecipient: ConfiguringfeeRecipient | undefined | null

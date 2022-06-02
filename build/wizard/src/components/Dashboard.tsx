@@ -7,6 +7,7 @@ import xmlrpc from "xmlrpc";
 
 import tekulogo from "../assets/teku.png";
 import { SettingsType } from "./Types";
+import { RestApi } from "./RestApi";
 
 const autobahn = require('autobahn-browser')
 
@@ -14,9 +15,14 @@ export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
     const [wampSession, setWampSession] = React.useState();
-    const [apiToken, setApiToken] = React.useState<string>("");
     const [configuration, setConfiguration] = React.useState<string | undefined>();  // eslint-disable-line
     const [settings, setSettings] = React.useState<SettingsType>();
+
+    const [restApi, setRestApi] = React.useState<RestApi>();
+    const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
+
+    const restApiUrl = "http://teku.my.ava.do:5051";
+    const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
     React.useEffect(() => {
         const url = "ws://wamp.my.ava.do:8080/ws";
@@ -79,12 +85,20 @@ const Comp = () => {
     }
 
     React.useEffect(() => {
-        if (!wampSession)
+        if (!wampSession || !settings)
             return;
+            
         const dataPath = `/data/data-${settings?.network}`
 
+        setRestApi(new RestApi(restApiUrl))
+
         getFileContent(wampSession, `${dataPath}/validator/key-manager/validator-api-bearer`).then(
-            (apiToken) => setApiToken(apiToken ?? "")
+            (apiToken) => {
+                if (apiToken) {
+                    console.log("API token:", apiToken)
+                    setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
+                }
+            }
         )
     }, [wampSession, settings]) // eslint-disable-line
 
@@ -147,14 +161,13 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header beacon_node_api_url="http://teku.my.ava.do:5051" logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
+                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
 
-                        <Validators
+                        {restApi && keyManagerAPI && (<Validators
                             settings={settings}
-                            apiToken={apiToken}
-                            restAPIUrl="http://teku.my.ava.do:5051"
-                            keyManagerAPIUrl="https://teku.my.ava.do:5052"
-                        />
+                            restAPI={restApi}
+                            keyManagerAPI={keyManagerAPI}
+                        />)}
 
                         <Settings getFileContent={getFileContent} wampSession={wampSession} settings={settings} setSettings={setSettings} supervisorCtl={supervisorCtl} />
 
@@ -183,9 +196,7 @@ const Comp = () => {
             </section>
 
         </div>
-
     )
 }
-
 
 export default Comp;

@@ -1,10 +1,10 @@
 import React from "react";
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { RestApi } from "./RestApi";
 
 interface Props {
-    beacon_node_api_url: string
+    restApi: RestApi| undefined
     logo: string
     title: string
     tagline: string
@@ -24,7 +24,7 @@ interface Peer {
 
 enum Health { ready, syncing, not_ready }
 
-const Comp = ({ beacon_node_api_url, logo, title, tagline }: Props) => {
+const Comp = ({ restApi, logo, title, tagline }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
     const [peerCount, setPeerCount] = React.useState<Number>(0);
@@ -33,34 +33,32 @@ const Comp = ({ beacon_node_api_url, logo, title, tagline }: Props) => {
     const [health, setHealth] = React.useState<Health>(Health.not_ready);
 
     const updateHealth = async () => {
-        try {
-            await axios.get(`${beacon_node_api_url}/eth/v1/node/health`)
-                .then(res => {
-                    if (res.status === 200) {
-                        setHealth(Health.ready)
-                    } else if (res.status === 206) {
-                        setHealth(Health.syncing)
-                    } else {
-                        setHealth(Health.not_ready)
-                    }
-                })
-        } catch (e) {
+        if (!restApi)
+            return;
+        restApi.get("/eth/v1/node/health", res => {
+            if (res.status === 200) {
+                setHealth(Health.ready)
+            } else if (res.status === 206) {
+                setHealth(Health.syncing)
+            } else {
+                setHealth(Health.not_ready)
+            }
+        }, (e) => {
             setHealth(Health.not_ready)
-        };
+        });
     }
 
-    const callAPI = (path: String, setter: (res: any) => void) => {
-        axios.get(`${beacon_node_api_url}${path}`)
-            .then(res => {
+    const callAPI = (path: string, setter: (res: any) => void) => {
+        restApi?.get(path, res => {
                 setter(res)
-            }).catch((e) => {
+            },(e) => {
                 //ignore
             });
     }
 
     const updateStats = () => {
         // console.log("health:", Health[health])
-        if (health !== Health.not_ready) {
+        if (health !== Health.not_ready && restApi) {
             callAPI("/eth/v1/node/syncing", res => { if (res.status === 200) setSyncData(res.data.data) })
             callAPI("/eth/v1/node/peer_count", res => { if (res.status === 200) setPeerCount(res.data.data.connected) })
             callAPI("/eth/v1/node/peers", res => { if (res.status === 200) setPeers(res.data.data) })
@@ -68,7 +66,7 @@ const Comp = ({ beacon_node_api_url, logo, title, tagline }: Props) => {
     }
 
     const getVersion = () => {
-        if (health !== Health.not_ready) {
+        if (health !== Health.not_ready && restApi) {
             callAPI("/eth/v1/node/version", res => {
                 if (res.status === 200) {
                     const rawversion = res.data.data.version
@@ -85,7 +83,7 @@ const Comp = ({ beacon_node_api_url, logo, title, tagline }: Props) => {
             updateHealth();
         }, 5 * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
-    }, []); // eslint-disable-line
+    }, [restApi]); // eslint-disable-line
 
     React.useEffect(() => {
         updateStats();

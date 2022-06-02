@@ -1,5 +1,4 @@
 import React from "react";
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { confirmAlert } from 'react-confirm-alert';
@@ -7,13 +6,12 @@ import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
 import { SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
-import { KeyManagerAPI } from "./KeyManagerAPI";
+import { RestApi } from "./RestApi";
 
 interface Props {
     settings: SettingsType | undefined
-    apiToken: string
-    restAPIUrl : string
-    keyManagerAPIUrl: string
+    restAPI: RestApi
+    keyManagerAPI: RestApi
 }
 
 interface ValidatorData {
@@ -37,11 +35,10 @@ interface ConfiguringfeeRecipient {
     feerecipient: string
 }
 
-const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props) => {
+const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
-    const [keyManagerAPI, setKeyManagerAPI] = React.useState<KeyManagerAPI>();
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
 
@@ -55,33 +52,19 @@ const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props)
     }
 
     const updateValidators = async () => {
-        if (keyManagerAPI) {
-            keyManagerAPI.get("/eth/v1/keystores",
-                (res) => {
-                    if (res.status === 200) {
-                        setValidators(res.data.data.map((d: any) => d.validating_pubkey))
-                    }
-                }, (e) => { });
-        }
+        keyManagerAPI.get("/eth/v1/keystores",
+            (res) => {
+                if (res.status === 200) {
+                    setValidators(res.data.data.map((d: any) => d.validating_pubkey))
+                }
+            }, (e) => { });
     }
 
     React.useEffect(() => {
-        if (apiToken) {
-            setKeyManagerAPI(new KeyManagerAPI(keyManagerAPIUrl, apiToken))            
-            console.log("API token:", apiToken)
-        }
-    }, [apiToken]) // eslint-disable-line
+        updateValidators();
+    }, [keyManagerAPI, settings]) // eslint-disable-line
 
     React.useEffect(() => {
-        if (keyManagerAPI) {
-            updateValidators();
-        }
-    }, [keyManagerAPI]) // eslint-disable-line
-
-    React.useEffect(() => {
-        if (!keyManagerAPI)
-            return;
-
         const getFeeRecipient = async (pubKey: string) => {
             if (!settings?.validators_proposer_default_fee_recipient) {
                 return "Configure default setting first!"
@@ -117,23 +100,22 @@ const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props)
                     "withdrawable_epoch": "0"
                 }
             };
-            try {
-                const res = await axios.get(`${restAPIUrl}/eth/v1/beacon/states/finalized/validators/${pubKey}`);
+            return await restAPI.get(`/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
                 if (res.status === 200) {
                     // console.log(res.data.data)
                     return (res.data.data as ValidatorData);
                 } else
                     return nullValue
-            } catch (err) {
+            }, (err) => {
                 return nullValue
-            }
+            });
         }
 
         if (validators) {
             Promise.all(validators.map(pubKey => getValidatorData(pubKey))).then(result => setValidatorData(result))
             Promise.all(validators.map(pubKey => getFeeRecipient(pubKey))).then(result => setFeeRecipients(result))
         }
-    }, [validators, apiToken, settings?.validators_proposer_default_fee_recipient, keyManagerAPI, restAPIUrl]);
+    }, [validators, settings?.validators_proposer_default_fee_recipient, keyManagerAPI, restAPI]);
 
     function askConfirmationRemoveValidator(pubKey: string) {
         confirmAlert({
@@ -161,9 +143,7 @@ const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props)
     }
 
     const removeValidator = (pubKey: string) => {
-        if (!keyManagerAPI)
-            return;
-        console.log("Deleting " + pubKey + " with token " + apiToken);
+        console.log("Deleting " + pubKey);
         //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
         keyManagerAPI.delete("/eth/v1/keystores", { pubkeys: [pubKey] }, (res) => {
             console.dir(res)
@@ -259,7 +239,7 @@ const Validators = ({ settings, apiToken, restAPIUrl, keyManagerAPIUrl }: Props)
                     </table>
                 </>
             )}
-            {keyManagerAPI && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI}/>)}
+            <AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />
         </div>
     );
 };

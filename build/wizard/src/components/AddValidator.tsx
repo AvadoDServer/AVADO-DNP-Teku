@@ -1,11 +1,11 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUpload, faEye, faEyeSlash, faAngleDown, faAngleUp } from "@fortawesome/free-solid-svg-icons";
-import { KeyManagerAPI } from "./KeyManagerAPI";
+import { RestApi } from "./RestApi";
 
 interface Props {
     updateValidators: () => void
-    keyManagerAPI: KeyManagerAPI
+    keyManagerAPI: RestApi
 }
 
 type result = {
