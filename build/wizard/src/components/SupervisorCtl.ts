@@ -24,7 +24,7 @@ export class SupervisorCtl {
         this.host = host;
         this.port = port;
         this.path = path;
-        
+
         this.client = xmlrpc.createClient({ host: host, port: port, path: path })
     }
 

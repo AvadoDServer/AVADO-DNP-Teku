@@ -5,7 +5,7 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { SettingsType } from "./Types";
+import { SettingsType, supportedNetworks } from "./Types";
 import { SupervisorCtl } from "./SupervisorCtl";
 
 interface Props {
@@ -38,8 +38,6 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
         initial_state: yup.string().label("initial-state").url().optional()
     });
-
-    const supportedNetworks = ["mainnet", "prater", "kiln"];
 
     React.useEffect(() => {
         if (settings === undefined)
@@ -145,7 +143,6 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                             </div>
 
                             <label className="field-label is-normal" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
-
                             <div>
                                 <FieldArray name="eth1_endpoints">
                                     {({ remove, push }) => (

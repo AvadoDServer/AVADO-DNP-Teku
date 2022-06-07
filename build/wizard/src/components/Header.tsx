@@ -4,7 +4,7 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { RestApi } from "./RestApi";
 
 interface Props {
-    restApi: RestApi| undefined
+    restApi: RestApi | undefined | null
     logo: string
     title: string
     tagline: string
@@ -50,10 +50,10 @@ const Comp = ({ restApi, logo, title, tagline }: Props) => {
 
     const callAPI = (path: string, setter: (res: any) => void) => {
         restApi?.get(path, res => {
-                setter(res)
-            },(e) => {
-                //ignore
-            });
+            setter(res)
+        }, (e) => {
+            //ignore
+        });
     }
 
     const updateStats = () => {

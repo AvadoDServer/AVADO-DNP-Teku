@@ -57,7 +57,7 @@ const AddValidator = ({ updateValidators, keyManagerAPI }: Props) => {
                 default: setResult({ status: "error", message: res.data.data[0].message }); break; // Any other status different to the above: decrypting error, I/O errors, etc.
             }
             updateValidators();
-        },(e) => {
+        }, (e) => {
             console.log(e)
             setResult({ status: "error", message: e.message + ". Please check the input files" });
         });

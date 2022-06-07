@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export class RestApi {
-    apiKey?: string;
+    public apiKey?: string;
     baseUrl: string;
 
     constructor(baseUrl: string, apiKey?: string) {
@@ -15,7 +15,7 @@ export class RestApi {
             return await axios.get(`${this.baseUrl}${path}`, {
                 headers: {
                     Accept: "application/json",
-                    ...(this.apiKey && {Authorization: `Bearer ${this.apiKey}`})
+                    ...(this.apiKey && { Authorization: `Bearer ${this.apiKey}` })
                 }
             }).then(res => callback(res));
         } catch (e: any) {
@@ -26,8 +26,8 @@ export class RestApi {
     async post(path: string, data: object, callback: (res: any) => void, errorHandler: (e: any) => void) {
         try {
             return await axios.post(`${this.baseUrl}${path}`, data, {
-                ...(this.apiKey && {headers: { Authorization: `Bearer ${this.apiKey}` }}),
-                ...(data && {data: data})
+                ...(this.apiKey && { headers: { Authorization: `Bearer ${this.apiKey}` } }),
+                ...(data && { data: data })
             }).then(res => callback(res));
         } catch (e: any) {
             errorHandler(e)
@@ -37,7 +37,7 @@ export class RestApi {
     async delete(path: string, data: object, callback: (res: any) => void, errorHandler: (e: any) => void) {
         try {
             return await axios.delete(`${this.baseUrl}${path}`, {
-                ...(this.apiKey && {headers: { Authorization: `Bearer ${this.apiKey}` }}),
+                ...(this.apiKey && { headers: { Authorization: `Bearer ${this.apiKey}` } }),
             }).then(res => callback(res));
         } catch (e: any) {
             errorHandler(e)

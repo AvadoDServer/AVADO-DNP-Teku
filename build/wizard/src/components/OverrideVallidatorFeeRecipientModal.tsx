@@ -9,7 +9,7 @@ interface Props {
     validators_proposer_default_fee_recipient: string | undefined
     updateValidators: () => void
     configuringfeeRecipient: ConfiguringfeeRecipient | undefined | null
-    setConfiguringfeeRecipient: (configuringfeeRecipient:ConfiguringfeeRecipient|null) => void 
+    setConfiguringfeeRecipient: (configuringfeeRecipient: ConfiguringfeeRecipient | null) => void
 }
 
 interface ConfiguringfeeRecipient {
@@ -35,7 +35,7 @@ const OverrideVallidatorFeeRecipientModal = ({ network, keyManagerAPI, validator
     }, []) // eslint-disable-line
 
     React.useEffect(() => {
-        setFeeRecipientFieldValue(configuringfeeRecipient?.feerecipient??"")
+        setFeeRecipientFieldValue(configuringfeeRecipient?.feerecipient ?? "")
     }, [configuringfeeRecipient])
 
     const saveFeeRecipient = async (pubKey: string, feeRecipientAddress: string) => {

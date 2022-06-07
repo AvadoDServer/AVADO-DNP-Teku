@@ -1,4 +1,7 @@
-export type Network = "prater" | "mainnet" | "kiln"
+
+export const supportedNetworks = ["prater", "mainnet", "kiln"]
+export type Network = typeof supportedNetworks[number]
+
 export type SettingsType = {
     network: Network
     ee_endpoint: string

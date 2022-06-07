@@ -1,30 +1,10 @@
-const autobahn = require('autobahn-browser')
-
-export class WampConnection {
-    sessionPromise: Promise<any>;
+export class DappManagerHelper {
     packageName: string;
+    wampSession: any;
 
-    constructor(packageName:string) {
+    constructor(packageName: string, wampSession: any) {
         this.packageName = packageName;
-        this.sessionPromise = new Promise((resolve, reject) => {
-            const url = "ws://wamp.my.ava.do:8080/ws";
-            const realm = "dappnode_admin";
-            const connection = new autobahn.Connection({ url, realm });
-            connection.onopen = (session: any) => {
-                console.debug("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
-                resolve(session);
-            };
-            // connection closed, lost or unable to connect
-            connection.onclose = (reason: any, details: any) => {
-                console.error("CONNECTION_CLOSE", { reason, details });
-            };
-            connection.open();
-        })
-    }
-
-    public async getSession() {
-        const session =  await this.sessionPromise
-        return session
+        this.wampSession = wampSession;
     }
 
     dataUriToBlob(dataURI: string) {
@@ -54,17 +34,15 @@ export class WampConnection {
         return blob;
     }
 
-    //FixMe: rename getFileContentFromContainer
-    public getFileContent (pathInContainer: string) {
+    public getFileContentFromContainer(pathInContainer: string) {
         const fetchData = async () => {
-            const wampSession =  await this.sessionPromise
-            const res = JSON.parse(await wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
+            const res = JSON.parse(await this.wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
                 {
                     id: this.packageName,
                     fromPath: pathInContainer
                 }
             ));
-            console.log("result",res)
+            console.log("result", res)
             if (res.success !== true) return;
             const dataUri = res.result;
             if (!dataUri) return;
@@ -75,12 +53,11 @@ export class WampConnection {
         return fetchData();
     }
 
-    public writeFileToContainer (fileName:string, pathInContainer:string, data:string) {
+    public writeFileToContainer(fileName: string, pathInContainer: string, content: string) {
         const pushData = async () => {
-            const wampSession =  await this.sessionPromise
-            const base64Data = Buffer.from(data).toString("base64");
+            const base64Data = Buffer.from(content).toString("base64");
             const dataUri = `data:application/json";base64,${base64Data}`
-            const res = JSON.parse(await wampSession.call("copyFileTo.dappmanager.dnp.dappnode.eth", [],
+            const res = JSON.parse(await this.wampSession.call("copyFileTo.dappmanager.dnp.dappnode.eth", [],
                 {
                     id: this.packageName,
                     dataUri: dataUri,
@@ -89,10 +66,22 @@ export class WampConnection {
                 }));
             console.log("write result", res)
             if (res.success !== true) return;
-    
+
             return res
         }
         return pushData();
+    }
 
+    public getPackages() {
+        const fetchData = async () => {
+            const res = JSON.parse(await this.wampSession.call("listPackages.dappmanager.dnp.dappnode.eth"));
+            console.log("result", res)
+            if (res.success !== true) return;
+
+            const packageNames = res.result.map((r: any) => r.packageName);
+
+            return packageNames;
+        }
+        return fetchData();
     }
 }

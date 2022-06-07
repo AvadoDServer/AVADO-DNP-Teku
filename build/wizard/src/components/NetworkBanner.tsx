@@ -1,7 +1,7 @@
 import React from "react";
 import { Network } from "./Types";
 
-const NetworkBanner = ({network}: {network:Network}) => {
+const NetworkBanner = ({ network }: { network: Network }) => {
     return (
         <>
             {(network === "prater" || network === "kiln") && (

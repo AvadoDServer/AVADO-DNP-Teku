@@ -8,53 +8,53 @@ import tekulogo from "../assets/teku.png";
 import { SettingsType } from "./Types";
 import { RestApi } from "./RestApi";
 import { SupervisorCtl } from "./SupervisorCtl";
-import { WampConnection } from "./WampConnection";
+import { useWampSession } from "./useWampSession"
+import { DappManagerHelper } from "./DappManagerHelper";
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
-    const [newSession, setNewSession] = React.useState<WampConnection>();
+    const wampSession = useWampSession();
+    const dappManagerHelper = React.useMemo(() => new DappManagerHelper(packageName, wampSession), [wampSession]);
+
     const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
 
     const [settings, setSettings] = React.useState<SettingsType>();
 
-    const [restApi, setRestApi] = React.useState<RestApi>();
+    const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
     React.useEffect(() => {
-        setNewSession(new WampConnection(packageName));
-    }, []);
+        if (wampSession && dappManagerHelper) {
+            dappManagerHelper.getFileContentFromContainer("/data/settings.json")
+                .then(
+                    (settings) => {
+                        if (settings)
+                            setSettings(JSON.parse(settings));
+                    }
+                )
+        }
+    }, [wampSession, dappManagerHelper]);
 
     React.useEffect(() => {
-        newSession?.getFileContent("/data/settings.json")
-            .then(
-                (settings) => {
-                    if (settings)
-                        setSettings(JSON.parse(settings));
-                }
-            )
-    }, [newSession]);
-
-    React.useEffect(() => {
-        if (!newSession || !settings)
+        if (!wampSession || !settings || !dappManagerHelper) {
+            setRestApi(null);
             return;
-
-        const dataPath = `/data/data-${settings?.network}`
-
+        }
         setRestApi(new RestApi(restApiUrl))
 
-        newSession.getFileContent(`${dataPath}/validator/key-manager/validator-api-bearer`).then(
+        dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => {
-                if (apiToken) {
+                if (apiToken && apiToken !== keyManagerAPI?.apiKey) {
                     console.log("API token:", apiToken)
                     setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
                 }
             }
         )
-    }, [newSession, settings]) // eslint-disable-line
+    }, [wampSession, dappManagerHelper, settings]) // eslint-disable-line
 
     const toggleTeku = (enable: boolean) => { // eslint-disable-line
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
@@ -71,14 +71,14 @@ const Comp = () => {
         const fileName = "settings.json"
         const pathInContainer = "/data/"
 
-        newSession?.writeFileToContainer(fileName, pathInContainer, JSON.stringify(settings))
+        dappManagerHelper?.writeFileToContainer(fileName, pathInContainer, JSON.stringify(settings))
     }
 
     return (
         <div className="dashboard has-text-white">
             <NetworkBanner network={settings?.network ?? "mainnet"} />
 
-            {!newSession?.getSession() && (
+            {!dappManagerHelper && (
                 <section className="hero is-danger">
                     <div className="hero-body is-small">
                         <p className="has-text-centered">Avado Connection problem. Check your browser's console log for more details.</p>
@@ -107,7 +107,7 @@ const Comp = () => {
 
                                 </li>
                                 <li>
-                                    <a href={`http://my.ava.do/#/Packages/${packageName}/detail`} target="_blank" rel="noopener noreferrer">Avado pacakge management page</a>
+                                    <a href={`http://my.ava.do/#/Packages/${packageName}/detail`} target="_blank" rel="noopener noreferrer">Avado package management page</a>
 
                                 </li>
                             </ul>
