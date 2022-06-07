@@ -1,78 +1,66 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { packageName } from "./Dashboard"
 import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
+import { SettingsType, supportedNetworks } from "./Types";
+import { SupervisorCtl } from "./SupervisorCtl";
 
-const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCtl }) => {
+interface Props {
+    settings: SettingsType | undefined,
+    writeSettingsToContainer: (settings: any) => void
+    setSettings: (settings: any) => void
+    supervisorCtl: SupervisorCtl
+}
 
-    const defaultSettings = {
+const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }: Props) => {
+
+    const defaultSettings: SettingsType = {
         network: "mainnet",
+        ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
         eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
         // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
-        validators_graffiti: "Avado Teku",
+        validators_graffiti: "Avado",
         p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 74,
+        p2p_peer_upper_bound: 100,
+        validators_proposer_default_fee_recipient: "",
         initial_state: "https://snapshots.ava.do/state.ssz"
     }
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
-        validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long'),
+        ee_endpoint: yup.string().label("ee-endpoint").required('Required').url(),
+        validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
+        validators_proposer_default_fee_recipient: yup.string().label("validators-proposer-default-fee-recipient").matches(/^0x[a-fA-F0-9]{40}$/).required('Required'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
-        initial_state: yup.string().label("initial-state").url().optional('Optional')
+        initial_state: yup.string().label("initial-state").url().optional()
     });
 
-    const supportedNetworks = ["mainnet", "prater", "kiln"];
-
-    const getSettingsFromContainer = async (wampSession) => {
-        const settings = await getFileContent(wampSession, "/data/settings.json");
-        if (settings)
-            return JSON.parse(settings)
-    }
-
-    const writeSettingsToContainer = (wampSession, settings) => {
-        const fileName = "settings.json"
-        const pathInContainer = "/data/"
-        const pushData = async () => {
-            const base64Data = JSON.stringify(settings).toString('base64');
-            const dataUri = `data:application/json",${base64Data}`
-            const res = JSON.parse(await wampSession.call("copyFileTo.dappmanager.dnp.dappnode.eth", [],
-                {
-                    id: packageName,
-                    dataUri: dataUri,
-                    filename: fileName,
-                    toPath: pathInContainer
-                }));
-            console.log("write result", res)
-            if (res.success !== true) return;
-
-            return res
-        }
-        return pushData();
-    }
-
     React.useEffect(() => {
-        if (!wampSession)
+        if (settings === undefined)
             return;
-        console.log("id", packageName)
-        getSettingsFromContainer(wampSession).then(
-            settings => {
-                if (settings) {
-                    setSettings(settings)
-                    console.log(settings);
-                }
-                else {
-                    setSettings(defaultSettings)
-                    writeSettingsToContainer(wampSession, defaultSettings)
-                }
+
+        // console.log("id", packageName)
+        if (settings) {
+            if (!settings.ee_endpoint) {
+                settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
+                writeSettingsToContainer(settings)
             }
-        )
-    }, [wampSession]) // eslint-disable-line
+            if (!settings.validators_proposer_default_fee_recipient) {
+                settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+            }
+            setSettings(settings)
+            console.log("Loaded settings: ", settings);
+        }
+        else {
+            setSettings(defaultSettings)
+            writeSettingsToContainer(defaultSettings)
+        }
+
+    }, [settings]) // eslint-disable-line
 
     const confirmResetDefaults = () => {
         confirmAlert({
@@ -92,15 +80,14 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
         });
     }
 
-    const applyChanges = (newSettings) => {
+    const applyChanges = (newSettings: any) => {
         setSettings(newSettings)
-        writeSettingsToContainer(wampSession, newSettings)
+        writeSettingsToContainer(newSettings)
         //wait a bit to make sure the settings file is written      
         setTimeout(function () {
-            supervisorCtl('supervisor.restart', [])
+            supervisorCtl.callMethod('supervisor.restart', [])
         }, 5000);
     }
-
 
     return <>
         <h2 className="title is-2 has-text-white">Settings</h2>
@@ -109,16 +96,18 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                 <Formik
                     initialValues={settings}
                     validationSchema={settingsSchema}
+                    validateOnMount
                     enableReinitialize
+                    onSubmit={() => { }}
                 >
                     {({ values, errors, touched, isValid, dirty, setValues }) => {
                         return <Form>
                             <div className="field">
                                 <label className="label" htmlFor="validators_graffiti">Validators graffiti</label>
                                 <div className="control">
-                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Teku" />
+                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Nimbus" />
                                     {errors.validators_graffiti ? (
-                                        <p className="help is-danger">{errors.validators_graffiti}</p>
+                                        <p className="help is-danger">{errors.validators_graffiti.toString()}</p>
                                     ) : null}
                                 </div>
                             </div>
@@ -128,7 +117,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_lower_bound ? " is-danger" : "")} id="p2p_peer_lower_bound" name="p2p_peer_lower_bound" />
                                     {errors.p2p_peer_lower_bound ? (
-                                        <p className="help is-danger">{errors.p2p_peer_lower_bound}</p>
+                                        <p className="help is-danger">{errors.p2p_peer_lower_bound.toString()}</p>
                                     ) : null}
                                 </div>
                             </div>
@@ -138,7 +127,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
-                                        <p className="help is-danger">{errors.p2p_peer_upper_bound}</p>
+                                        <p className="help is-danger">{errors.p2p_peer_upper_bound.toString()}</p>
                                     ) : null}
                                 </div>
                             </div>
@@ -148,21 +137,20 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                 <div className="control">
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (
-                                        <p className="help is-danger">{errors.initial_state}</p>
+                                        <p className="help is-danger">{errors.initial_state.toString()}</p>
                                     ) : null}
                                 </div>
                             </div>
 
                             <label className="field-label is-normal" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
-
                             <div>
                                 <FieldArray name="eth1_endpoints">
                                     {({ remove, push }) => (
                                         <>
                                             {values.eth1_endpoints?.length > 0 &&
-                                                values.eth1_endpoints.map((eth1_endpoint, index) => (
+                                                values.eth1_endpoints.map((eth1_endpoint: any, index: number) => (
                                                     <div key={`eth1_endpoints.${index}`}>
-                                                        <div className="field has-addons" htmlFor={`eth1_endpoints.${index}`}>
+                                                        <div className="field has-addons">
                                                             <div className="field-label is-normal">
                                                                 <label className="label">Endpoint #{index + 1}</label>
                                                             </div>
@@ -170,6 +158,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                                                 <div className="field">
                                                                     <p className="control">
                                                                         <Field
+                                                                            // @ts-ignore
                                                                             className={"input" + (errors?.eth1_endpoints?.at(index) ? " is-danger" : "")}
                                                                             name={`eth1_endpoints.${index}`}
                                                                             id={`eth1_endpoints.${index}`}
@@ -177,9 +166,15 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                                                             type="text"
                                                                         />
                                                                     </p>
-                                                                    {errors?.eth1_endpoints?.at(index) ? (
-                                                                        <p className="help is-danger">{errors.eth1_endpoints[index]}</p>
-                                                                    ) : null}
+                                                                    {
+                                                                        // @ts-ignore
+                                                                        errors?.eth1_endpoints?.at(index)
+                                                                            ? (
+                                                                                <p className="help is-danger">{
+                                                                                    //@ts-ignore
+                                                                                    errors.eth1_endpoints[index]}</p>
+                                                                            ) : null
+                                                                    }
                                                                     {/* <ErrorMessage
                                                                         name={`eth1_endpoints.${index}.eth1_endpoint`}
                                                                         component="div"
@@ -205,7 +200,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                                             <button
                                                                 type="button"
                                                                 className="button"
-                                                                onClick={() => push("test")}
+                                                                onClick={() => push("")}
                                                             >
                                                                 Add extra (fallback) endpoint
                                                             </button>
@@ -216,16 +211,43 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                         </>
                                     )}
                                 </FieldArray>
+                            </div>
+
+                            <div className="field">
+                                <label className="label" htmlFor="ee_endpoint">Execution client's engine json-rpc url. This replaces the <em>eth1-endpoints</em> after The Merge.</label>
+                                <div className="control">
+                                    <Field className={"input" + (errors?.ee_endpoint ? " is-danger" : "")} id="ee_endpoint" name="ee_endpoint" />
+                                    {errors.ee_endpoint ? (
+                                        <p className="help is-danger">{errors.ee_endpoint.toString()}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            {/* eslint-disable-next-line */}
+                            <a id="validators_proposer_default_fee_recipient">
                                 <div className="field">
-                                    <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators (after the Merge). The fee recipient can be overriden per validator by clicking the fee recipient value of any validator in the validator list above.</label>
                                     <div className="control">
-                                        <Field name="network" as="select" className="select">
-                                            {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                        </Field>
-                                        {values.network !== settings.network ? (
-                                            <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
+                                        <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
+                                            id="validators_proposer_default_fee_recipient"
+                                            name="validators_proposer_default_fee_recipient"
+                                            placeholder="TODO: enter fee recipient address here" />
+                                        {errors.validators_proposer_default_fee_recipient ? (
+                                            <p className="help is-danger">{errors.validators_proposer_default_fee_recipient.toString()}</p>
                                         ) : null}
                                     </div>
+                                </div>
+                            </a>
+
+                            <div className="field">
+                                <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                <div className="control">
+                                    <Field name="network" as="select" className="select">
+                                        {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
+                                    </Field>
+                                    {values.network !== settings.network ? (
+                                        <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -243,7 +265,7 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                                     <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values)}>Apply changes</button>
                                 </div>
                                 <div className="control">
-                                    <div disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</div>
+                                    <button disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</button>
                                 </div>
                                 <div className="control">
                                     <div className="button is-danger" onClick={() => confirmResetDefaults()}>Reset defaults</div>
@@ -254,11 +276,6 @@ const Comp = ({ getFileContent, wampSession, settings, setSettings, supervisorCt
                 </Formik>
             </div>
         )}
-        {/* <h2 className="title is-2 has-text-white">Debug</h2>
-        <div className="field">
-            <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
-            <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
-        </div> */}
     </>
 }
 

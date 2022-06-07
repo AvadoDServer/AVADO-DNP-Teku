@@ -1,7 +1,7 @@
 {
   "name": "nimbus.avado.dnp.dappnode.eth",
-  "version": "0.0.1",
-  "upstream": "v22.4.0",
+  "version": "0.0.8",
+  "upstream": "v22.5.2",
   "title": "Nimbus",
   "description": "Nimbus-eth2 is an extremely efficient consensus layer (eth2) client implementation.",
   "avatar": "/ipfs/QmPCB9g8ajvstqmGSfbM9jSHUpBK1UEg4Y4gCWVZX9c49k",
@@ -13,8 +13,7 @@
     ],
     "ports": [
       "9000:9000/udp",
-      "9000:9000",
-      "5555"
+      "9000:9000"
     ],
     "environment": [
       "EXTRA_OPTS="

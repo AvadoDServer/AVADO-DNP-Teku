@@ -1,15 +1,14 @@
 version: '3.4'
 services:
   nimbus.avado.dnp.dappnode.eth:
-    image: 'nimbus.avado.dnp.dappnode.eth:0.0.1'
+    image: 'nimbus.avado.dnp.dappnode.eth:0.0.8'
     build:
       context: ./build
       args:
-        NIMBUS_VERSION: v22.4.0
+        NIMBUS_VERSION: v22.5.2
     ports:
       - '9000:9000/udp'
       - '9000:9000'
-      - '5555'
     volumes:
       - 'data:/data'
     environment:

@@ -1,0 +1,12 @@
+{
+    "network": "kiln",
+    "eth1_endpoints": [
+        "http://geth-kiln.my.ava.do:8545"
+    ],
+    "validators_graffiti": "Kiln",
+    "p2p_peer_lower_bound": "60",
+    "p2p_peer_upper_bound": "75",
+    "initial_state": "",
+    "ee_endpoint": "http://geth-kiln.my.ava.do:8551",
+    "validators_proposer_default_fee_recipient": "0x8A37ffDfC243F54b9B108b04e7630139F296380C"
+}
