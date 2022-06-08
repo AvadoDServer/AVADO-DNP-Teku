@@ -40,9 +40,6 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
     });
 
     React.useEffect(() => {
-        if (settings === undefined)
-            return;
-
         // console.log("id", packageName)
         if (settings) {
             if (!settings.ee_endpoint) {

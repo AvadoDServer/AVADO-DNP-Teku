@@ -54,6 +54,8 @@ export class DappManagerHelper {
     }
 
     public writeFileToContainer(fileName: string, pathInContainer: string, content: string) {
+        if (!this.wampSession)
+            return
         const pushData = async () => {
             const base64Data = Buffer.from(content).toString("base64");
             const dataUri = `data:application/json";base64,${base64Data}`

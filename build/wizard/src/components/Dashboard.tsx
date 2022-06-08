@@ -11,7 +11,7 @@ import { SupervisorCtl } from "./SupervisorCtl";
 import { useWampSession } from "./useWampSession"
 import { DappManagerHelper } from "./DappManagerHelper";
 
-export const packageName = "nimbus.avado.dnp.dappnode.eth";
+export const packageName = "eth2validator-prater.avado.dnp.dappnode.eth";
 
 const Comp = () => {
     const wampSession = useWampSession();
@@ -24,8 +24,8 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
-    const restApiUrl = "http://nimbus.my.ava.do:5677";
-    const keyManagerAPIUrl = "http://nimbus.my.ava.do:5677"
+    const restApiUrl = "http://prysm-beacon-chain-prater.my.ava.do:3500";
+    const keyManagerAPIUrl = "http://eth2validator-prater.my.ava.do:80"
 
     React.useEffect(() => {
         if (wampSession && dappManagerHelper) {
@@ -40,13 +40,13 @@ const Comp = () => {
     }, [wampSession, dappManagerHelper]);
 
     React.useEffect(() => {
-        if (!wampSession || !settings || !dappManagerHelper) {
+        if (!wampSession || !dappManagerHelper) {
             setRestApi(null);
             return;
         }
         setRestApi(new RestApi(restApiUrl))
 
-        dappManagerHelper.getFileContentFromContainer(`/data/KEY-API-TOKEN`).then(
+        dappManagerHelper.getFileContentFromContainer(`/usr/share/nginx/wizard/auth-token.txt`).then(
             (apiToken) => {
                 if (apiToken && apiToken !== keyManagerAPI?.apiKey) {
                     console.log("API token:", apiToken)
@@ -89,7 +89,7 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title="Avado Nimbus" tagline="Nimbus beacon chain and validator" />
+                        <Header restApi={restApi} logo={tekulogo} title="Avado Prysm" tagline="Prsym validator" />
 
                         {restApi && keyManagerAPI && settings && (<Validators
                             settings={settings}
