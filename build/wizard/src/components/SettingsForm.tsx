@@ -17,7 +17,7 @@ interface Props {
 
 const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }: Props) => {
 
-    const defaultSettings = {
+    const defaultSettings: SettingsType = {
         network: "mainnet",
         ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
         eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
@@ -40,10 +40,6 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
     });
 
     React.useEffect(() => {
-        if (settings === undefined)
-            return;
-
-        // console.log("id", packageName)
         if (settings) {
             if (!settings.ee_endpoint) {
                 settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet

@@ -70,7 +70,7 @@ const Comp = ({ restApi, logo, title, tagline }: Props) => {
             callAPI("/eth/v1/node/version", res => {
                 if (res.status === 200) {
                     const rawversion = res.data.data.version
-                    const version = rawversion.replace(/.*\/(v[\d.]+)\/.*/, "$1")
+                    const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
                     setVersion(version);
                 }
             })
