@@ -86,4 +86,19 @@ export class DappManagerHelper {
         }
         return fetchData();
     }
+
+    public getLogs() {
+        if (!this.wampSession)
+            return "Loading..."
+        const pushData = async () => {
+            const res = JSON.parse(await this.wampSession.call("logPackage.dappmanager.dnp.dappnode.eth", [],
+            {
+                id: this.packageName,
+                options: { tail: 20 }
+            }));
+            if (res.success !== true) return;
+            return res.result
+        }
+        return pushData();
+    }
 }

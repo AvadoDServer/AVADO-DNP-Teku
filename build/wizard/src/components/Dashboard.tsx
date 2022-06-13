@@ -1,11 +1,15 @@
 import React from "react";
+import { BrowserRouter, Route, Switch } from "react-router-dom";
+
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
-import Validators from "./Validators";
 import Settings from "./SettingsForm";
+import MainPage from "./MainPage";
+import AdminPage from "./AdminPage";
+import NavigationBar from "./NavigationBar";
 
 import tekulogo from "../assets/teku.png";
-import { SettingsType } from "./Types";
+import { defaultSettings, SettingsType } from "./Types";
 import { RestApi } from "./RestApi";
 import { SupervisorCtl } from "./SupervisorCtl";
 import { useWampSession } from "./useWampSession"
@@ -27,13 +31,34 @@ const Comp = () => {
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
+    const settingsPathInContainer = "/data/"
+    const settingsFileName = "settings.json"
+
     React.useEffect(() => {
         if (wampSession && dappManagerHelper) {
-            dappManagerHelper.getFileContentFromContainer("/data/settings.json")
+            dappManagerHelper.getFileContentFromContainer(settingsPathInContainer + settingsFileName)
                 .then(
-                    (settings) => {
-                        if (settings)
-                            setSettings(JSON.parse(settings));
+                    (rawSettings) => {
+                        if (rawSettings) {
+                            const settings = JSON.parse(rawSettings)
+                            setSettings(settings);
+                            if (settings) {
+                                // try setting new settings after an update
+                                if (!settings.ee_endpoint) {
+                                    settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
+                                    applySettingsChanges(settings)
+                                }
+                                if (!settings.validators_proposer_default_fee_recipient) {
+                                    settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+                                }
+                                setSettings(settings)
+                                console.log("Loaded settings: ", settings);
+                            } else {
+                                setSettings(defaultSettings)
+                            }
+                        } else {
+                            setSettings(defaultSettings)
+                        }
                     }
                 )
         }
@@ -56,9 +81,14 @@ const Comp = () => {
         )
     }, [wampSession, dappManagerHelper, settings]) // eslint-disable-line
 
-    const toggleTeku = (enable: boolean) => { // eslint-disable-line
-        const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
-        supervisorCtl?.callMethod(method, ["teku"]);
+    const applySettingsChanges = (newSettings: any) => {
+        setSettings(newSettings)
+        dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
+        //wait a bit to make sure the settings file is written      
+        setTimeout(function () {
+            supervisorCtl?.callMethod('supervisor.restart', [])
+        }, 5000);
+
     }
 
     React.useEffect(() => {
@@ -67,14 +97,9 @@ const Comp = () => {
         supervisorCtl.callMethod("supervisor.getState", [])
     }, [])
 
-    const writeSettingsToContainer = (settings: any) => {
-        const fileName = "settings.json"
-        const pathInContainer = "/data/"
-
-        dappManagerHelper?.writeFileToContainer(fileName, pathInContainer, JSON.stringify(settings))
-    }
 
     return (
+
         <div className="dashboard has-text-white">
             <NetworkBanner network={settings?.network ?? "mainnet"} />
 
@@ -90,32 +115,20 @@ const Comp = () => {
                 <div className="columns is-mobile">
                     <div className="column">
                         <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
-
-                        {restApi && keyManagerAPI && settings && (<Validators
-                            settings={settings}
-                            restAPI={restApi}
-                            keyManagerAPI={keyManagerAPI}
-                        />)}
-
-                        {supervisorCtl && (<Settings settings={settings} setSettings={setSettings} writeSettingsToContainer={writeSettingsToContainer} supervisorCtl={supervisorCtl} />)}
-
-                        <h2 className="title is-2 has-text-white">Debug</h2>
-                        <div className="content">
-                            <ul>
-                                <li>
-                                    <a href={`${restApiUrl}/swagger-ui`} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
-
-                                </li>
-                                <li>
-                                    <a href={`http://my.ava.do/#/Packages/${packageName}/detail`} target="_blank" rel="noopener noreferrer">Avado package management page</a>
-
-                                </li>
-                            </ul>
-                            <div className="field">
-                                <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
-                                <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
-                            </div>
-                        </div>
+                        <BrowserRouter>
+                            <NavigationBar />
+                            <Switch>
+                                <Route exact path="/">
+                                    <MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} />
+                                </Route>
+                                <Route exact path="/settings">
+                                    <Settings settings={settings} applySettingsChanges={applySettingsChanges} />
+                                </Route>
+                                <Route exact path="/admin">
+                                    <AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />
+                                </Route>
+                            </Switch>
+                        </BrowserRouter>
                     </div>
                 </div>
             </section>

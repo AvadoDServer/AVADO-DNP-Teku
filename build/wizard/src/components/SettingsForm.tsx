@@ -5,29 +5,14 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { SettingsType, supportedNetworks } from "./Types";
-import { SupervisorCtl } from "./SupervisorCtl";
+import { SettingsType, supportedNetworks, defaultSettings } from "./Types";
 
 interface Props {
     settings: SettingsType | undefined,
-    writeSettingsToContainer: (settings: any) => void
-    setSettings: (settings: any) => void
-    supervisorCtl: SupervisorCtl
+    applySettingsChanges: (settings: any) => void
 }
 
-const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }: Props) => {
-
-    const defaultSettings: SettingsType = {
-        network: "mainnet",
-        ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
-        eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
-        // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
-        validators_graffiti: "Avado",
-        p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 100,
-        validators_proposer_default_fee_recipient: "",
-        initial_state: "https://snapshots.ava.do/state.ssz"
-    }
+const Comp = ({ settings, applySettingsChanges }: Props) => {
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
@@ -39,25 +24,6 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
         initial_state: yup.string().label("initial-state").url().optional()
     });
 
-    React.useEffect(() => {
-        if (settings) {
-            if (!settings.ee_endpoint) {
-                settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
-                writeSettingsToContainer(settings)
-            }
-            if (!settings.validators_proposer_default_fee_recipient) {
-                settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
-            }
-            setSettings(settings)
-            console.log("Loaded settings: ", settings);
-        }
-        else {
-            setSettings(defaultSettings)
-            writeSettingsToContainer(defaultSettings)
-        }
-
-    }, [settings]) // eslint-disable-line
-
     const confirmResetDefaults = () => {
         confirmAlert({
             message: `Are you sure you want to reset to the default settings?`,
@@ -65,7 +31,7 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                 {
                     label: 'Reset',
                     onClick: () => {
-                        applyChanges(defaultSettings)
+                        applySettingsChanges(defaultSettings)
                     }
                 },
                 {
@@ -76,17 +42,13 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
         });
     }
 
-    const applyChanges = (newSettings: any) => {
-        setSettings(newSettings)
-        writeSettingsToContainer(newSettings)
-        //wait a bit to make sure the settings file is written      
-        setTimeout(function () {
-            supervisorCtl.callMethod('supervisor.restart', [])
-        }, 5000);
-    }
-
     return <>
         <h2 className="title is-2 has-text-white">Settings</h2>
+        {
+            !settings && (
+                <p>Loading settings...</p>
+            )
+        }
         {settings && (
             <div>
                 <Formik
@@ -258,7 +220,7 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
 
                             <div className="field is-grouped">
                                 <div className="control">
-                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values)}>Apply changes</button>
+                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applySettingsChanges(values)}>Apply changes</button>
                                 </div>
                                 <div className="control">
                                     <button disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</button>
