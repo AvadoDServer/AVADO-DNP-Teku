@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
@@ -7,6 +7,7 @@ import Settings from "./SettingsForm";
 import MainPage from "./MainPage";
 import AdminPage from "./AdminPage";
 import NavigationBar from "./NavigationBar";
+import Welcome from "./Welcome";
 
 import tekulogo from "../assets/teku.png";
 import { defaultSettings, SettingsType } from "./Types";
@@ -28,6 +29,8 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
+    const navigate = useNavigate();
+
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
@@ -41,7 +44,6 @@ const Comp = () => {
                     (rawSettings) => {
                         if (rawSettings) {
                             const settings = JSON.parse(rawSettings)
-                            setSettings(settings);
                             if (settings) {
                                 // try setting new settings after an update
                                 if (!settings.ee_endpoint) {
@@ -57,6 +59,7 @@ const Comp = () => {
                                 setSettings(defaultSettings)
                             }
                         } else {
+                            navigate("/welcome");
                             setSettings(defaultSettings)
                         }
                     }
@@ -84,7 +87,7 @@ const Comp = () => {
     const applySettingsChanges = (newSettings: any) => {
         setSettings(newSettings)
         dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
-        //wait a bit to make sure the settings file is written      
+        //wait a bit to make sure the settings file is written
         setTimeout(function () {
             supervisorCtl?.callMethod('supervisor.restart', [])
         }, 5000);
@@ -115,20 +118,15 @@ const Comp = () => {
                 <div className="columns is-mobile">
                     <div className="column">
                         <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
-                        <BrowserRouter>
-                            <NavigationBar />
-                            <Switch>
-                                <Route exact path="/">
-                                    <MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} />
-                                </Route>
-                                <Route exact path="/settings">
-                                    <Settings settings={settings} applySettingsChanges={applySettingsChanges} />
-                                </Route>
-                                <Route exact path="/admin">
-                                    <AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />
-                                </Route>
-                            </Switch>
-                        </BrowserRouter>
+
+                        <NavigationBar />
+                        <Routes>
+                            <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} />} />
+                            <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" homePageUrl="https://todo" wikiUrl="https://...." dappManagerHelper={dappManagerHelper} />} />
+                            <Route path="/settings" element={<Settings settings={settings} applySettingsChanges={applySettingsChanges} />} />
+                            <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />
+                        </Routes>
+
                     </div>
                 </div>
             </section>

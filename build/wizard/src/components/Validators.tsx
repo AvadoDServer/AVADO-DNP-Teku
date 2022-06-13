@@ -7,6 +7,8 @@ import AddValidator from "./AddValidator";
 import { SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
+import { useNavigate } from "react-router-dom";
+
 
 interface Props {
     settings: SettingsType | undefined
@@ -41,6 +43,8 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
+
+    const navigate = useNavigate();
 
     const beaconchainUrl = (validatorPubkey: string, text: any) => {
         const beaconChainBaseUrl = ({
@@ -177,11 +181,8 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
     const configureFeeRecipient = (pubKey: string, feeRecipient: string) => {
         if (settings?.validators_proposer_default_fee_recipient) {
             setConfiguringfeeRecipient({ pubKey: pubKey, feerecipient: feeRecipient })
-        } else {
-            const element = document.getElementById("validators_proposer_default_fee_recipient");
-            if (element) {
-                element.scrollIntoView();
-            }
+        } else {            
+            navigate("/settings#validators_proposer_default_fee_recipient")
         }
     }
 

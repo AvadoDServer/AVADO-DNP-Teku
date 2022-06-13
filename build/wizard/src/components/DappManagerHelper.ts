@@ -42,7 +42,7 @@ export class DappManagerHelper {
                     fromPath: pathInContainer
                 }
             ));
-            console.log("result", res)
+            // console.log("result", res)
             if (res.success !== true) return;
             const dataUri = res.result;
             if (!dataUri) return;
@@ -76,12 +76,15 @@ export class DappManagerHelper {
 
     public getPackages() {
         const fetchData = async () => {
+            if (!this.wampSession)
+                return []
             const res = JSON.parse(await this.wampSession.call("listPackages.dappmanager.dnp.dappnode.eth"));
-            console.log("result", res)
+            // console.log("result", res)
             if (res.success !== true) return;
 
-            const packageNames = res.result.map((r: any) => r.packageName);
-
+            console.dir(res)
+            const packageNames = res.result.map((r: any) => r.name);
+            
             return packageNames;
         }
         return fetchData();
