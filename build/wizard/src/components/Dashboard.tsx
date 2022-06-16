@@ -117,12 +117,12 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" />
+                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" wikilink="https://wiki.ava.do/en/tutorials/teku"/>
 
                         <NavigationBar />
                         <Routes>
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} />} />
-                            <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" homePageUrl="https://todo" wikiUrl="https://...." dappManagerHelper={dappManagerHelper} />} />
+                            <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />
                             <Route path="/settings" element={<Settings settings={settings} applySettingsChanges={applySettingsChanges} />} />
                             <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />
                         </Routes>

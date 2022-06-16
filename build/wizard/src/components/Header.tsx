@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faBook } from "@fortawesome/free-solid-svg-icons";
 import { RestApi } from "./RestApi";
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
     logo: string
     title: string
     tagline: string
+    wikilink: string
 }
 
 interface SyncData {
@@ -24,7 +25,7 @@ interface Peer {
 
 enum Health { ready, syncing, not_ready }
 
-const Comp = ({ restApi, logo, title, tagline }: Props) => {
+const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
     const [peerCount, setPeerCount] = React.useState<Number>(0);
@@ -123,6 +124,7 @@ const Comp = ({ restApi, logo, title, tagline }: Props) => {
                             <h1 className="title is-1 has-text-white">{title}</h1>
                         </span>
                         <p>{tagline}</p>
+                        <p><a href={wikilink}><FontAwesomeIcon className="fa-book" icon={faBook} /> {title} documentation</a></p>
                     </div>
                     <div className="column">
                         <p className="has-text-right">

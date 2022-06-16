@@ -8,7 +8,7 @@ import { SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
-
+import thereIsNothingHereYet from "../assets/there-is-nothing-here-yet.jpeg";
 
 interface Props {
     settings: SettingsType | undefined
@@ -181,66 +181,90 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
     const configureFeeRecipient = (pubKey: string, feeRecipient: string) => {
         if (settings?.validators_proposer_default_fee_recipient) {
             setConfiguringfeeRecipient({ pubKey: pubKey, feerecipient: feeRecipient })
-        } else {            
+        } else {
             navigate("/settings#validators_proposer_default_fee_recipient")
         }
     }
 
     return (
         <div>
-            {validators && validatorData && feeRecipients && (
-                <>
-                    <OverrideVallidatorFeeRecipientModal
-                        network={settings?.network ?? "mainnet"}
-                        updateValidators={updateValidators}
-                        keyManagerAPI={keyManagerAPI}
-                        validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
-                        configuringfeeRecipient={configuringfeeRecipient}
-                        setConfiguringfeeRecipient={setConfiguringfeeRecipient}
-                    />
-                    <div className="notification is-success">
-                        {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
+            <div className="container has-text-centered ">
+                <div className="columns is-vcentered">
+                    <div className="column">
+                    {!validators || !validatorData || !feeRecipients && (
+                        <p>Loading...</p>
+                    )}
+                    {validators && validators.length < 1 && (
+                        <>
+                                <div className="content">
+                                    <p>You don't have configured any validators yet.</p>
+                                    <p>Click the "Add validator" widget to import your validator keys.</p>
+                                    <div className="columns is-centered">
+                                          <div className="column is-half">
+                                    <figure className="image is-4by3">
+                                        <img src={thereIsNothingHereYet} alt={"awkward-seal-there-is-nothing-here-yet-meme"} />
+                                    </figure>
+                                    </div>
+                                    </div>
+                                </div>
+                        </>
+                    ) } 
+                    {validators && validatorData && feeRecipients && validators.length > 0 && (
+                        <>
+                            <OverrideVallidatorFeeRecipientModal
+                                network={settings?.network ?? "mainnet"}
+                                updateValidators={updateValidators}
+                                keyManagerAPI={keyManagerAPI}
+                                validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
+                                configuringfeeRecipient={configuringfeeRecipient}
+                                setConfiguringfeeRecipient={setConfiguringfeeRecipient}
+                                />
+                            <div className="notification is-success">
+                                {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
+                            </div>
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Public key</th>
+                                        <th>Index</th>
+                                        <th>Balance</th>
+                                        <th>Effective Balance</th>
+                                        {/* <th>Activation Epoch</th> */}
+                                        {/* <th>Exit Epoch</th> */}
+                                        <th>Fee recipient</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {validatorData.map((validator, i) =>
+                                        <tr key={validator.index}>
+                                            <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
+                                            <td>{beaconchainUrl("/validator/" + validator.index, <abbr title={validator.validator.pubkey}>{validator.validator.pubkey.substring(0, 10) + "…"}</abbr>)}</td>
+                                            <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
+                                            <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
+                                            <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
+                                            {/* <td>{validator.validator.activation_epoch}</td> */}
+                                            {/* <td>{validator.validator.exit_epoch}</td> */}
+                                            <td>
+                                                {/* eslint-disable-next-line */}
+                                                <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
+                                                    <abbr title={feeRecipients[i]}>{feeRecipients[i]?.substring(0, 10) + "…"}</abbr>
+                                                </a>
+                                            </td>
+                                            <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
+                                            <td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    )}
+                    {validators && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
                     </div>
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Public key</th>
-                                <th>Index</th>
-                                <th>Balance</th>
-                                <th>Effective Balance</th>
-                                {/* <th>Activation Epoch</th> */}
-                                {/* <th>Exit Epoch</th> */}
-                                <th>Fee recipient</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {validatorData.map((validator, i) =>
-                                <tr key={validator.index}>
-                                    <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
-                                    <td>{beaconchainUrl("/validator/" + validator.index, <abbr title={validator.validator.pubkey}>{validator.validator.pubkey.substring(0, 10) + "…"}</abbr>)}</td>
-                                    <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
-                                    <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
-                                    <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
-                                    {/* <td>{validator.validator.activation_epoch}</td> */}
-                                    {/* <td>{validator.validator.exit_epoch}</td> */}
-                                    <td>
-                                        {/* eslint-disable-next-line */}
-                                        <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
-                                            <abbr title={feeRecipients[i]}>{feeRecipients[i]?.substring(0, 10) + "…"}</abbr>
-                                        </a>
-                                    </td>
-                                    <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
-                                    <td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </>
-            )}
-            <AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />
+                </div>
+            </div>
         </div>
     );
 };

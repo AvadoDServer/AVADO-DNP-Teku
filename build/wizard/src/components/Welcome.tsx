@@ -3,14 +3,12 @@ import { Link } from "react-router-dom";
 import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
-    homePageUrl: string
     logo: string
     title: string
-    wikiUrl: string
     dappManagerHelper: DappManagerHelper
 }
 
-const Welcome = ({ homePageUrl, logo, wikiUrl, title, dappManagerHelper }: Props) => {
+const Welcome = ({ logo, title, dappManagerHelper }: Props) => {
 
     const [executionEngines, setExecutionEngines] = React.useState<string[]>([]);
 
@@ -49,11 +47,13 @@ const Welcome = ({ homePageUrl, logo, wikiUrl, title, dappManagerHelper }: Props
                                     <p>loading...</p>
                                 ) : (
                                     <>
-                                        <p>You can find more info on the <a href={wikiUrl}>wiki</a> or <a href={homePageUrl}>homepage</a></p>
+                                        <p>Welcome to {title}. It might take some time for the beacon chain to initialize.</p>
+                                        <p>Once {title} has initialized succesfully, it's status will appear in the top right.</p>
+                                        <br />
+                                        <p>While you are waiting, now is a good time to check the <b>Settings</b>.<br/>
+                                        Make sure the <code>Fee Recipient address</code> has your address!</p>
 
-                                        <p>You can import validators on the <Link to="/">Main page</Link></p>
-                                        <p>You can change settings on the <Link to="/settings">Settings page</Link></p>
-                                        <p>You can inspect the logs on the <Link to="/admin">Admin page</Link></p>
+                                        <Link to="/settings" className="button">Open Settings</Link>
                                     </>
                                 )
                             }
