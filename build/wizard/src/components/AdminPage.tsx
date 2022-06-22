@@ -12,7 +12,7 @@ interface Props {
 const Comp = ({ restApi, dappManagerHelper, supervisorCtl }: Props) => {
 
 
-    const toggleTeku = (enable: boolean) => { // eslint-disable-line
+    const toggleTeku = (enable: boolean) => {
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
         supervisorCtl?.callMethod(method, ["teku"]);
     }

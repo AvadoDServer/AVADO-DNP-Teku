@@ -11,12 +11,12 @@ interface Props {
 const Comp = ({ restApi, keyManagerAPI, settings }: Props) => {
     return (
         <>
-            {restApi && keyManagerAPI && settings && (<Validators
+            {restApi && keyManagerAPI && settings ? (<Validators
                 settings={settings}
                 restAPI={restApi}
                 keyManagerAPI={keyManagerAPI}
-            />)}
-
+            />)
+                : <p>Loading...</p>}
         </>
     )
 }

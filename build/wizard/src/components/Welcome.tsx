@@ -10,25 +10,25 @@ interface Props {
 
 const Welcome = ({ logo, title, dappManagerHelper }: Props) => {
 
-    const [executionEngines, setExecutionEngines] = React.useState<string[]>([]);
+    // const [executionEngines, setExecutionEngines] = React.useState<string[]>([]);
 
-    const supportedEth1Packages = [
-        "ethchain-geth.public.dappnode.eth",
-        "avado-dnp-nethermind.public.dappnode.eth"
-    ]
+    // const supportedEth1Packages = [
+    //     "ethchain-geth.public.dappnode.eth",
+    //     "avado-dnp-nethermind.public.dappnode.eth"
+    // ]
 
-    React.useEffect(() => {
-        if (dappManagerHelper) {
-            dappManagerHelper.getPackages()
-                .then(packages => {
-                    // check if Execution engine is installed
-                    const eth1Nodes = supportedEth1Packages.filter(p => packages.includes(p));
-                    setExecutionEngines(eth1Nodes)
-                }
-                )
+    // React.useEffect(() => {
+    //     if (dappManagerHelper) {
+    //         dappManagerHelper.getPackages()
+    //             .then(packages => {
+    //                 // check if Execution engine is installed
+    //                 const eth1Nodes = supportedEth1Packages.filter(p => packages.includes(p));
+    //                 setExecutionEngines(eth1Nodes)
+    //             }
+    //             )
 
-        }
-    }, [dappManagerHelper])
+    //     }
+    // }, [dappManagerHelper])
 
 
     return (

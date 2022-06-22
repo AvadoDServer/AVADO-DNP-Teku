@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 
 import NetworkBanner from "./NetworkBanner";
@@ -29,32 +29,42 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
-    const navigate = useNavigate();
-
+    
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
-
+    
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
+    
+    const navigate = useNavigate();
+
+    const applySettingsChanges = useCallback((newSettings: any) => {
+        setSettings(newSettings)
+        dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
+        //wait a bit to make sure the settings file is written
+        setTimeout(function () {
+            supervisorCtl?.callMethod('supervisor.restart', [])
+        }, 5000);
+    }, [dappManagerHelper, supervisorCtl])
 
     React.useEffect(() => {
-        if (wampSession && dappManagerHelper) {
+        if (wampSession && dappManagerHelper && !settings) {
             dappManagerHelper.getFileContentFromContainer(settingsPathInContainer + settingsFileName)
                 .then(
                     (rawSettings) => {
                         if (rawSettings) {
-                            const settings = JSON.parse(rawSettings)
-                            if (settings) {
+                            const parsedSettings = JSON.parse(rawSettings)
+                            if (parsedSettings) {
                                 // try setting new settings after an update
-                                if (!settings.ee_endpoint) {
-                                    settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
-                                    applySettingsChanges(settings)
+                                if (!parsedSettings.ee_endpoint) {
+                                    parsedSettings.ee_endpoint = parsedSettings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
+                                    applySettingsChanges(parsedSettings)
                                 }
-                                if (!settings.validators_proposer_default_fee_recipient) {
-                                    settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+                                if (!parsedSettings.validators_proposer_default_fee_recipient) {
+                                    parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
                                 }
-                                setSettings(settings)
-                                console.log("Loaded settings: ", settings);
+                                setSettings(parsedSettings)
+                                console.log("Loaded settings: ", parsedSettings);
                             } else {
                                 setSettings(defaultSettings)
                             }
@@ -65,14 +75,15 @@ const Comp = () => {
                     }
                 )
         }
-    }, [wampSession, dappManagerHelper]);
+    }, [wampSession, dappManagerHelper, settings, applySettingsChanges, navigate]);
 
     React.useEffect(() => {
         if (!wampSession || !settings || !dappManagerHelper) {
             setRestApi(null);
             return;
         }
-        setRestApi(new RestApi(restApiUrl))
+        if (!restApi)
+            setRestApi(new RestApi(restApiUrl))
 
         dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => {
@@ -82,17 +93,7 @@ const Comp = () => {
                 }
             }
         )
-    }, [wampSession, dappManagerHelper, settings]) // eslint-disable-line
-
-    const applySettingsChanges = (newSettings: any) => {
-        setSettings(newSettings)
-        dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
-        //wait a bit to make sure the settings file is written
-        setTimeout(function () {
-            supervisorCtl?.callMethod('supervisor.restart', [])
-        }, 5000);
-
-    }
+    }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
 
     React.useEffect(() => {
         const supervisorCtl = new SupervisorCtl('teku.my.ava.do', 5556, '/RPC2')

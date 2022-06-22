@@ -33,67 +33,67 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
     const [version, setVersion] = React.useState<String | null>(null);
     const [health, setHealth] = React.useState<Health>(Health.not_ready);
 
-    const updateHealth = async () => {
-        if (!restApi)
-            return;
-        restApi.get("/eth/v1/node/health", res => {
-            if (res.status === 200) {
-                setHealth(Health.ready)
-            } else if (res.status === 206) {
-                setHealth(Health.syncing)
-            } else {
-                setHealth(Health.not_ready)
-            }
-        }, (e) => {
-            setHealth(Health.not_ready)
-        });
-    }
-
-    const callAPI = (path: string, setter: (res: any) => void) => {
-        restApi?.get(path, res => {
-            setter(res)
-        }, (e) => {
-            //ignore
-        });
-    }
-
-    const updateStats = () => {
-        // console.log("health:", Health[health])
-        if (health !== Health.not_ready && restApi) {
-            callAPI("/eth/v1/node/syncing", res => { if (res.status === 200) setSyncData(res.data.data) })
-            callAPI("/eth/v1/node/peer_count", res => { if (res.status === 200) setPeerCount(res.data.data.connected) })
-            callAPI("/eth/v1/node/peers", res => { if (res.status === 200) setPeers(res.data.data) })
-        }
-    }
-
-    const getVersion = () => {
-        if (health !== Health.not_ready && restApi) {
-            callAPI("/eth/v1/node/version", res => {
-                if (res.status === 200) {
-                    const rawversion = res.data.data.version
-                    const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
-                    setVersion(version);
-                }
-            })
-        }
-    }
-
     React.useEffect(() => {
+        const updateHealth = async () => {
+            if (!restApi)
+                return;
+            restApi.get("/eth/v1/node/health", res => {
+                if (res.status === 200) {
+                    setHealth(Health.ready)
+                } else if (res.status === 206) {
+                    setHealth(Health.syncing)
+                } else {
+                    setHealth(Health.not_ready)
+                }
+            }, (e) => {
+                setHealth(Health.not_ready)
+            });
+        }
+
         updateHealth();
         const interval = setInterval(() => {
             updateHealth();
         }, 5 * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
-    }, [restApi]); // eslint-disable-line
+    }, [restApi]);
 
     React.useEffect(() => {
+        const callAPI = (path: string, setter: (res: any) => void) => {
+            restApi?.get(path, res => {
+                setter(res)
+            }, (e) => {
+                //ignore
+            });
+        }
+
+        const updateStats = () => {
+            // console.log("health:", Health[health])
+            if (health !== Health.not_ready && restApi) {
+                callAPI("/eth/v1/node/syncing", res => { if (res.status === 200) setSyncData(res.data.data) })
+                callAPI("/eth/v1/node/peer_count", res => { if (res.status === 200) setPeerCount(res.data.data.connected) })
+                callAPI("/eth/v1/node/peers", res => { if (res.status === 200) setPeers(res.data.data) })
+            }
+        }
+
+        const getVersion = () => {
+            if (health !== Health.not_ready && restApi) {
+                callAPI("/eth/v1/node/version", res => {
+                    if (res.status === 200) {
+                        const rawversion = res.data.data.version
+                        const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
+                        setVersion(version);
+                    }
+                })
+            }
+        }
+
         updateStats();
         getVersion();
         const interval = setInterval(() => {
             updateStats();
         }, 5 * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
-    }, [health]); // eslint-disable-line
+    }, [health, restApi]);
 
     React.useEffect(() => {
         if (health === Health.not_ready)
@@ -101,7 +101,6 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
         else {
             setError(null);
         }
-
     }, [health]);
 
     const getSyncPercentage = (syncData: SyncData) => {

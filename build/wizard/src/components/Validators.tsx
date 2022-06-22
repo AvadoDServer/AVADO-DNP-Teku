@@ -55,18 +55,19 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }
 
-    const updateValidators = async () => {
+    
+    const updateValidators = React.useCallback(async () => {
         keyManagerAPI.get("/eth/v1/keystores",
             (res) => {
                 if (res.status === 200) {
                     setValidators(res.data.data.map((d: any) => d.validating_pubkey))
                 }
             }, (e) => { });
-    }
+    },[keyManagerAPI])
 
     React.useEffect(() => {
         updateValidators();
-    }, [keyManagerAPI, settings]) // eslint-disable-line
+    }, [keyManagerAPI, settings, updateValidators])
 
     React.useEffect(() => {
         const getFeeRecipient = async (pubKey: string) => {
@@ -191,7 +192,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
             <div className="container has-text-centered ">
                 <div className="columns is-vcentered">
                     <div className="column">
-                    {!validators || !validatorData || !feeRecipients && (
+                    {(!validators || !validatorData || !feeRecipients) && (
                         <p>Loading...</p>
                     )}
                     {validators && validators.length < 1 && (

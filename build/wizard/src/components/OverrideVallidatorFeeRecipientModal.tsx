@@ -32,7 +32,7 @@ const OverrideVallidatorFeeRecipientModal = ({ network, keyManagerAPI, validator
 
     React.useEffect(() => {
         window.addEventListener('keyup', (e) => { if (e.key === "Escape") setConfiguringfeeRecipient(null) });
-    }, []) // eslint-disable-line
+    }, [setConfiguringfeeRecipient])
 
     React.useEffect(() => {
         setFeeRecipientFieldValue(configuringfeeRecipient?.feerecipient ?? "")

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link , NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 const NavigationBar = () => {
 
@@ -31,7 +31,6 @@ const NavigationBar = () => {
                 </div>
 
                 <div className="navbar-end">
-                    {/* <NavLink className={({ isActive }) => isActive ? "navbar-item is-active has-text-weight-bold" : "navbar-item" } to="/admin" >Admin</NavLink> */}
                     <NavLink className={({ isActive }) => isActive ? "navbar-item is-active has-text-weight-bold" : "navbar-item" } to="/admin" >Admin</NavLink>
                 </div>
             </div>
