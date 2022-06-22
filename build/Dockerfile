@@ -22,6 +22,7 @@ COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
 
 COPY startTeku.sh /opt/teku
 COPY teku-config.template /opt/teku
+COPY wizard/src/components/defaultsettings.json /opt/teku
 RUN chmod a+x /opt/teku/startTeku.sh
 COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/

@@ -10,17 +10,19 @@ import NavigationBar from "./NavigationBar";
 import Welcome from "./Welcome";
 
 import tekulogo from "../assets/teku.png";
-import { defaultSettings, SettingsType } from "./Types";
+import defaultSettings from "./defaultsettings.json"
+import { SettingsType } from "./Types";
 import { RestApi } from "./RestApi";
 import { SupervisorCtl } from "./SupervisorCtl";
 import { useWampSession } from "./useWampSession"
 import { DappManagerHelper } from "./DappManagerHelper";
+import FeeRecepientBanner from "./FeeRecepientBanner";
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
 const Comp = () => {
     const wampSession = useWampSession();
-    const dappManagerHelper = React.useMemo(() => new DappManagerHelper(packageName, wampSession), [wampSession]);
+    const dappManagerHelper = React.useMemo(() => wampSession ? new DappManagerHelper(packageName, wampSession) : null, [wampSession]);
 
     const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
 
@@ -69,8 +71,9 @@ const Comp = () => {
                                 setSettings(defaultSettings)
                             }
                         } else {
-                            navigate("/welcome");
-                            setSettings(defaultSettings)
+                            console.log("Missing settings file, writing default settings")
+                            applySettingsChanges(defaultSettings)
+                            // navigate("/welcome");
                         }
                     }
                 )
@@ -85,14 +88,18 @@ const Comp = () => {
         if (!restApi)
             setRestApi(new RestApi(restApiUrl))
 
-        dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
-            (apiToken) => {
-                if (apiToken && apiToken !== keyManagerAPI?.apiKey) {
-                    console.log("API token:", apiToken)
-                    setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
+        if (!keyManagerAPI) {
+            // Potential race: the api token file is written after first launch of Teku.
+            // A refresh of the page will resolve the issue.
+            dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
+                (apiToken) => {
+                    if (apiToken) {
+                        console.log("API token:", apiToken)
+                        setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
+                    }
                 }
-            }
-        )
+            )
+        }
     }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
 
     React.useEffect(() => {
@@ -121,11 +128,14 @@ const Comp = () => {
                         <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" wikilink="https://wiki.ava.do/en/tutorials/teku"/>
 
                         <NavigationBar />
+
+                        <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate}/>
+
                         <Routes>
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} />} />
-                            <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<Settings settings={settings} applySettingsChanges={applySettingsChanges} />} />
-                            <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />
+                            {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 
                     </div>

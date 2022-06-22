@@ -55,14 +55,18 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }
 
-    
     const updateValidators = React.useCallback(async () => {
+        console.log("Trying to update validators")
         keyManagerAPI.get("/eth/v1/keystores",
             (res) => {
                 if (res.status === 200) {
                     setValidators(res.data.data.map((d: any) => d.validating_pubkey))
+                } else {
+                    console.log("error updating validators", res)
                 }
-            }, (e) => { });
+            }, (e) => {
+                console.log("error updating validators", e)
+             });
     },[keyManagerAPI])
 
     React.useEffect(() => {

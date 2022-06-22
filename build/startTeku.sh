@@ -3,11 +3,10 @@
 SETTINGSFILE=$1
 TARGETCONFIGFILE=$2
 
-# wait for settingsfile to exist (initial start only)
 if [ ! -f "${SETTINGSFILE}" ]; then
-    echo "Waiting for creation of ${SETTINGSFILE}"
+    echo "Starting with default settings"
+    cp /opt/teku/defaultsettings.json ${SETTINGSFILE}
 fi
-while [ ! -f "${SETTINGSFILE}" ]; do sleep 1; done
 
 
 # Create config file

@@ -5,7 +5,8 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { SettingsType, supportedNetworks, defaultSettings } from "./Types";
+import { SettingsType, supportedNetworks } from "./Types";
+import defaultSettings from "./defaultsettings.json"
 
 interface Props {
     settings: SettingsType | undefined,
