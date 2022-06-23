@@ -34,11 +34,11 @@ export class DappManagerHelper {
         return blob;
     }
 
-    public getFileContentFromContainer(pathInContainer: string) {
+    public getFileContentFromContainer(pathInContainer: string, packageName?: string) {
         const fetchData = async () => {
             const res = JSON.parse(await this.wampSession.call("copyFileFrom.dappmanager.dnp.dappnode.eth", [],
                 {
-                    id: this.packageName,
+                    id: packageName ?? this.packageName,
                     fromPath: pathInContainer
                 }
             ));
@@ -74,16 +74,16 @@ export class DappManagerHelper {
         return pushData();
     }
 
-    public getPackages() {
+    public getPackages() : Promise<string[]> {
         const fetchData = async () => {
             if (!this.wampSession)
                 return []
             const res = JSON.parse(await this.wampSession.call("listPackages.dappmanager.dnp.dappnode.eth"));
             // console.log("result", res)
-            if (res.success !== true) return;
+            if (res.success !== true) return [];
 
             console.dir(res)
-            const packageNames = res.result.map((r: any) => r.name);
+            const packageNames = res.result.map((r: any) => r.name)  as string[];
             
             return packageNames;
         }
@@ -103,5 +103,23 @@ export class DappManagerHelper {
             return res.result
         }
         return pushData();
+    }
+
+    public runSigned(cmd:string) : Promise<string> {
+        const run = async () => {
+            if (!this.wampSession)
+                return "Failed"
+            
+                const res = JSON.parse(await this.wampSession.call("runSignedCmd.dappmanager.dnp.dappnode.eth", [],
+                    {
+                        cmd: cmd
+                    }
+                ));
+            console.log("result", res)
+            if (res.success !== true) return "Failed";
+
+            return "TODO" //FIXME
+        }
+        return run();
     }
 }

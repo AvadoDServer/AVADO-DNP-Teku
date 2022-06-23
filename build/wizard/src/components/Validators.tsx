@@ -4,16 +4,19 @@ import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
-import { SettingsType } from "./Types";
+import { Network, SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
 import thereIsNothingHereYet from "../assets/there-is-nothing-here-yet.jpeg";
+import ImportValidatorsFromRocketPool from "./ImportValidatorsFromRocketPool";
+import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
     settings: SettingsType | undefined
     restAPI: RestApi
     keyManagerAPI: RestApi
+    dappManagerHelper: DappManagerHelper | null
 }
 
 interface ValidatorData {
@@ -37,7 +40,18 @@ interface ConfiguringfeeRecipient {
     feerecipient: string
 }
 
-const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
+export const abbreviatePublicKey = (key: string) => <abbr title={key}>{key.substring(0, 10) + "…"}</abbr>
+
+export const createBeaconchainUrl = (network: Network | null | undefined, validatorPubkey: string, text?: any) => {
+    const beaconChainBaseUrl = ({
+        "prater": "https://prater.beaconcha.in",
+        "mainnet": "https://beaconcha.in",
+        "kiln": "https://beaconchain.kiln.themerge.dev/"
+    })[network ?? "mainnet"]
+    return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
+}
+
+const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
@@ -47,12 +61,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
     const navigate = useNavigate();
 
     const beaconchainUrl = (validatorPubkey: string, text: any) => {
-        const beaconChainBaseUrl = ({
-            "prater": "https://prater.beaconcha.in",
-            "mainnet": "https://beaconcha.in",
-            "kiln": "https://beaconchain.kiln.themerge.dev/"
-        })[settings?.network ?? "mainnet"]
-        return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
+        return createBeaconchainUrl(settings?.network, validatorPubkey, text)
     }
 
     const updateValidators = React.useCallback(async () => {
@@ -66,8 +75,8 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
                 }
             }, (e) => {
                 console.log("error updating validators", e)
-             });
-    },[keyManagerAPI])
+            });
+    }, [keyManagerAPI])
 
     React.useEffect(() => {
         updateValidators();
@@ -196,77 +205,78 @@ const Validators = ({ settings, restAPI, keyManagerAPI }: Props) => {
             <div className="container has-text-centered ">
                 <div className="columns is-vcentered">
                     <div className="column">
-                    {(!validators || !validatorData || !feeRecipients) && (
-                        <p>Loading...</p>
-                    )}
-                    {validators && validators.length < 1 && (
-                        <>
+                        {(!validators || !validatorData || !feeRecipients) && (
+                            <p>Loading...</p>
+                        )}
+                        {validators && validators.length < 1 && (
+                            <>
                                 <div className="content">
                                     <p>You don't have configured any validators yet.</p>
                                     <p>Click the "Add validator" widget to import your validator keys.</p>
                                     <div className="columns is-centered">
-                                          <div className="column is-half">
-                                    <figure className="image is-4by3">
-                                        <img src={thereIsNothingHereYet} alt={"awkward-seal-there-is-nothing-here-yet-meme"} />
-                                    </figure>
-                                    </div>
+                                        <div className="column is-half">
+                                            <figure className="image is-4by3">
+                                                <img src={thereIsNothingHereYet} alt={"awkward-seal-there-is-nothing-here-yet-meme"} />
+                                            </figure>
+                                        </div>
                                     </div>
                                 </div>
-                        </>
-                    ) } 
-                    {validators && validatorData && feeRecipients && validators.length > 0 && (
-                        <>
-                            <OverrideVallidatorFeeRecipientModal
-                                network={settings?.network ?? "mainnet"}
-                                updateValidators={updateValidators}
-                                keyManagerAPI={keyManagerAPI}
-                                validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
-                                configuringfeeRecipient={configuringfeeRecipient}
-                                setConfiguringfeeRecipient={setConfiguringfeeRecipient}
+                            </>
+                        )}
+                        {validators && validatorData && feeRecipients && validators.length > 0 && (
+                            <>
+                                <OverrideVallidatorFeeRecipientModal
+                                    network={settings?.network ?? "mainnet"}
+                                    updateValidators={updateValidators}
+                                    keyManagerAPI={keyManagerAPI}
+                                    validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
+                                    configuringfeeRecipient={configuringfeeRecipient}
+                                    setConfiguringfeeRecipient={setConfiguringfeeRecipient}
                                 />
-                            <div className="notification is-success">
-                                {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
-                            </div>
-                            <table className="table">
-                                <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th>Public key</th>
-                                        <th>Index</th>
-                                        <th>Balance</th>
-                                        <th>Effective Balance</th>
-                                        {/* <th>Activation Epoch</th> */}
-                                        {/* <th>Exit Epoch</th> */}
-                                        <th>Fee recipient</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {validatorData.map((validator, i) =>
-                                        <tr key={validator.index}>
-                                            <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
-                                            <td>{beaconchainUrl("/validator/" + validator.index, <abbr title={validator.validator.pubkey}>{validator.validator.pubkey.substring(0, 10) + "…"}</abbr>)}</td>
-                                            <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
-                                            <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
-                                            <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
-                                            {/* <td>{validator.validator.activation_epoch}</td> */}
-                                            {/* <td>{validator.validator.exit_epoch}</td> */}
-                                            <td>
-                                                {/* eslint-disable-next-line */}
-                                                <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
-                                                    <abbr title={feeRecipients[i]}>{feeRecipients[i]?.substring(0, 10) + "…"}</abbr>
-                                                </a>
-                                            </td>
-                                            <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
-                                            <td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>
+                                <div className="notification is-success">
+                                    {beaconchainUrl("/dashboard?validators=" + validatorData.map(v => v.index).join(","), <>Beacon Chain Validator DashBoard <FontAwesomeIcon className="icon" icon={faSatelliteDish} /></>)}
+                                </div>
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Public key</th>
+                                            <th>Index</th>
+                                            <th>Balance</th>
+                                            <th>Effective Balance</th>
+                                            {/* <th>Activation Epoch</th> */}
+                                            {/* <th>Exit Epoch</th> */}
+                                            <th>Fee recipient</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </>
-                    )}
-                    {validators && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
+                                    </thead>
+                                    <tbody>
+                                        {validatorData.map((validator, i) =>
+                                            <tr key={validator.index}>
+                                                <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.index, abbreviatePublicKey(validator.validator.pubkey))}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
+                                                <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
+                                                <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
+                                                {/* <td>{validator.validator.activation_epoch}</td> */}
+                                                {/* <td>{validator.validator.exit_epoch}</td> */}
+                                                <td>
+                                                    {/* eslint-disable-next-line */}
+                                                    <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
+                                                        abbreviatePublicKey(feeRecipients[i])
+                                                    </a>
+                                                </td>
+                                                <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
+                                                <td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+                        {validators && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
+                        {false && keyManagerAPI && (<ImportValidatorsFromRocketPool keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} network={settings?.network} updateValidators={updateValidators} />)}
                     </div>
                 </div>
             </div>

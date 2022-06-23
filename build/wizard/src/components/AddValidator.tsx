@@ -96,54 +96,71 @@ const AddValidator = ({ updateValidators, keyManagerAPI }: Props) => {
                         </header>
                         <div className={"card-content" + (collapsed ? " is-hidden" : "")}>
                             <div className="content">
-                                <div className="file has-name">
-                                    <label className="file-label">
-                                        Keystore file (required): <input className="file-input" type="file" name="keystore" id="keystore" onChange={e => setKeyStoreFile(e.target?.files?.item(0))} />
-                                        <span className="file-cta">
-                                            <span className="file-icon">
-                                                <FontAwesomeIcon icon={faUpload} />
-                                            </span>
-                                            <span className="file-label">
-                                                Choose keystore file…
-                                            </span>
-                                        </span>
-                                        <span className="file-name">
-                                            {keyStoreFile ? keyStoreFile.name : "No file uploaded"}
-                                        </span>
-                                    </label>
+                                <div className="field is-horizontal">
+                                    <label className="field-label has-text-black">Keystore file (required):</label>
+                                    <div className="field-body">
+                                        <div className="file has-name">
+                                            <label className="file-label"><input className="file-input" type="file" name="keystore" id="keystore" onChange={e => setKeyStoreFile(e.target?.files?.item(0))} />
+                                                <span className="file-cta">
+                                                    <span className="file-icon">
+                                                        <FontAwesomeIcon icon={faUpload} />
+                                                    </span>
+                                                    <span className="file-label">
+                                                        Choose keystore file…
+                                                    </span>
+                                                </span>
+                                                <span className="file-name">
+                                                    {keyStoreFile ? keyStoreFile.name : "No file uploaded"}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="field has-addons">
-                                    Password (required): <div className="control">
-                                        <input className="input has-text-black" type={passwordFieldType} onChange={(e) => { setPassword(e.target.value) }} />
+                                    <label className="field-label has-text-black">Password (required):</label>
+                                    <div className="field-body">
+                                        <div className="control">
+                                            <input className="input has-text-black" type={passwordFieldType} onChange={(e) => { setPassword(e.target.value) }} />
+                                        </div>
+                                        <div className="control">
+                                            {/* eslint-disable-next-line */}
+                                            <a onClick={toggleViewPassword} className="button"><FontAwesomeIcon
+                                                className="icon is-small is-right avadoiconpadding"
+                                                icon={passwordFieldIcon}
+                                            />
+                                            </a></div>
                                     </div>
-                                    <div className="control">
-                                        {/* eslint-disable-next-line */}
-                                        <a onClick={toggleViewPassword} className="button"><FontAwesomeIcon
-                                            className="icon is-small is-right avadoiconpadding"
-                                            icon={passwordFieldIcon}
-                                        />
-                                        </a></div>
                                 </div>
-                                <div className="file has-name">
-                                    <label className="file-label">
-                                        Slashing protection (optional): <input className="file-input" type="file" name="slashing" id="slashing" onChange={e => setSlashingProtectionFile(e.target?.files?.item(0))} />
-                                        <span className="file-cta">
-                                            <span className="file-icon">
-                                                <FontAwesomeIcon icon={faUpload} />
-                                            </span>
-                                            <span className="file-label">
-                                                Choose slashing protection file…
-                                            </span>
-                                        </span>
-                                        <span className="file-name">
-                                            {slashingProtectionFile ? slashingProtectionFile.name : "No file uploaded"}
-                                        </span>
-                                    </label>
+                                <div className="field is-grouped">
+                                    <label className="field-label has-text-black">Slashing protection (optional):</label>
+                                    <div className="field-body">
+                                        <div className="file has-name">
+                                            <label className="file-label">
+                                                <input className="file-input" type="file" name="slashing" id="slashing" onChange={e => setSlashingProtectionFile(e.target?.files?.item(0))} />
+                                                <span className="file-cta">
+                                                    <span className="file-icon">
+                                                        <FontAwesomeIcon icon={faUpload} />
+                                                    </span>
+                                                    <span className="file-label">
+                                                        Choose slashing protection file…
+                                                    </span>
+                                                </span>
+                                                <span className="file-name">
+                                                    {slashingProtectionFile ? slashingProtectionFile.name : "No file uploaded"}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button className="button" onClick={addValidator} disabled={!addButtonEnabled}>Add validator</button>
-                                <br />
-                                {result.message && (<p className={"tag " + getResultTag()}>{result.message}</p>)}
-
+                                <div className="field is-grouped">
+                                    <label className="field-label has-text-black">{/* Left empty for spacing*/}</label>
+                                    <div className="field-body">
+                                        <div className="control">
+                                            <button className="button is-link" onClick={addValidator} disabled={!addButtonEnabled}>Add validator</button>
+                                        </div>
+                                        {result.message && (<p className={"tag " + getResultTag()}>{result.message}</p>)}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

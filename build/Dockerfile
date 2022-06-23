@@ -11,8 +11,15 @@ RUN rm -Rf build && yarn run build
 FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}
 
 USER root
-RUN apt-get -y update && apt-get -y upgrade && apt-get -y install curl supervisor nginx sudo jq gettext vim
-RUN rm -rf /var/lib/api/lists/*
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
+    curl \
+    gettext\
+    jq \
+    nginx \
+    sudo \
+    supervisor \
+    vim-tiny \
+    && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/false nginx
 
 RUN mkdir /data  && chown teku /data
