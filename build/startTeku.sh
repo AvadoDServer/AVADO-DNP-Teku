@@ -8,7 +8,6 @@ if [ ! -f "${SETTINGSFILE}" ]; then
     cp /opt/teku/defaultsettings.json ${SETTINGSFILE}
 fi
 
-
 # Create config file
 NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"') \
 GRAFFITI=$(cat ${SETTINGSFILE} | jq '."validators_graffiti"' | tr -d '"') \
@@ -23,4 +22,6 @@ DATA_PATH="/data/data-${NETWORK}" \
 
 # Start teku
 VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT=$(cat ${SETTINGSFILE} | jq '."validators_proposer_default_fee_recipient" // empty'| tr -d '"')
-/opt/teku/bin/teku --config-file="$TARGETCONFIGFILE" ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} ${EXTRA_OPTS}
+/opt/teku/bin/teku \
+   --config-file="$TARGETCONFIGFILE" ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
+   ${EXTRA_OPTS}

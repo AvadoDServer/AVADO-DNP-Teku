@@ -264,7 +264,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Pro
                                                 <td>
                                                     {/* eslint-disable-next-line */}
                                                     <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
-                                                        abbreviatePublicKey(feeRecipients[i])
+                                                        {abbreviatePublicKey(feeRecipients[i])}
                                                     </a>
                                                 </td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
