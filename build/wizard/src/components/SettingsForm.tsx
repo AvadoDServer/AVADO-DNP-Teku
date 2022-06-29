@@ -5,25 +5,75 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { SettingsType, supportedNetworks } from "./Types";
+import { Network, SettingsType, supportedNetworks } from "./Types";
 import defaultSettings from "./defaultsettings.json"
 
 interface Props {
     settings: SettingsType | undefined,
     applySettingsChanges: (settings: any) => void
+    installedPackages: string[] | undefined
 }
 
-const Comp = ({ settings, applySettingsChanges }: Props) => {
+const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
-        ee_endpoint: yup.string().label("ee-endpoint").required('Required').url(),
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
         validators_proposer_default_fee_recipient: yup.string().label("validators-proposer-default-fee-recipient").matches(/^0x[a-fA-F0-9]{40}$/).required('Required'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
         p2p_peer_upper_bound: yup.number().label("p2p-peer-upper-bound").positive().integer().required('Required'),
         initial_state: yup.string().label("initial-state").url().optional()
     });
+
+    type execution_engine = {
+        name: string
+        packagename: string
+        ee_endpoint: string
+        jwttokenpath: string
+        network: Network
+    }
+
+    const execution_engines: execution_engine[] = [
+        {
+            name: "Geth Mainnet",
+            packagename: "ethchain-geth.public.dappnode.eth",
+            ee_endpoint: "http://ethchain-geth.my.ava.do:8551",
+            jwttokenpath: "",
+            network: "mainnet"
+        }, {
+            name: "Geth Goerli Testnet",
+            packagename: "goerli-geth.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://goerli-geth.my.ava.do:8551",
+            jwttokenpath: "",
+            network: "prater"
+        }, {
+            name: "Nethermind",
+            packagename: "avado-dnp-nethermind.public.dappnode.eth",
+            ee_endpoint: "avado-dnp-nethermind.my.ava.do:8551",
+            jwttokenpath: "",
+            network: "mainnet"
+        }, {
+            name: "Geth Kiln Testnet",
+            packagename: "geth-kiln.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://geth-kiln.my.ava.do:8551",
+            jwttokenpath: "",
+            network: "kiln"
+        }
+    ]
+
+    const supportedExecutionEngines = (installedPackages: string[] | undefined, settings: SettingsType) => {
+        if (installedPackages && settings) {
+            return execution_engines.filter(ee => ee.network === settings.network && installedPackages.includes(ee.packagename))
+        }
+        return []
+    }
+
+    const applyChanges = (values: any) => {
+        console.log(values)
+        values.ee_endpoint = execution_engines.find(ee => ee.packagename === values.execution_engine)!.ee_endpoint
+        console.log(values)
+        applySettingsChanges(values)
+    }
 
     const confirmResetDefaults = () => {
         confirmAlert({
@@ -172,15 +222,21 @@ const Comp = ({ settings, applySettingsChanges }: Props) => {
                                 </FieldArray>
                             </div>
 
-                            <div className="field">
-                                <label className="label" htmlFor="ee_endpoint">Execution client's engine json-rpc url. This replaces the <em>eth1-endpoints</em> after The Merge.</label>
-                                <div className="control">
-                                    <Field className={"input" + (errors?.ee_endpoint ? " is-danger" : "")} id="ee_endpoint" name="ee_endpoint" />
-                                    {errors.ee_endpoint ? (
-                                        <p className="help is-danger">{errors.ee_endpoint.toString()}</p>
-                                    ) : null}
+                            {supportedExecutionEngines && (
+                                <div className="field">
+                                    <label className="label" htmlFor="execution_engine">Execution Engine</label>
+                                    <div className="control">
+                                        <Field name="execution_engine" as="select" className="select">
+                                            {supportedExecutionEngines(installedPackages, values).map(ee =>
+                                                <option key={ee.packagename} value={ee.packagename} label={ee.name} />
+                                            )}
+                                        </Field>
+                                        {!values.execution_engine || supportedExecutionEngines(installedPackages, values).length === 0 ? (
+                                            <p className="help is-danger">No suitable execution engine found.</p>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* eslint-disable-next-line */}
                             <a id="validators_proposer_default_fee_recipient">
@@ -221,7 +277,7 @@ const Comp = ({ settings, applySettingsChanges }: Props) => {
 
                             <div className="field is-grouped">
                                 <div className="control">
-                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applySettingsChanges(values)}>Apply changes</button>
+                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values)}>Apply changes</button>
                                 </div>
                                 <div className="control">
                                     <button disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</button>

@@ -3,7 +3,7 @@ import { Route, Routes, useNavigate } from "react-router-dom";
 
 import NetworkBanner from "./NetworkBanner";
 import Header from "./Header";
-import Settings from "./SettingsForm";
+import SettingsForm from "./SettingsForm";
 import MainPage from "./MainPage";
 import AdminPage from "./AdminPage";
 import NavigationBar from "./NavigationBar";
@@ -30,7 +30,6 @@ const Comp = () => {
 
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
-
 
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
@@ -65,6 +64,9 @@ const Comp = () => {
                                 if (!parsedSettings.validators_proposer_default_fee_recipient) {
                                     parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
                                 }
+                                if (!parsedSettings.execution_engine) {
+                                    parsedSettings.execution_engine = "ethchain-geth.public.dappnode.eth"
+                                }
                                 setSettings(parsedSettings)
                                 console.log("Loaded settings: ", parsedSettings);
                             } else {
@@ -80,6 +82,14 @@ const Comp = () => {
         }
     }, [wampSession, dappManagerHelper, settings, applySettingsChanges, navigate]);
 
+    const [packages, setPackages] = React.useState<string[]>();
+    React.useEffect(() => {
+        if (wampSession && dappManagerHelper) {
+            dappManagerHelper.getPackages().then((packages)=> {
+                setPackages(packages)
+            })
+        }
+    }, [wampSession, dappManagerHelper]);
 
     const fetchApiToken = async (dappManagerHelper: DappManagerHelper, settings: SettingsType) => {
         const reschedule = async () => {
@@ -98,8 +108,6 @@ const Comp = () => {
             }
         )
     }
-
-
 
     React.useEffect(() => {
         if (!wampSession || !settings || !dappManagerHelper) {
@@ -147,7 +155,7 @@ const Comp = () => {
                         <Routes>
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper}/>} />
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />}
-                            <Route path="/settings" element={<Settings settings={settings} applySettingsChanges={applySettingsChanges} />} />
+                            <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages}/>} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 

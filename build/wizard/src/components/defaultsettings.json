@@ -1,6 +1,7 @@
 {
     "network": "mainnet",
     "ee_endpoint": "http://ethchain-geth.my.ava.do:8551",
+    "execution_engine": "ethchain-geth.public.dappnode.eth",
     "eth1_endpoints": [
         "http://ethchain-geth.my.ava.do:8545",
         "https://mainnet.eth.cloud.ava.do"

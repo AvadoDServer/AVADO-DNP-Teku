@@ -82,7 +82,7 @@ export class DappManagerHelper {
             // console.log("result", res)
             if (res.success !== true) return [];
 
-            console.dir(res)
+            // console.dir(res)
             const packageNames = res.result.map((r: any) => r.name)  as string[];
             
             return packageNames;

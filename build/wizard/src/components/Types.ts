@@ -5,6 +5,7 @@ export type Network = typeof supportedNetworks[number]
 export type SettingsType = {
     network: Network
     ee_endpoint: string
+    execution_engine: string
     eth1_endpoints: string[]
     validators_graffiti: string,
     p2p_peer_lower_bound: number,
