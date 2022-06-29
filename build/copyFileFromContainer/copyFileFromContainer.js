@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const myArgs = process.argv.slice(2);
 
 /*

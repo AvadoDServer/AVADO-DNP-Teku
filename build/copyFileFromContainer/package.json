@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "atob": "^2.1.2",
+    "esbuild": "^0.14.47",
+    "wampy": "^6.4.2"
+  },
+  "bin": {
+    "copyFileFromContainer": "./copyFileFromContainer.js"
+  },
+  "scripts": {
+    "build": "esbuild copyFileFromContainer.js --platform=node --bundle --outfile=copyFileFromContainer"
+  }
+}

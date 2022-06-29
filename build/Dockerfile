@@ -7,6 +7,12 @@ COPY wizard .
 RUN yarn
 RUN rm -Rf build && yarn run build
 
+# build cli to copy JWT token from EE
+WORKDIR /tmp
+COPY copyFileFromContainer .
+RUN yarn
+RUN rm -Rf copyFileFromContainer && yarn run build
+
 # https://github.com/ConsenSys/teku/blob/master/docker/jdk17/Dockerfile
 FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}
 
@@ -26,6 +32,7 @@ RUN mkdir /data  && chown teku /data
 VOLUME /data
 
 COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
+COPY --from=builder /tmp/copyFileFromContainer /opt/teku
 
 COPY startTeku.sh /opt/teku
 COPY reload-certs.sh /opt/teku/reload-certs.sh
