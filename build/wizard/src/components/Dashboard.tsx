@@ -31,13 +31,13 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
-    
+
     const restApiUrl = "http://teku.my.ava.do:5051";
     const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
-    
+
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
-    
+
     const navigate = useNavigate();
 
     const applySettingsChanges = useCallback((newSettings: any) => {
@@ -80,25 +80,38 @@ const Comp = () => {
         }
     }, [wampSession, dappManagerHelper, settings, applySettingsChanges, navigate]);
 
+
+    const fetchApiToken = async (dappManagerHelper: DappManagerHelper, settings: SettingsType) => {
+        const reschedule = async () => {
+            // wait 3 seconds and try again
+            await new Promise(r => setTimeout(r, 2000));
+            fetchApiToken(dappManagerHelper, settings)
+        }
+
+        dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
+            (apiToken) => {
+                if (apiToken) {
+                    setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
+                } else {
+                    reschedule()
+                }
+            }
+        )
+    }
+
+
+
     React.useEffect(() => {
         if (!wampSession || !settings || !dappManagerHelper) {
             setRestApi(null);
             return;
         }
-        if (!restApi)
+        if (!restApi) {
             setRestApi(new RestApi(restApiUrl))
+        }
 
         if (!keyManagerAPI) {
-            // Potential race: the api token file is written after first launch of Teku.
-            // A refresh of the page will resolve the issue.
-            dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
-                (apiToken) => {
-                    if (apiToken) {
-                        console.log("API token:", apiToken)
-                        setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
-                    }
-                }
-            )
+            fetchApiToken(dappManagerHelper, settings)
         }
     }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
 
