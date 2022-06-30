@@ -3,12 +3,10 @@
 SETTINGSFILE=$1
 TARGETCONFIGFILE=$2
 
-# wait for settingsfile to exist (initial start only)
 if [ ! -f "${SETTINGSFILE}" ]; then
-    echo "Waiting for creation of ${SETTINGSFILE}"
+    echo "Starting with default settings"
+    cp /opt/teku/defaultsettings.json ${SETTINGSFILE}
 fi
-while [ ! -f "${SETTINGSFILE}" ]; do sleep 1; done
-
 
 # Create config file
 NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"') \
@@ -24,4 +22,6 @@ DATA_PATH="/data/data-${NETWORK}" \
 
 # Start teku
 VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT=$(cat ${SETTINGSFILE} | jq '."validators_proposer_default_fee_recipient" // empty'| tr -d '"')
-/opt/teku/bin/teku --config-file="$TARGETCONFIGFILE" ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} ${EXTRA_OPTS}
+/opt/teku/bin/teku \
+   --config-file="$TARGETCONFIGFILE" ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
+   ${EXTRA_OPTS}

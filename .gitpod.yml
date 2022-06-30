@@ -1,0 +1,9 @@
+# List the start up tasks. Learn more https://www.gitpod.io/docs/config-start-tasks/
+tasks:
+  - name: Install AvadoSDK and run yarn
+    init: npm i -g https://github.com/AvadoDServer/AVADOSDK.git && cd build/wizard && yarn && cd ../..
+ports:
+  - name: Wizard
+    port: 3000
+    onOpen: open-preview
+    
