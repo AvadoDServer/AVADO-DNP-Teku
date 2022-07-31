@@ -1,7 +1,7 @@
-import { RestApi } from "./RestApi";
-import { DappManagerHelper } from "./DappManagerHelper";
-import { SupervisorCtl } from "./SupervisorCtl";
-import Logs from "./Logs";
+import { RestApi } from "./shared/RestApi";
+import { DappManagerHelper } from "./shared/DappManagerHelper";
+import { SupervisorCtl } from "./shared/SupervisorCtl";
+import Logs from "./shared/Logs";
 
 interface Props {
     restApi: RestApi | undefined | null

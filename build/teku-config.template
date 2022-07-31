@@ -16,7 +16,7 @@ p2p-peer-upper-bound: ${P2P_PEER_UPPER_BOUND}
 validators-graffiti: "${GRAFFITI}"
 
 # Eth 1
-ee-endpoint: ${EE_ENDPOINT}
+ee-endpoint: "${EE_ENDPOINT}"
 eth1-endpoint: ${ETH1_ENDPOINTS}
 
 # metrics
@@ -47,7 +47,6 @@ validator-api-interface: "0.0.0.0"
 validator-api-keystore-file: /opt/teku/avado.keystore
 validator-api-keystore-password-file: /opt/teku/keystorePasswordFile
 validator-api-port: 5052
-
 
 # This is set via command line arguments for now to give users more time to update
 # validators-proposer-default-fee-recipient: "${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}"

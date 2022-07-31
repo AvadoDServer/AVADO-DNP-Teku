@@ -1,7 +1,7 @@
-import Validators from "./Validators";
-import { SettingsType } from "./Types";
-import { RestApi } from "./RestApi";
-import { DappManagerHelper } from "./DappManagerHelper";
+import Validators from "./shared/Validators";
+import { SettingsType } from "./shared/Types";
+import { RestApi } from "./shared/RestApi";
+import { DappManagerHelper } from "./shared/DappManagerHelper";
 
 interface Props {
     restApi: RestApi| undefined | null
