@@ -5,16 +5,17 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { Network, SettingsType, supportedNetworks } from "./Types";
+import { Network, SettingsType, supportedNetworks } from "./shared/Types";
 import defaultSettings from "./defaultsettings.json"
 
 interface Props {
     settings: SettingsType | undefined,
     applySettingsChanges: (settings: any) => void
     installedPackages: string[] | undefined
+    isAdminMode?: boolean
 }
 
-const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
+const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
 
     const settingsSchema = yup.object().shape({
         eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
@@ -38,25 +39,25 @@ const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
             name: "Geth Mainnet",
             packagename: "ethchain-geth.public.dappnode.eth",
             ee_endpoint: "http://ethchain-geth.my.ava.do:8551",
-            jwttokenpath: "",
+            jwttokenpath: "https://ethchain-geth.my.ava.do/jwttoken",
             network: "mainnet"
         }, {
             name: "Geth Goerli Testnet",
             packagename: "goerli-geth.avado.dnp.dappnode.eth",
             ee_endpoint: "http://goerli-geth.my.ava.do:8551",
-            jwttokenpath: "",
+            jwttokenpath: "https://goerli-geth.my.ava.do/jwttoken",
             network: "prater"
-        }, {
-            name: "Nethermind",
-            packagename: "avado-dnp-nethermind.public.dappnode.eth",
-            ee_endpoint: "avado-dnp-nethermind.my.ava.do:8551",
-            jwttokenpath: "",
-            network: "mainnet"
+            // }, {
+            //     name: "Nethermind",
+            //     packagename: "avado-dnp-nethermind.public.dappnode.eth",
+            //     ee_endpoint: "avado-dnp-nethermind.my.ava.do:8551",
+            //     jwttokenpath: "",
+            //     network: "mainnet"
         }, {
             name: "Geth Kiln Testnet",
             packagename: "geth-kiln.avado.dnp.dappnode.eth",
             ee_endpoint: "http://geth-kiln.my.ava.do:8551",
-            jwttokenpath: "",
+            jwttokenpath: "https://geth-kiln.my.ava.do/jwttoken",
             network: "kiln"
         }
     ]
@@ -68,9 +69,18 @@ const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
         return []
     }
 
+    const builder_endpoints = {
+        "kiln" : "https://builder-relay-kiln.flashbots.net",
+        "goerli" : "https://builder-relay-goerli.flashbots.net"
+    }
+
     const applyChanges = (values: any) => {
         console.log(values)
-        values.ee_endpoint = execution_engines.find(ee => ee.packagename === values.execution_engine)!.ee_endpoint
+        const execution_engine = execution_engines.find(ee => ee.network === values.network) ?? execution_engines[0]
+        values.ee_endpoint = execution_engine.ee_endpoint
+        values.execution_engine = execution_engine.packagename
+        values.jwttokenpath = execution_engine.jwttokenpath
+        values.builder_endpoint = values.network === "kiln" ? "https://builder-relay-kiln.flashbots.net" : (values.network === "prater" ? "https://builder-relay-goerli.flashbots.net" : "");
         console.log(values)
         applySettingsChanges(values)
     }
@@ -222,7 +232,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
                                 </FieldArray>
                             </div>
 
-                            {supportedExecutionEngines && (
+                            {/* {supportedExecutionEngines && (
                                 <div className="field">
                                     <label className="label" htmlFor="execution_engine">Execution Engine</label>
                                     <div className="control">
@@ -236,7 +246,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
                                         ) : null}
                                     </div>
                                 </div>
-                            )}
+                            )} */}
 
                             {/* eslint-disable-next-line */}
                             <a id="validators_proposer_default_fee_recipient">
@@ -254,17 +264,27 @@ const Comp = ({ settings, applySettingsChanges, installedPackages }: Props) => {
                                 </div>
                             </a>
 
+                            {isAdminMode && (
                             <div className="field">
-                                <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
-                                <div className="control">
-                                    <Field name="network" as="select" className="select">
-                                        {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                    </Field>
-                                    {values.network !== settings.network ? (
-                                        <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
-                                    ) : null}
+                                <label className="label" htmlFor="mev_boost">
+                                    <Field type="checkbox" id="mev_boost" name="mev_boost" />
+                                    Enable MEV-boost (With Flashbots)
+                                </label>
+                            </div>)}
+
+                            {isAdminMode && (
+                                <div className="field">
+                                    <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
+                                    <div className="control">
+                                        <Field name="network" as="select" className="select">
+                                            {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
+                                        </Field>
+                                        {values.network !== settings.network ? (
+                                            <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the execution engine too.</p>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* <div>
                                 <div className="container">

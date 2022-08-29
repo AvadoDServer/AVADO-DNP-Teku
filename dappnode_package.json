@@ -1,7 +1,7 @@
 {
   "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.12",
-  "upstream": "22.6.1",
+  "version": "0.0.15",
+  "upstream": "22.8.1",
   "title": "Teku",
   "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
   "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
@@ -26,6 +26,6 @@
   "dependencies": {},
   "links": {
     "OnboardingWizard": "http://teku.my.ava.do",
-    "HomePage": "https://docs.teku.consensys.net/en/22.6.0/"
+    "HomePage": "https://docs.teku.consensys.net/en/22.8.1/"
   }
 }

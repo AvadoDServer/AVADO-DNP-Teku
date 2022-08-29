@@ -1,22 +1,23 @@
 import React, { useCallback } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 
-import NetworkBanner from "./NetworkBanner";
-import Header from "./Header";
+import NetworkBanner from "./shared/NetworkBanner";
+import Header from "./shared/Header";
 import SettingsForm from "./SettingsForm";
 import MainPage from "./MainPage";
 import AdminPage from "./AdminPage";
-import NavigationBar from "./NavigationBar";
-import Welcome from "./Welcome";
+import NavigationBar from "./shared/NavigationBar";
+import Welcome from "./shared/Welcome";
 
 import tekulogo from "../assets/teku.png";
 import defaultSettings from "./defaultsettings.json"
-import { SettingsType } from "./Types";
-import { RestApi } from "./RestApi";
-import { SupervisorCtl } from "./SupervisorCtl";
-import { useWampSession } from "./useWampSession"
-import { DappManagerHelper } from "./DappManagerHelper";
-import FeeRecepientBanner from "./FeeRecepientBanner";
+import { SettingsType } from "./shared/Types";
+import { RestApi } from "./shared/RestApi";
+import { SupervisorCtl } from "./shared/SupervisorCtl";
+import { useWampSession } from "./shared/useWampSession"
+import { DappManagerHelper } from "./shared/DappManagerHelper";
+import FeeRecepientBanner from "./shared/FeeRecepientBanner";
+import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 
 export const packageName = "teku.avado.dnp.dappnode.eth";
 
@@ -56,11 +57,6 @@ const Comp = () => {
                         if (rawSettings) {
                             const parsedSettings = JSON.parse(rawSettings)
                             if (parsedSettings) {
-                                // try setting new settings after an update
-                                if (!parsedSettings.ee_endpoint) {
-                                    parsedSettings.ee_endpoint = parsedSettings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
-                                    applySettingsChanges(parsedSettings)
-                                }
                                 if (!parsedSettings.validators_proposer_default_fee_recipient) {
                                     parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
                                 }
@@ -85,7 +81,7 @@ const Comp = () => {
     const [packages, setPackages] = React.useState<string[]>();
     React.useEffect(() => {
         if (wampSession && dappManagerHelper) {
-            dappManagerHelper.getPackages().then((packages)=> {
+            dappManagerHelper.getPackages().then((packages) => {
                 setPackages(packages)
             })
         }
@@ -129,6 +125,8 @@ const Comp = () => {
         supervisorCtl.callMethod("supervisor.getState", [])
     }, [])
 
+    const [searchParams] = useSearchParams()
+    const isAdminMode = searchParams.get("admin") !== null
 
     return (
 
@@ -146,16 +144,17 @@ const Comp = () => {
             <section className="has-text-white">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" wikilink="https://wiki.ava.do/en/tutorials/teku"/>
+                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" wikilink="https://wiki.ava.do/en/tutorials/teku" />
 
                         <NavigationBar />
 
-                        <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate}/>
+                        <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
+                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink="https://wiki.ava.do/en/tutorials/teku" installedPackages={packages} />
 
                         <Routes>
-                            <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper}/>} />
+                            <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />}
-                            <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages}/>} />
+                            <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 

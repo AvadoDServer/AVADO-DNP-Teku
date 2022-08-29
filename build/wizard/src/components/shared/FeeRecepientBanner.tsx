@@ -6,9 +6,13 @@ interface IProps {
 }
 
 const FeeRecepientBanner = ({ validators_proposer_default_fee_recipient, navigate }: IProps) => {
+
+    const showWarning = () => {
+        return validators_proposer_default_fee_recipient !== undefined && validators_proposer_default_fee_recipient === ""
+    }
     return (
         <>
-            {!validators_proposer_default_fee_recipient && (
+            {showWarning() && (
                 <section className="hero is-danger" onClick={() => navigate("/settings#validators_proposer_default_fee_recipient")}>
                     <div className="hero-body is-small">
                          {/* eslint-disable-next-line */}

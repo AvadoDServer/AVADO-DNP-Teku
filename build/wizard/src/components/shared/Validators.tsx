@@ -8,7 +8,7 @@ import { Network, SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
-import thereIsNothingHereYet from "../assets/there-is-nothing-here-yet.jpeg";
+import thereIsNothingHereYet from "../../assets/there-is-nothing-here-yet.jpeg";
 import ImportValidatorsFromRocketPool from "./ImportValidatorsFromRocketPool";
 import { DappManagerHelper } from "./DappManagerHelper";
 
@@ -17,6 +17,7 @@ interface Props {
     restAPI: RestApi
     keyManagerAPI: RestApi
     dappManagerHelper: DappManagerHelper | null
+    readonly?: boolean
 }
 
 interface ValidatorData {
@@ -51,7 +52,7 @@ export const createBeaconchainUrl = (network: Network | null | undefined, valida
     return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
 }
 
-const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Props) => {
+const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, readonly = false }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
@@ -92,7 +93,11 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Pro
                 (res) => {
                     if (res.status === 200) {
                         // console.log(res)
-                        return res.data.data.ethaddress
+                        const address = res.data.data.ethaddress;
+                        if (address && address !== "0x0000000000000000000000000000000000000000")
+                            return address
+                        else
+                            return settings?.validators_proposer_default_fee_recipient
                     } else {
                         return settings?.validators_proposer_default_fee_recipient
                     }
@@ -248,7 +253,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Pro
                                             {/* <th>Exit Epoch</th> */}
                                             <th>Fee recipient</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
+                                            {!readonly && (<th>Actions</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -263,19 +268,19 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper }: Pro
                                                 {/* <td>{validator.validator.exit_epoch}</td> */}
                                                 <td>
                                                     {/* eslint-disable-next-line */}
-                                                    <a className="link" onClick={() => configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}>
+                                                    <a className="link" onClick={() => {if (!readonly) configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}}>
                                                         {abbreviatePublicKey(feeRecipients[i])}
                                                     </a>
                                                 </td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
-                                                <td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>
+                                                {!readonly && (<td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>)}
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
                             </>
                         )}
-                        {validators && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
+                        {validators && !readonly && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
                         {false && keyManagerAPI && (<ImportValidatorsFromRocketPool keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} network={settings?.network} updateValidators={updateValidators} />)}
                     </div>
                 </div>

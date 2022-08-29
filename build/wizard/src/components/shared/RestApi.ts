@@ -38,6 +38,7 @@ export class RestApi {
         try {
             return await axios.delete(`${this.baseUrl}${path}`, {
                 ...(this.apiKey && { headers: { Authorization: `Bearer ${this.apiKey}` } }),
+                ...(data && { data: data })
             }).then(res => callback(res));
         } catch (e: any) {
             errorHandler(e)

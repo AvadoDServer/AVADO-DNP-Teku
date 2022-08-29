@@ -74,7 +74,7 @@ export class DappManagerHelper {
         return pushData();
     }
 
-    public getPackages() : Promise<string[]> {
+    public getPackages(): Promise<string[]> {
         const fetchData = async () => {
             if (!this.wampSession)
                 return []
@@ -83,11 +83,53 @@ export class DappManagerHelper {
             if (res.success !== true) return [];
 
             // console.dir(res)
-            const packageNames = res.result.map((r: any) => r.name)  as string[];
-            
+            const packageNames = res.result.map((r: any) => r.name) as string[];
+
             return packageNames;
         }
         return fetchData();
+    }
+
+
+    public getEnvs(): Promise<{ key: string }> {
+        const fetchData = async () => {
+            if (!this.wampSession)
+                return {}
+            const res = JSON.parse(await this.wampSession.call("listPackages.dappmanager.dnp.dappnode.eth"));
+            // console.log("result", res)
+            if (res.success !== true) return {};
+
+            // console.dir(res)
+            const envs = res.result.filter((r: any) => r.name === this.packageName)[0]?.envs;
+            // console.dir(envs)
+
+            return envs
+        }
+        return fetchData();
+    }
+
+    public writeEnv(key: string, value: string, restart: boolean = false) {
+        if (!this.wampSession)
+            return
+        const pushData = async () => {
+
+            const currentEnvs = await this.getEnvs();
+
+            const newEnvs = { ...currentEnvs, [key]: value }
+
+            const res = JSON.parse(await this.wampSession.call("updatePackageEnv.dappmanager.dnp.dappnode.eth", [],
+                {
+                    id: this.packageName,
+                    envs: newEnvs,
+                    restart: restart
+                }));
+
+            if (res.success !== true) return;
+
+            console.log("Updated environment variables result. new Value (", key, ":", value, ") ", res.message)
+            return res
+        }
+        return pushData();
     }
 
     public getLogs() {
@@ -95,26 +137,40 @@ export class DappManagerHelper {
             return "Loading..."
         const pushData = async () => {
             const res = JSON.parse(await this.wampSession.call("logPackage.dappmanager.dnp.dappnode.eth", [],
-            {
-                id: this.packageName,
-                options: { tail: 20 }
-            }));
+                {
+                    id: this.packageName,
+                    options: { tail: 20 }
+                }));
             if (res.success !== true) return;
             return res.result
         }
         return pushData();
     }
 
-    public runSigned(cmd:string) : Promise<string> {
+    public restartPackage() {
+        if (!this.wampSession)
+            return "Loading..."
+        const pushData = async () => {
+            const res = JSON.parse(await this.wampSession.call("restartPackage.dappmanager.dnp.dappnode.eth", [],
+                {
+                    id: this.packageName
+                }));
+            if (res.success !== true) return;
+            return res.result
+        }
+        return pushData();
+    }
+
+    public runSigned(cmd: string): Promise<string> {
         const run = async () => {
             if (!this.wampSession)
                 return "Failed"
-            
-                const res = JSON.parse(await this.wampSession.call("runSignedCmd.dappmanager.dnp.dappnode.eth", [],
-                    {
-                        cmd: cmd
-                    }
-                ));
+
+            const res = JSON.parse(await this.wampSession.call("runSignedCmd.dappmanager.dnp.dappnode.eth", [],
+                {
+                    cmd: cmd
+                }
+            ));
             console.log("result", res)
             if (res.success !== true) return "Failed";
 

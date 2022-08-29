@@ -114,7 +114,7 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
             <div className="hero-body is-small is-primary py-0">
                 <div className="columns">
                     <div className="column is-narrow">
-                        <figure className="image is-64x64">
+                        <figure className="image is-128x128">
                             <img src={logo} alt={`${title} logo`} />
                         </figure>
                     </div>
@@ -141,7 +141,7 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
                                         connected peers: {peerCount}
                                         <br />
                                         {(peers &&
-                                            <> (Inbound: {peers.filter(p => p.direction === "inbound").length}/Outbound: {peers.filter(p => p.direction === "outbound").length})</>
+                                            <> (Inbound: {peers.filter(p => p.direction === "inbound" && p.state === "connected").length}/Outbound: {peers.filter(p => p.direction === "outbound" && p.state === "connected").length})</>
                                         )}
 
                                         <br />
