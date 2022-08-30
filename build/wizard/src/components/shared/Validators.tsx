@@ -220,9 +220,9 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                     <p>Click the "Add validator" widget to import your validator keys.</p>
                                     <div className="columns is-centered">
                                         <div className="column is-half">
-                                            <figure className="image is-4by3">
+                                            {/* <figure className="image is-4by3">
                                                 <img src={thereIsNothingHereYet} alt={"awkward-seal-there-is-nothing-here-yet-meme"} />
-                                            </figure>
+                                            </figure> */}
                                         </div>
                                     </div>
                                 </div>
