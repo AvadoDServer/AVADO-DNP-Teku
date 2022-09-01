@@ -24,6 +24,12 @@
   "author": "heeckhau",
   "license": "Apache(c)",
   "dependencies": {},
+  "ui": {
+    "OnboardingWizard": {
+      "url": "http://teku.my.ava.do",
+      "external": true
+    }
+  },
   "links": {
     "OnboardingWizard": "http://teku.my.ava.do",
     "HomePage": "https://docs.teku.consensys.net/en/22.8.2/"

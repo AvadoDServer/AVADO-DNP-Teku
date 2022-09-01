@@ -160,9 +160,11 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                     ) : null}
                                 </div>
                             </div>
+                            
+                            <hr/>
 
-                            <label className="field-label is-normal" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
-                            <div>
+                            <label className="field-label is-normal subheadline" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
+                            <div className="paddingTop">
                                 <FieldArray name="eth1_endpoints">
                                     {({ remove, push }) => (
                                         <>
@@ -231,6 +233,8 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                     )}
                                 </FieldArray>
                             </div>
+                            
+                            <hr/>
 
                             {/* {supportedExecutionEngines && (
                                 <div className="field">
