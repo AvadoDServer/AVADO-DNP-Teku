@@ -147,6 +147,7 @@ Validator
 Execution Layer
       --builder-endpoint=<NETWORK>
                              URL for an external Builder node (optional).
+                               Default: null
       --ee-endpoint=<NETWORK>
                              URL for Execution Engine node.
       --ee-jwt-secret-file=<FILENAME>

@@ -70,8 +70,8 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
     }
 
     const builder_endpoints = {
-        "kiln" : "https://builder-relay-kiln.flashbots.net",
-        "goerli" : "https://builder-relay-goerli.flashbots.net"
+        "kiln": "https://builder-relay-kiln.flashbots.net",
+        "goerli": "https://builder-relay-goerli.flashbots.net"
     }
 
     const applyChanges = (values: any) => {
@@ -80,7 +80,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
         values.ee_endpoint = execution_engine.ee_endpoint
         values.execution_engine = execution_engine.packagename
         values.jwttokenpath = execution_engine.jwttokenpath
-        values.builder_endpoint = values.network === "kiln" ? "https://builder-relay-kiln.flashbots.net" : (values.network === "prater" ? "https://builder-relay-goerli.flashbots.net" : "");
+        values.builder_endpoint = "http://mevboost.my.ava.do:18550"
         console.log(values)
         applySettingsChanges(values)
     }
@@ -160,8 +160,8 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                     ) : null}
                                 </div>
                             </div>
-                            
-                            <hr/>
+
+                            <hr />
 
                             <label className="field-label is-normal subheadline" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
                             <div className="paddingTop">
@@ -233,8 +233,8 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                     )}
                                 </FieldArray>
                             </div>
-                            
-                            <hr/>
+
+                            <hr />
 
                             {/* {supportedExecutionEngines && (
                                 <div className="field">
@@ -268,13 +268,15 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                 </div>
                             </a>
 
-                            {isAdminMode && (
                             <div className="field">
                                 <label className="label" htmlFor="mev_boost">
                                     <Field type="checkbox" id="mev_boost" name="mev_boost" />
-                                    Enable MEV-boost (With Flashbots)
+                                    Enable MEV-boost
                                 </label>
-                            </div>)}
+                                {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
+                                    <a href="http://my.ava.do/#/installer">Install MEV-Boost package to enable this option</a>
+                                )}
+                            </div>
 
                             {isAdminMode && (
                                 <div className="field">

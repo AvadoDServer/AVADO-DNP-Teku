@@ -39,5 +39,5 @@ exec /opt/teku/bin/teku \
   --config-file="$TARGETCONFIGFILE" \
   ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
   ${BUILDER_ENDPOINT:+--builder-endpoint=${BUILDER_ENDPOINT}} \
-  ${MEV_BOOST_ENABLED:+validators-builder-registration-default-enabled=${MEV_BOOST_ENABLED}} \
+  ${MEV_BOOST_ENABLED:+--validators-builder-registration-default-enabled=${MEV_BOOST_ENABLED}} \
   ${EXTRA_OPTS}
