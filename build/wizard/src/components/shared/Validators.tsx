@@ -9,7 +9,6 @@ import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipien
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
 import thereIsNothingHereYet from "../../assets/there-is-nothing-here-yet.jpeg";
-import ImportValidatorsFromRocketPool from "./ImportValidatorsFromRocketPool";
 import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
@@ -281,7 +280,6 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                             </>
                         )}
                         {validators && !readonly && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
-                        {false && keyManagerAPI && (<ImportValidatorsFromRocketPool keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} network={settings?.network} updateValidators={updateValidators} />)}
                     </div>
                 </div>
             </div>

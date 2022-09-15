@@ -22,7 +22,6 @@ done
 # Create config file
 GRAFFITI=$(cat ${SETTINGSFILE} | jq -r '."validators_graffiti"') \
 EE_ENDPOINT=$(cat ${SETTINGSFILE} | jq -r '."ee_endpoint"') \
-ETH1_ENDPOINTS=$(cat ${SETTINGSFILE} | jq -r '."eth1_endpoints"') \
 P2P_PEER_LOWER_BOUND=$(cat ${SETTINGSFILE} | jq -r '."p2p_peer_lower_bound"') \
 P2P_PEER_UPPER_BOUND=$(cat ${SETTINGSFILE} | jq -r '."p2p_peer_upper_bound"') \
 INITIAL_STATE=$(cat ${SETTINGSFILE} | jq -r '."initial_state"') \
