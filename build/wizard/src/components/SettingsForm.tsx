@@ -18,7 +18,6 @@ interface Props {
 const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
 
     const settingsSchema = yup.object().shape({
-        eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
         validators_proposer_default_fee_recipient: yup.string().label("validators-proposer-default-fee-recipient").matches(/^0x[a-fA-F0-9]{40}$/).required('Required'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
@@ -67,11 +66,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             return execution_engines.filter(ee => ee.network === settings.network && installedPackages.includes(ee.packagename))
         }
         return []
-    }
-
-    const builder_endpoints = {
-        "kiln": "https://builder-relay-kiln.flashbots.net",
-        "goerli": "https://builder-relay-goerli.flashbots.net"
     }
 
     const applyChanges = (values: any) => {
@@ -159,79 +153,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                         <p className="help is-danger">{errors.initial_state.toString()}</p>
                                     ) : null}
                                 </div>
-                            </div>
-
-                            <hr />
-
-                            <label className="field-label is-normal subheadline" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
-                            <div className="paddingTop">
-                                <FieldArray name="eth1_endpoints">
-                                    {({ remove, push }) => (
-                                        <>
-                                            {values.eth1_endpoints?.length > 0 &&
-                                                values.eth1_endpoints.map((eth1_endpoint: any, index: number) => (
-                                                    <div key={`eth1_endpoints.${index}`}>
-                                                        <div className="field has-addons">
-                                                            <div className="field-label is-normal">
-                                                                <label className="label">Endpoint #{index + 1}</label>
-                                                            </div>
-                                                            <div className="field-body">
-                                                                <div className="field">
-                                                                    <p className="control">
-                                                                        <Field
-                                                                            // @ts-ignore
-                                                                            className={"input" + (errors?.eth1_endpoints?.at(index) ? " is-danger" : "")}
-                                                                            name={`eth1_endpoints.${index}`}
-                                                                            id={`eth1_endpoints.${index}`}
-                                                                            placeholder="ETH1 endpoint"
-                                                                            type="text"
-                                                                        />
-                                                                    </p>
-                                                                    {
-                                                                        // @ts-ignore
-                                                                        errors?.eth1_endpoints?.at(index)
-                                                                            ? (
-                                                                                <p className="help is-danger">{
-                                                                                    //@ts-ignore
-                                                                                    errors.eth1_endpoints[index]}</p>
-                                                                            ) : null
-                                                                    }
-                                                                    {/* <ErrorMessage
-                                                                        name={`eth1_endpoints.${index}.eth1_endpoint`}
-                                                                        component="div"
-                                                                        className="help is-danger"
-                                                                        type="p"
-                                                                    /> */}
-                                                                </div>
-                                                            </div>
-                                                            <div className="control">
-                                                                <button className="button" onClick={() => remove(index)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                ))}
-                                            <div className="field has-addons">
-                                                <div className="field-label is-normal">
-                                                    <label className="label"></label>
-                                                </div>
-                                                <div className="field-body">
-                                                    <div className="field">
-                                                        <p className="control">
-                                                            <button
-                                                                type="button"
-                                                                className="button"
-                                                                onClick={() => push("")}
-                                                            >
-                                                                Add extra (fallback) endpoint
-                                                            </button>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </FieldArray>
                             </div>
 
                             <hr />
