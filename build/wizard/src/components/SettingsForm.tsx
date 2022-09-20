@@ -52,12 +52,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
             jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
             network: "mainnet"
-        }, {
-            name: "Geth Kiln Testnet",
-            packagename: "geth-kiln.avado.dnp.dappnode.eth",
-            ee_endpoint: "http://geth-kiln.my.ava.do:8551",
-            jwttokenpath: "https://geth-kiln.my.ava.do/jwttoken",
-            network: "kiln"
         }
     ]
 
