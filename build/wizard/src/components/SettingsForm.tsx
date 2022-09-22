@@ -52,6 +52,12 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
             jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
             network: "mainnet"
+        }, {
+            name: "Nethermind",
+            packagename: "avado-dnp-nethermind.public.dappnode.eth",
+            ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
+            jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
+            network: "prater"
         }
     ]
 
@@ -74,7 +80,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
         const execution_engine = execution_engines.find(ee => ee.packagename === values.execution_engine) ?? execution_engines[0]
         values.ee_endpoint = execution_engine.ee_endpoint
         values.jwttokenpath = execution_engine.jwttokenpath
-        values.builder_endpoint = "http://mevboost.my.ava.do:18550"
         if (isAdminMode) console.log(values)
         applySettingsChanges(values)
     }

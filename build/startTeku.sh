@@ -13,9 +13,11 @@ mkdir -p "/data/data-${NETWORK}/" && chown teku:teku "/data/data-${NETWORK}/"
 
 # Get JWT Token
 JWT_SECRET="/data/data-${NETWORK}/jwttoken"
-JWT_TOKEN_PATH=$(cat ${SETTINGSFILE} | jq -r 'if has("jwttokenpath") then ."jwttokenpath" else "https://ethchain-geth.my.ava.do/jwttoken" end')
-until $(curl --silent --fail ${JWT_TOKEN_PATH} --output "${JWT_SECRET}"); do
-  echo "Waiting for Geth package to generate the JWT Token"
+getJwtTokenPath () {
+  echo $(cat ${SETTINGSFILE} | jq -r 'if has("jwttokenpath") then ."jwttokenpath" else "https://ethchain-geth.my.ava.do/jwttoken" end')
+}
+until $(curl --silent --fail $(getJwtTokenPath) --output "${JWT_SECRET}"); do
+  echo "Waiting for the JWT Token"
   sleep 5
 done
 
@@ -31,12 +33,11 @@ NETWORK="${NETWORK}" \
 
 # Start teku
 VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT=$(cat ${SETTINGSFILE} | jq -r '."validators_proposer_default_fee_recipient" // empty')
-BUILDER_ENDPOINT=$(cat ${SETTINGSFILE} | jq -r '."builder_endpoint" // empty')
 MEV_BOOST_ENABLED=$(cat ${SETTINGSFILE} | jq -r '."mev_boost" // empty')
 exec /opt/teku/bin/teku \
   --ee-jwt-secret-file="/data/data-${NETWORK}/jwttoken" \
   --config-file="$TARGETCONFIGFILE" \
   ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
-  ${BUILDER_ENDPOINT:+--builder-endpoint=${BUILDER_ENDPOINT}} \
+  ${MEV_BOOST_ENABLED:+--builder-endpoint="http://mevboost.my.ava.do:18550"} \
   ${MEV_BOOST_ENABLED:+--validators-builder-registration-default-enabled=${MEV_BOOST_ENABLED}} \
   ${EXTRA_OPTS}
