@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   teku.avado.dnp.dappnode.eth:
-    image: 'teku.avado.dnp.dappnode.eth:0.0.21'
+    image: 'teku.avado.dnp.dappnode.eth:0.0.22'
     build:
       context: ./build
       args:

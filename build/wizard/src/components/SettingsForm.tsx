@@ -195,7 +195,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
 
                             <div className="field">
                                 <label className="label" htmlFor="mev_boost">
-                                    <Field type="checkbox" id="mev_boost" name="mev_boost" />
+                                    <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")}/>
                                     Enable MEV-boost
                                 </label>
                                 {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
