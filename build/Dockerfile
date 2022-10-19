@@ -7,6 +7,12 @@ COPY wizard .
 RUN yarn
 RUN rm -Rf build && yarn run build
 
+
+# build monitor
+WORKDIR /usr/src/monitor
+COPY monitor .
+RUN yarn
+
 # https://github.com/ConsenSys/teku/blob/master/docker/jdk17/Dockerfile
 FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}
 
@@ -16,6 +22,7 @@ RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
     gettext\
     jq \
     nginx \
+    nodejs \
     sudo \
     supervisor \
     vim-tiny \
@@ -26,6 +33,7 @@ RUN mkdir /data  && chown teku /data
 VOLUME /data
 
 COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
+COPY --from=builder /usr/src/monitor /usr/local/monitor
 
 COPY startTeku.sh /opt/teku
 COPY reload-certs.sh /opt/teku/reload-certs.sh

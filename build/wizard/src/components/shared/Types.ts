@@ -1,5 +1,5 @@
 
-export const supportedNetworks = ["prater", "mainnet", "kiln"]
+export const supportedNetworks = ["prater", "mainnet"]
 export type Network = typeof supportedNetworks[number]
 
 export type SettingsType = {
