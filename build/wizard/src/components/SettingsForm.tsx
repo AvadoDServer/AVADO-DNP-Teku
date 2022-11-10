@@ -180,7 +180,9 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             {/* eslint-disable-next-line */}
                             <a id="validators_proposer_default_fee_recipient">
                                 <div className="field">
-                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators (after the Merge). The fee recipient can be overriden per validator by clicking the fee recipient value of any validator in the validator list above.</label>
+                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators.
+                                    The fee recipient can be overriden per validator by clicking the fee recipient value of any validator on the main page.
+                                    </label>
                                     <div className="control">
                                         <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
                                             id="validators_proposer_default_fee_recipient"
