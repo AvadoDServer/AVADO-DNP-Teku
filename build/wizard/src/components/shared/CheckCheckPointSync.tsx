@@ -78,35 +78,50 @@ const CheckCheckPointSync = ({ restApi, network }: Props) => {
                     "goerli.beaconstate.info",
                     "goerli.beaconstate.ethstaker.cc",
                 ]
-                : [
-                    "beaconstate.info",
-                    "beaconstate.ethstaker.cc",
-                    "mainnet-checkpoint-sync.attestant.io",
-                    // "checkpointz.pietjepuk.net",
-                    // "mainnet.checkpoint.sigp.io"
-                ]
+                : network === "gnosis" ?
+                    [
+                        // "checkpoint.gnosischain.com",
+                    ]
+                    : [
+                        "beaconstate.info",
+                        "beaconstate.ethstaker.cc",
+                        "mainnet-checkpoint-sync.attestant.io",
+                        // "checkpointz.pietjepuk.net",
+                        // "mainnet.checkpoint.sigp.io"
+                    ]
 
             const fetchFromCheckpointzEndPoint = async (endpoint: string): Promise<tableDateType> => {
                 const url = `${API}/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
-                return { url: `https://${endpoint}`, state_root: await axios.get(url)
-                    .then(res => res.data.block.Bellatrix.message.state_root)
-                    .catch(error => "could not fetch, check manually")
+                console.log(url)
+                return {
+                    url: `https://${endpoint}`, state_root: await axios.get(url)
+                        .then(res => network === "gnosis" ?
+                            res.data.block.Altair.message.state_root
+                            : res.data.block.Bellatrix.message.state_root)
+                        //.then(res => res.data.block.get(version).message.state_root)
+                        .catch(error => "could not fetch, check manually")
                 }
             }
 
             // beaconcha.in
             const fetchFromBeaconChain = async (): Promise<tableDateType> => {
-                const base_url = (network === "prater" ? "prater." : "") + "beaconcha.in"
+                const base_url = ({
+                    "prater": "prater.beaconcha.in",
+                    "gnosis": "beacon.gnosischain.com",
+                    "mainnet": "beaconcha.in"
+                })[network]
+
                 const url = `${API}/${base_url}/api/v1/block/${slot}`
-                return { url: `https://${base_url}/slot/${slot}`, state_root: await axios.get(url)
-                    .then(res => res.data.stateroot)
-                    .catch(error => "could not fetch, check manually")
+                return {
+                    url: `https://${base_url}/slot/${slot}`, state_root: await axios.get(url)
+                        .then(res => res.data.stateroot)
+                        .catch(error => "could not fetch, check manually")
                 }
             }
 
             Promise.all(
                 checkpoint_sync_endpoints.map(fetchFromCheckpointzEndPoint)
-                .concat(fetchFromBeaconChain())
+                    .concat(fetchFromBeaconChain())
             ).then(values => setOtherStateRoots(values))
         }
     }, [finalizedState]);
@@ -156,7 +171,7 @@ const CheckCheckPointSync = ({ restApi, network }: Props) => {
                                             )}
                                         </tbody>
                                     </table>
-                                    {otherStateRoots.length===0 && (
+                                    {otherStateRoots.length === 0 && (
                                         <FontAwesomeIcon className="fa-spin" icon={faSpinner} />
                                     )}
 

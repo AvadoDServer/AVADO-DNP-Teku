@@ -58,12 +58,19 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
             jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
             network: "prater"
+        }, {
+            name: "Nethermind-gnosis",
+            packagename: "nethermind-gnosis.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://nethermind-gnosis.my.ava.do:8551",
+            jwttokenpath: "https://nethermind-gnosis.my.ava.do/jwttoken",
+            network: "gnosis"
         }
     ]
 
     const [supportedExecutionEngines, setSpportedExecutionEngines] = React.useState<execution_engine[]>([]);
     React.useEffect(() => {
         if (installedPackages && settings) {
+            console.log(installedPackages)
             if (installedPackages && settings) {
                 const sees = execution_engines.filter(ee => ee.network === settings.network)
                 if (isAdminMode)
@@ -75,11 +82,20 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
 
     const isInstalled = (execution_engine_name: string) => installedPackages?.includes(execution_engine_name) ?? false
 
-    const applyChanges = (values: any) => {
+    const applyChanges = (values: any, touched: any) => {
         if (isAdminMode) console.log(values)
         const execution_engine = execution_engines.find(ee => ee.packagename === values.execution_engine) ?? execution_engines[0]
         values.ee_endpoint = execution_engine.ee_endpoint
         values.jwttokenpath = execution_engine.jwttokenpath
+
+        if (touched.network) {
+            values.initial_state = ({
+                "prater": "https://goerli.checkpoint-sync.ethpandaops.io/eth/v2/debug/beacon/states/finalized",
+                "gnosis": "https://checkpoint.gnosischain.com/eth/v2/debug/beacon/states/finalized",
+                "mainnet": defaultSettings.initial_state
+            })[touched.network as Network]
+        }
+
         if (isAdminMode) console.log(values)
         applySettingsChanges(values)
     }
@@ -181,7 +197,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             <a id="validators_proposer_default_fee_recipient">
                                 <div className="field">
                                     <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators.
-                                    The fee recipient can be overriden per validator by clicking the fee recipient value of any validator on the main page.
+                                        The fee recipient can be overriden per validator by clicking the fee recipient value of any validator on the main page.
                                     </label>
                                     <div className="control">
                                         <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
@@ -197,7 +213,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
 
                             <div className="field">
                                 <label className="label" htmlFor="mev_boost">
-                                    <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")}/>
+                                    <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")} />
                                     Enable MEV-boost
                                 </label>
                                 {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
@@ -221,7 +237,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
 
                             <div className="field is-grouped">
                                 <div className="control">
-                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values)}>Apply changes</button>
+                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values, touched)}>Apply changes</button>
                                 </div>
                                 <div className="control">
                                     <button disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</button>

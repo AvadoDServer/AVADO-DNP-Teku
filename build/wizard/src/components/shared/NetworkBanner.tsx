@@ -11,7 +11,14 @@ const NetworkBanner = ({ network }: { network: Network }) => {
                     </div>
                 </section>
             )}
-            {network && network !== "prater" && network !== "mainnet" && (
+            {(network === "gnosis") && (
+                <section className="hero is-info">
+                    <div className="hero-body is-small">
+                        <p className="has-text-centered">Using the {network} network</p>
+                    </div>
+                </section>
+            )}
+            {network && network !== "prater" && network !== "mainnet" && network !== "gnosis" && (
                 <section className="hero is-danger">
                     <div className="hero-body is-small">
                         <p className="has-text-centered">Wrong configuration</p>

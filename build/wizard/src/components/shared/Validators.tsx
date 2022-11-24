@@ -40,12 +40,13 @@ interface ConfiguringfeeRecipient {
     feerecipient: string
 }
 
-export const abbreviatePublicKey = (key: string) => <abbr title={key}>{key.substring(0, 10) + "…"}</abbr>
+export const abbreviatePublicKey = (key: string) => <abbr title={key}>{key?.substring(0, 10) + "…"}</abbr>
 
 export const createBeaconchainUrl = (network: Network | null | undefined, validatorPubkey: string, text?: any) => {
     const beaconChainBaseUrl = ({
         "prater": "https://prater.beaconcha.in",
-        "mainnet": "https://beaconcha.in"
+        "mainnet": "https://beaconcha.in",
+        "gnosis": "https://beacon.gnosischain.com"
     })[network ?? "mainnet"]
     return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
 }
@@ -266,7 +267,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                                 {/* <td>{validator.validator.exit_epoch}</td> */}
                                                 <td>
                                                     {/* eslint-disable-next-line */}
-                                                    <a className="link" onClick={() => {if (!readonly) configureFeeRecipient(validator.validator.pubkey, feeRecipients[i])}}>
+                                                    <a className="link" onClick={() => { if (!readonly) configureFeeRecipient(validator.validator.pubkey, feeRecipients[i]) }}>
                                                         {abbreviatePublicKey(feeRecipients[i])}
                                                     </a>
                                                 </td>

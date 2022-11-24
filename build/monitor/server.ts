@@ -47,6 +47,11 @@ server.get("/prater.beaconcha.in/api/v1/block/:slot", (req, res, next) => {
     const url = `https://prater.beaconcha.in/api/v1/block/${slot}`
     get(url, res, next)
 });
+server.get("/beacon.gnosischain.com/api/v1/block/:slot", (req, res, next) => {
+    const slot = req.params.slot;
+    const url = `https://beacon.gnosischain.com/api/v1/block/${slot}`
+    get(url, res, next)
+});
 
 const get = (url, res, next) => {
     axios.get(url,
