@@ -8,21 +8,17 @@ import { faSpinner, faBook, faCircleXmark, faCircleCheck, faRefresh } from "@for
 import { json } from "stream/consumers";
 import axios from "axios";
 import { rest } from "lodash";
-import { NETWORK } from "../network";
 const { createProxyMiddleware } = require('http-proxy-middleware');
-
 
 const debug = false;
 
-const API = debug ? "http://localhost:9999"
-    : (NETWORK === "mainnet" ? "http://teku.my.ava.do:9999" : `http://teku-${NETWORK}.my.ava.do:9999`);
-
 interface Props {
     restApi: RestApi | undefined | null
+    network: Network
+    packageUrl: String
 }
 
-const CheckCheckPointSync = ({ restApi }: Props) => {
-
+const CheckCheckPointSync = ({ restApi, network, packageUrl }: Props) => {
 
     type responseType = {
         "data": {
@@ -40,6 +36,10 @@ const CheckCheckPointSync = ({ restApi }: Props) => {
             }
         },
         "execution_optimistic": boolean
+    }
+
+    const monitorAPI = () => {
+        return (debug ? "http://localhost:9999" : `http://${packageUrl}:9999`)
     }
 
     type tableDateType = {
@@ -76,12 +76,12 @@ const CheckCheckPointSync = ({ restApi }: Props) => {
 
             // List with checkpoint-endpoints
             // https://eth-clients.github.io/checkpoint-sync-endpoints/
-            const checkpoint_sync_endpoints = NETWORK === "prater" ?
+            const checkpoint_sync_endpoints = network === "prater" ?
                 [
                     "goerli.beaconstate.info",
                     "goerli.beaconstate.ethstaker.cc",
                 ]
-                : NETWORK === "gnosis" ?
+                : network === "gnosis" ?
                     [
                         // "checkpoint.gnosischain.com",
                     ]
@@ -94,14 +94,13 @@ const CheckCheckPointSync = ({ restApi }: Props) => {
                     ]
 
             const fetchFromCheckpointzEndPoint = async (endpoint: string): Promise<tableDateType> => {
-                const url = `${API}/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
-                // console.log(url)
+                const url = monitorAPI() + `/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
+                console.log(url)
                 return {
                     url: `https://${endpoint}`, state_root: await axios.get(url)
-                        .then(res => NETWORK === "gnosis" ?
+                        .then(res => network === "gnosis" ?
                             res.data.block.Altair.message.state_root
                             : res.data.block.Bellatrix.message.state_root)
-                        //.then(res => res.data.block.get(version).message.state_root)
                         .catch(error => "could not fetch, check manually")
                 }
             }
@@ -112,10 +111,10 @@ const CheckCheckPointSync = ({ restApi }: Props) => {
                     "prater": "prater.beaconcha.in",
                     "gnosis": "beacon.gnosischain.com",
                     "mainnet": "beaconcha.in"
-                })[NETWORK]
+                })[network]
 
-                const url = `${API}/${base_url}/api/v1/block/${slot}`
-                // console.log(url)
+                const url = monitorAPI() + `/${base_url}/api/v1/block/${slot}`
+                console.log(url)
                 return {
                     url: `https://${base_url}/slot/${slot}`, state_root: await axios.get(url)
                         .then(res => res.data.stateroot)

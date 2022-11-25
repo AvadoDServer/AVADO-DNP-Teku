@@ -1,6 +1,15 @@
 #!/bin/bash
 
-NETWORK=gnosis
+NETWORK=$1
+
+case ${NETWORK} in
+  "gnosis"|"prater"|"mainnet")
+    ;;
+  *)
+    echo "Invalid network"
+    exit
+    ;;
+esac
 
 for file in \
     build/docker-compose.yml \

@@ -23,6 +23,8 @@ import { NETWORK } from "./network"
 
 export const packagePrefix = NETWORK === "mainnet" ? `teku` : `teku-${NETWORK}`;
 export const packageName = `${packagePrefix}.avado.dnp.dappnode.eth`;
+export const packageUrl = `${packagePrefix}.my.ava.do`;
+
 
 const Comp = () => {
     const wampSession = useWampSession();
@@ -39,9 +41,8 @@ const Comp = () => {
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
 
-    const baseUrl = `http://${packagePrefix}.my.ava.do`;
-    const restApiUrl = `${baseUrl}:5051`;
-    const keyManagerAPIUrl = `https://${packagePrefix}.my.ava.do:5052`;
+    const restApiUrl = `http://${packageUrl}:5051`;
+    const keyManagerAPIUrl = `https://${packageUrl}:5052`;
 
     const getTitle = () => {
         switch (NETWORK) {
@@ -177,7 +178,7 @@ const Comp = () => {
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
-                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} />} />
+                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={NETWORK} packageUrl={packageUrl} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 
