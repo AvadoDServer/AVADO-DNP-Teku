@@ -23,13 +23,13 @@ done
 
 case ${NETWORK} in
   "gnosis")
-    P2P_PORT="9006"
+    P2P_PORT=9006
     ;;
   "prater")
-    P2P_PORT="9003"
+    P2P_PORT=9003
     ;;
   *)
-    P2P_PORT="9000"
+    P2P_PORT=9000
     ;;
 esac
 
