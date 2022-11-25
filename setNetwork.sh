@@ -23,6 +23,6 @@ do
     EXT=${file##*.}
     # echo $BASENAME
     # echo $EXT
-    rm $file
+    rm -f $file
     ln ${BASENAME}-${NETWORK}.${EXT} $file
 done
