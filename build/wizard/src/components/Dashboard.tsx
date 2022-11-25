@@ -19,8 +19,10 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
 import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 import CheckCheckPointSync from "./shared/CheckCheckPointSync";
+import { NETWORK } from "./network"
 
-export const packageName = "teku.avado.dnp.dappnode.eth";
+export const packagePrefix = NETWORK === "mainnet" ? `teku` : `teku-${NETWORK}`;
+export const packageName = `${packagePrefix}.avado.dnp.dappnode.eth`;
 
 const Comp = () => {
     const wampSession = useWampSession();
@@ -33,11 +35,28 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
-    const restApiUrl = "http://teku.my.ava.do:5051";
-    const keyManagerAPIUrl = "https://teku.my.ava.do:5052"
 
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
+
+    const baseUrl = `http://${packagePrefix}.my.ava.do`;
+    const restApiUrl = `${baseUrl}:5051`;
+    const keyManagerAPIUrl = `https://${packagePrefix}.my.ava.do:5052`;
+
+    const getTitle = () => {
+        switch (NETWORK) {
+            case "gnosis": return "Avado Teku Gnosis"
+            case "prater": return "Avado Teku Prater Testnet"
+            default: return "Avado Teku";
+        }
+    }
+
+    const getWikilink = () => {
+        switch (NETWORK) {
+            case "gnosis": return "https://docs.ava.do/packages/gnosis/"
+            default: return "https://docs.ava.do/packages/teku/";
+        }
+    }
 
     const navigate = useNavigate();
 
@@ -95,7 +114,7 @@ const Comp = () => {
             fetchApiToken(dappManagerHelper, settings)
         }
 
-        dappManagerHelper.getFileContentFromContainer(`/data/data-${settings.network}/validator/key-manager/validator-api-bearer`).then(
+        dappManagerHelper.getFileContentFromContainer(`/data/data-${NETWORK}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => {
                 if (apiToken) {
                     setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
@@ -121,7 +140,9 @@ const Comp = () => {
     }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
 
     React.useEffect(() => {
-        const supervisorCtl = new SupervisorCtl('teku.my.ava.do', 5556, '/RPC2')
+        const supervisorCtl = new SupervisorCtl(`${packagePrefix}.my.ava.do`, 5556, '/RPC2')
+
+
         setSupervisorCtl(supervisorCtl)
         supervisorCtl.callMethod("supervisor.getState", [])
     }, [])
@@ -132,7 +153,7 @@ const Comp = () => {
     return (
 
         <div className="dashboard has-text-black maincontainer">
-            <NetworkBanner network={settings?.network ?? "mainnet"} />
+            <NetworkBanner network={NETWORK} />
 
             {!dappManagerHelper && (
                 <section className="hero is-danger">
@@ -145,18 +166,18 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title="Avado Teku" tagline="Teku beacon chain and validator" wikilink="https://wiki.ava.do/en/tutorials/teku" />
+                        <Header restApi={restApi} logo={tekulogo} title={getTitle()} tagline="Teku beacon chain and validator" wikilink={getWikilink()} />
 
                         <NavigationBar />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
-                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink="https://wiki.ava.do/en/tutorials/teku" installedPackages={packages} client="Teku" />
+                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Teku" />
 
                         <Routes>
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
-                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title="Avado Teku" dappManagerHelper={dappManagerHelper} />} />}
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
-                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={settings?.network ?? "mainnet"} />} />
+                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 

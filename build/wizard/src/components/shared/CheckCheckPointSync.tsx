@@ -8,18 +8,21 @@ import { faSpinner, faBook, faCircleXmark, faCircleCheck, faRefresh } from "@for
 import { json } from "stream/consumers";
 import axios from "axios";
 import { rest } from "lodash";
+import { NETWORK } from "../network";
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 
 const debug = false;
-const API = (debug ? "http://localhost:9999" : "http://teku.my.ava.do:9999")
+
+const API = debug ? "http://localhost:9999"
+    : (NETWORK === "mainnet" ? "http://teku.my.ava.do:9999" : `http://teku-${NETWORK}.my.ava.do:9999`);
 
 interface Props {
     restApi: RestApi | undefined | null
-    network: Network
 }
 
-const CheckCheckPointSync = ({ restApi, network }: Props) => {
+const CheckCheckPointSync = ({ restApi }: Props) => {
+
 
     type responseType = {
         "data": {
@@ -73,12 +76,12 @@ const CheckCheckPointSync = ({ restApi, network }: Props) => {
 
             // List with checkpoint-endpoints
             // https://eth-clients.github.io/checkpoint-sync-endpoints/
-            const checkpoint_sync_endpoints = network === "prater" ?
+            const checkpoint_sync_endpoints = NETWORK === "prater" ?
                 [
                     "goerli.beaconstate.info",
                     "goerli.beaconstate.ethstaker.cc",
                 ]
-                : network === "gnosis" ?
+                : NETWORK === "gnosis" ?
                     [
                         // "checkpoint.gnosischain.com",
                     ]
@@ -92,10 +95,10 @@ const CheckCheckPointSync = ({ restApi, network }: Props) => {
 
             const fetchFromCheckpointzEndPoint = async (endpoint: string): Promise<tableDateType> => {
                 const url = `${API}/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
-                console.log(url)
+                // console.log(url)
                 return {
                     url: `https://${endpoint}`, state_root: await axios.get(url)
-                        .then(res => network === "gnosis" ?
+                        .then(res => NETWORK === "gnosis" ?
                             res.data.block.Altair.message.state_root
                             : res.data.block.Bellatrix.message.state_root)
                         //.then(res => res.data.block.get(version).message.state_root)
@@ -109,9 +112,10 @@ const CheckCheckPointSync = ({ restApi, network }: Props) => {
                     "prater": "prater.beaconcha.in",
                     "gnosis": "beacon.gnosischain.com",
                     "mainnet": "beaconcha.in"
-                })[network]
+                })[NETWORK]
 
                 const url = `${API}/${base_url}/api/v1/block/${slot}`
+                // console.log(url)
                 return {
                     url: `https://${base_url}/slot/${slot}`, state_root: await axios.get(url)
                         .then(res => res.data.stateroot)

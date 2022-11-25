@@ -7,6 +7,7 @@ import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import { Network, SettingsType, supportedNetworks } from "./shared/Types";
 import defaultSettings from "./defaultsettings.json"
+import { NETWORK } from "./network";
 
 interface Props {
     settings: SettingsType | undefined,
@@ -74,7 +75,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             if (installedPackages && settings) {
                 const sees = execution_engines.filter(ee => ee.network === settings.network)
                 if (isAdminMode)
-                    console.log("Execution clients", settings.network, sees.map(ee => ee.packagename))
+                    console.log("Execution clients", NETWORK, sees.map(ee => ee.packagename))
                 setSpportedExecutionEngines(sees)
             }
         }
@@ -82,19 +83,11 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
 
     const isInstalled = (execution_engine_name: string) => installedPackages?.includes(execution_engine_name) ?? false
 
-    const applyChanges = (values: any, touched: any) => {
+    const applyChanges = (values: any) => {
         if (isAdminMode) console.log(values)
         const execution_engine = execution_engines.find(ee => ee.packagename === values.execution_engine) ?? execution_engines[0]
         values.ee_endpoint = execution_engine.ee_endpoint
         values.jwttokenpath = execution_engine.jwttokenpath
-
-        if (touched.network) {
-            values.initial_state = ({
-                "prater": "https://goerli.checkpoint-sync.ethpandaops.io/eth/v2/debug/beacon/states/finalized",
-                "gnosis": "https://checkpoint.gnosischain.com/eth/v2/debug/beacon/states/finalized",
-                "mainnet": defaultSettings.initial_state
-            })[touched.network as Network]
-        }
 
         if (isAdminMode) console.log(values)
         applySettingsChanges(values)
@@ -211,33 +204,22 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                 </div>
                             </a>
 
-                            <div className="field">
-                                <label className="label" htmlFor="mev_boost">
-                                    <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")} />
-                                    Enable MEV-boost
-                                </label>
-                                {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
-                                    <a href="http://my.ava.do/#/installer">Install MEV-Boost package to enable this option</a>
-                                )}
-                            </div>
-
-                            {isAdminMode && (
+                            {NETWORK !== "gnosis" && (
                                 <div className="field">
-                                    <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
-                                    <div className="control">
-                                        <Field name="network" as="select" className="select">
-                                            {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                        </Field>
-                                        {values.network !== settings.network ? (
-                                            <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the execution engine too.</p>
-                                        ) : null}
-                                    </div>
+                                    <label className="label" htmlFor="mev_boost">
+                                        <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")} />
+                                        Enable MEV-boost
+                                    </label>
+                                    {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
+                                        <a href="http://my.ava.do/#/installer">Install MEV-Boost package to enable this option</a>
+                                    )}
                                 </div>
                             )}
 
+
                             <div className="field is-grouped">
                                 <div className="control">
-                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values, touched)}>Apply changes</button>
+                                    <button disabled={!(isValid && dirty)} className="button" onClick={() => applyChanges(values)}>Apply changes</button>
                                 </div>
                                 <div className="control">
                                     <button disabled={!dirty} className="button is-warning" onClick={() => setValues(settings)}>Revert changes</button>

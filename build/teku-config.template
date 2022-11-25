@@ -8,7 +8,7 @@ initial-state: "${INITIAL_STATE}"
 
 # p2p
 p2p-enabled: true
-p2p-port: 9000
+p2p-port: "${P2P_PORT}"
 p2p-peer-lower-bound: ${P2P_PEER_LOWER_BOUND}
 p2p-peer-upper-bound: ${P2P_PEER_UPPER_BOUND}
 

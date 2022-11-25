@@ -1,15 +1,1 @@
-version: '3.4'
-services:
-  teku.avado.dnp.dappnode.eth:
-    image: 'teku.avado.dnp.dappnode.eth:0.0.27'
-    build:
-      context: ./build
-      args:
-        TEKU_VERSION: 22.11.0
-    volumes:
-      - 'data:/data'
-    environment:
-      - JAVA_OPTS=-Xmx3g
-      - EXTRA_OPTS=
-volumes:
-  data: {}
+build/docker-compose.yml
