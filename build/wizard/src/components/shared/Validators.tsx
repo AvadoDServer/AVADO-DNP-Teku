@@ -108,7 +108,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
 
         const getValidatorData = async (pubKey: string): Promise<ValidatorData> => {
             const nullValue = {
-                "index": "0",
+                "index": "pending",
                 "balance": "0",
                 "status": "pending_initialized",
                 "validator": {
@@ -258,9 +258,9 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                     <tbody>
                                         {validatorData.map((validator, i) =>
                                             <tr key={validator.index}>
-                                                <td>{beaconchainUrl("/validator/" + validator.index, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
-                                                <td>{beaconchainUrl("/validator/" + validator.index, abbreviatePublicKey(validator.validator.pubkey))}</td>
-                                                <td>{beaconchainUrl("/validator/" + validator.index, validator.index)}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, validator.index)}</td>
                                                 <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
                                                 <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
                                                 {/* <td>{validator.validator.activation_epoch}</td> */}

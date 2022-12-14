@@ -1,6 +1,6 @@
 {
   "name": "teku-gnosis.avado.dnp.dappnode.eth",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "upstream": "22.12.0",
   "title": "Teku-Gnosis",
   "description": "Teku is a Java implementation of the Gnosis Beacon Chain.",
