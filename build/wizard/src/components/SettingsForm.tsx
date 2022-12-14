@@ -54,10 +54,10 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
             network: "mainnet"
         }, {
-            name: "Nethermind",
-            packagename: "avado-dnp-nethermind.public.dappnode.eth",
-            ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
-            jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
+            name: "Nethermind-goerli",
+            packagename: "nethermind-goerli.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://nethermind-goerli.my.ava.do:8551",
+            jwttokenpath: "https://nethermind-goerli.my.ava.do/jwttoken",
             network: "prater"
         }, {
             name: "Nethermind-gnosis",
