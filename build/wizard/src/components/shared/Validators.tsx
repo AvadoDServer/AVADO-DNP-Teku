@@ -48,7 +48,7 @@ export const createBeaconchainUrl = (network: Network | null | undefined, valida
         "mainnet": "https://beaconcha.in",
         "gnosis": "https://beacon.gnosischain.com"
     })[network ?? "mainnet"]
-    return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
+    return <a href={beaconChainBaseUrl + validatorPubkey} target="_blank" rel="noopener noreferrer">{text ? text : validatorPubkey}</a>;
 }
 
 const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, readonly = false }: Props) => {
