@@ -2,7 +2,6 @@
     "network": "gnosis",
     "ee_endpoint": "http://nethermind-gnosis.my.ava.do:8551",
     "execution_engine": "nethermind-gnosis.avado.dnp.dappnode.eth",
-    "jwttokenpath": "https://nethermind-gnosis.my.ava.do/jwttoken",
     "validators_graffiti": "Avado",
     "p2p_peer_lower_bound": 64,
     "p2p_peer_upper_bound": 100,
