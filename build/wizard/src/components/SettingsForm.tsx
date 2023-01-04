@@ -30,7 +30,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
         name: string
         packagename: string
         ee_endpoint: string
-        jwttokenpath: string
         network: Network
     }
 
@@ -39,31 +38,26 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             name: "Geth Mainnet",
             packagename: "ethchain-geth.public.dappnode.eth",
             ee_endpoint: "http://ethchain-geth.my.ava.do:8551",
-            jwttokenpath: "https://ethchain-geth.my.ava.do/jwttoken",
             network: "mainnet"
         }, {
             name: "Geth Goerli Testnet",
             packagename: "goerli-geth.avado.dnp.dappnode.eth",
             ee_endpoint: "http://goerli-geth.my.ava.do:8551",
-            jwttokenpath: "https://goerli-geth.my.ava.do/jwttoken",
             network: "prater"
         }, {
             name: "Nethermind",
             packagename: "avado-dnp-nethermind.public.dappnode.eth",
             ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
-            jwttokenpath: "https://avado-dnp-nethermind.my.ava.do/jwttoken",
             network: "mainnet"
         }, {
             name: "Nethermind-goerli",
             packagename: "nethermind-goerli.avado.dnp.dappnode.eth",
             ee_endpoint: "http://nethermind-goerli.my.ava.do:8551",
-            jwttokenpath: "https://nethermind-goerli.my.ava.do/jwttoken",
             network: "prater"
         }, {
             name: "Nethermind-gnosis",
             packagename: "nethermind-gnosis.avado.dnp.dappnode.eth",
             ee_endpoint: "http://nethermind-gnosis.my.ava.do:8551",
-            jwttokenpath: "https://nethermind-gnosis.my.ava.do/jwttoken",
             network: "gnosis"
         }
     ]
@@ -87,7 +81,6 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
         if (isAdminMode) console.log(values)
         const execution_engine = execution_engines.find(ee => ee.packagename === values.execution_engine) ?? execution_engines[0]
         values.ee_endpoint = execution_engine.ee_endpoint
-        values.jwttokenpath = execution_engine.jwttokenpath
 
         if (isAdminMode) console.log(values)
         applySettingsChanges(values)
