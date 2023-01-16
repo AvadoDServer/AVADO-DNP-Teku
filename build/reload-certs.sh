@@ -5,8 +5,8 @@ while true; do
     echo "Check for updated certificates"
 
     md5sumbefore=$(md5sum "/opt/teku/my.ava.do.crt")
-    curl "https://dappmanager.my.ava.do/my.ava.do.crt" --output /opt/teku/my.ava.do.crt --silent
-    curl "https://dappmanager.my.ava.do/my.ava.do.key" --output /opt/teku/my.ava.do.key --silent
+    curl "http://dappmanager.my.ava.do/my.ava.do.crt" --output /opt/teku/my.ava.do.crt --silent
+    curl "http://dappmanager.my.ava.do/my.ava.do.key" --output /opt/teku/my.ava.do.key --silent
     md5sumafter=$(md5sum "/opt/teku/my.ava.do.crt")
 
     if [ "$md5sumbefore" != "$md5sumafter" ]; then
