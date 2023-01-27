@@ -105,7 +105,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
     }
 
     return <>
-        <h2 className="title is-2 has-text-white">Settings</h2>
+        <h2 className="title is-2">Settings</h2>
         {
             !settings && (
                 <p>Loading settings...</p>
