@@ -5,33 +5,20 @@ import { Formik, Field, Form, FieldArray } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { SettingsType, supportedNetworks } from "./Types";
-import { SupervisorCtl } from "./SupervisorCtl";
+import { Network, SettingsType, supportedNetworks } from "./shared/Types";
+import defaultSettings from "./defaultsettings.json"
+import { NETWORK } from "./network";
 
 interface Props {
     settings: SettingsType | undefined,
-    writeSettingsToContainer: (settings: any) => void
-    setSettings: (settings: any) => void
-    supervisorCtl: SupervisorCtl
+    applySettingsChanges: (settings: any) => void
+    installedPackages: string[] | undefined
+    isAdminMode?: boolean
 }
 
-const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }: Props) => {
-
-    const defaultSettings: SettingsType = {
-        network: "mainnet",
-        ee_endpoint: "http://geth-kiln.my.ava.do:8551", //FIXME: ethchain wen release
-        eth1_endpoints: ["http://ethchain-geth.my.ava.do:8545", "https://mainnet.eth.cloud.ava.do"],
-        // eth1_endpoints: ["http://goerli-geth.my.ava.do:8545"],
-        validators_graffiti: "Avado",
-        p2p_peer_lower_bound: 64,
-        p2p_peer_upper_bound: 100,
-        validators_proposer_default_fee_recipient: "",
-        initial_state: "https://snapshots.ava.do/state.ssz"
-    }
+const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
 
     const settingsSchema = yup.object().shape({
-        eth1_endpoints: yup.array().label("eth1-endpoints").min(1).required('Required').of(yup.string().url().required('Required')),
-        ee_endpoint: yup.string().label("ee-endpoint").required('Required').url(),
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
         validators_proposer_default_fee_recipient: yup.string().label("validators-proposer-default-fee-recipient").matches(/^0x[a-fA-F0-9]{40}$/).required('Required'),
         p2p_peer_lower_bound: yup.number().label("p2p-peer-lower-bound").positive().integer().required('Required'),
@@ -39,25 +26,65 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
         initial_state: yup.string().label("initial-state").url().optional()
     });
 
-    React.useEffect(() => {
-        // console.log("id", packageName)
-        if (settings) {
-            if (!settings.ee_endpoint) {
-                settings.ee_endpoint = settings.eth1_endpoints[0].replace(":8545", ":8551") // intialize with first eth1-endpoint if not set yet
-                writeSettingsToContainer(settings)
-            }
-            if (!settings.validators_proposer_default_fee_recipient) {
-                settings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
-            }
-            setSettings(settings)
-            console.log("Loaded settings: ", settings);
-        }
-        else {
-            setSettings(defaultSettings)
-            writeSettingsToContainer(defaultSettings)
-        }
+    type execution_engine = {
+        name: string
+        packagename: string
+        ee_endpoint: string
+        network: Network
+    }
 
-    }, [settings]) // eslint-disable-line
+    const execution_engines: execution_engine[] = [
+        {
+            name: "Geth Mainnet",
+            packagename: "ethchain-geth.public.dappnode.eth",
+            ee_endpoint: "http://ethchain-geth.my.ava.do:8551",
+            network: "mainnet"
+        }, {
+            name: "Geth Goerli Testnet",
+            packagename: "goerli-geth.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://goerli-geth.my.ava.do:8551",
+            network: "prater"
+        }, {
+            name: "Nethermind",
+            packagename: "avado-dnp-nethermind.public.dappnode.eth",
+            ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",
+            network: "mainnet"
+        }, {
+            name: "Nethermind-goerli",
+            packagename: "nethermind-goerli.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://nethermind-goerli.my.ava.do:8551",
+            network: "prater"
+        }, {
+            name: "Nethermind-gnosis",
+            packagename: "nethermind-gnosis.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://nethermind-gnosis.my.ava.do:8551",
+            network: "gnosis"
+        }
+    ]
+
+    const [supportedExecutionEngines, setSpportedExecutionEngines] = React.useState<execution_engine[]>([]);
+    React.useEffect(() => {
+        if (installedPackages && settings) {
+            console.log(installedPackages)
+            if (installedPackages && settings) {
+                const sees = execution_engines.filter(ee => ee.network === settings.network)
+                if (isAdminMode)
+                    console.log("Execution clients", NETWORK, sees.map(ee => ee.packagename))
+                setSpportedExecutionEngines(sees)
+            }
+        }
+    }, [installedPackages, settings])
+
+    const isInstalled = (execution_engine_name: string) => installedPackages?.includes(execution_engine_name) ?? false
+
+    const applyChanges = (values: any) => {
+        if (isAdminMode) console.log(values)
+        const execution_engine = execution_engines.find(ee => ee.packagename === values.execution_engine) ?? execution_engines[0]
+        values.ee_endpoint = execution_engine.ee_endpoint
+
+        if (isAdminMode) console.log(values)
+        applySettingsChanges(values)
+    }
 
     const confirmResetDefaults = () => {
         confirmAlert({
@@ -66,7 +93,7 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                 {
                     label: 'Reset',
                     onClick: () => {
-                        applyChanges(defaultSettings)
+                        applySettingsChanges(defaultSettings)
                     }
                 },
                 {
@@ -77,17 +104,13 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
         });
     }
 
-    const applyChanges = (newSettings: any) => {
-        setSettings(newSettings)
-        writeSettingsToContainer(newSettings)
-        //wait a bit to make sure the settings file is written      
-        setTimeout(function () {
-            supervisorCtl.callMethod('supervisor.restart', [])
-        }, 5000);
-    }
-
     return <>
-        <h2 className="title is-2 has-text-white">Settings</h2>
+        <h2 className="title is-2">Settings</h2>
+        {
+            !settings && (
+                <p>Loading settings...</p>
+            )
+        }
         {settings && (
             <div>
                 <Formik
@@ -102,7 +125,7 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                             <div className="field">
                                 <label className="label" htmlFor="validators_graffiti">Validators graffiti</label>
                                 <div className="control">
-                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Nimbus" />
+                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Teku" />
                                     {errors.validators_graffiti ? (
                                         <p className="help is-danger">{errors.validators_graffiti.toString()}</p>
                                     ) : null}
@@ -139,91 +162,29 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                                 </div>
                             </div>
 
-                            <label className="field-label is-normal" htmlFor="eth1_endpoints">Execution layer (ETH1) endpoints</label>
-                            <div>
-                                <FieldArray name="eth1_endpoints">
-                                    {({ remove, push }) => (
-                                        <>
-                                            {values.eth1_endpoints?.length > 0 &&
-                                                values.eth1_endpoints.map((eth1_endpoint: any, index: number) => (
-                                                    <div key={`eth1_endpoints.${index}`}>
-                                                        <div className="field has-addons">
-                                                            <div className="field-label is-normal">
-                                                                <label className="label">Endpoint #{index + 1}</label>
-                                                            </div>
-                                                            <div className="field-body">
-                                                                <div className="field">
-                                                                    <p className="control">
-                                                                        <Field
-                                                                            // @ts-ignore
-                                                                            className={"input" + (errors?.eth1_endpoints?.at(index) ? " is-danger" : "")}
-                                                                            name={`eth1_endpoints.${index}`}
-                                                                            id={`eth1_endpoints.${index}`}
-                                                                            placeholder="ETH1 endpoint"
-                                                                            type="text"
-                                                                        />
-                                                                    </p>
-                                                                    {
-                                                                        // @ts-ignore
-                                                                        errors?.eth1_endpoints?.at(index)
-                                                                            ? (
-                                                                                <p className="help is-danger">{
-                                                                                    //@ts-ignore
-                                                                                    errors.eth1_endpoints[index]}</p>
-                                                                            ) : null
-                                                                    }
-                                                                    {/* <ErrorMessage
-                                                                        name={`eth1_endpoints.${index}.eth1_endpoint`}
-                                                                        component="div"
-                                                                        className="help is-danger"
-                                                                        type="p"
-                                                                    /> */}
-                                                                </div>
-                                                            </div>
-                                                            <div className="control">
-                                                                <button className="button" onClick={() => remove(index)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                ))}
-                                            <div className="field has-addons">
-                                                <div className="field-label is-normal">
-                                                    <label className="label"></label>
-                                                </div>
-                                                <div className="field-body">
-                                                    <div className="field">
-                                                        <p className="control">
-                                                            <button
-                                                                type="button"
-                                                                className="button"
-                                                                onClick={() => push("")}
-                                                            >
-                                                                Add extra (fallback) endpoint
-                                                            </button>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </FieldArray>
-                            </div>
-
-                            <div className="field">
-                                <label className="label" htmlFor="ee_endpoint">Execution client's engine json-rpc url. This replaces the <em>eth1-endpoints</em> after The Merge.</label>
-                                <div className="control">
-                                    <Field className={"input" + (errors?.ee_endpoint ? " is-danger" : "")} id="ee_endpoint" name="ee_endpoint" />
-                                    {errors.ee_endpoint ? (
-                                        <p className="help is-danger">{errors.ee_endpoint.toString()}</p>
-                                    ) : null}
+                            {supportedExecutionEngines && (
+                                <div className="field">
+                                    <label className="label" htmlFor="execution_engine">Execution Engine</label>
+                                    <div className="control">
+                                        {supportedExecutionEngines.map(ee =>
+                                            <label className="radio" key={ee.packagename}>
+                                                <Field type="radio" name="execution_engine" value={ee.packagename} disabled={!isInstalled(ee.packagename)} />
+                                                {ee.name}
+                                            </label>
+                                        )}
+                                        {!isInstalled(values.execution_engine) && (
+                                            <p className="help is-danger">The selected execution engine is not installed.</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* eslint-disable-next-line */}
                             <a id="validators_proposer_default_fee_recipient">
                                 <div className="field">
-                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators (after the Merge). The fee recipient can be overriden per validator by clicking the fee recipient value of any validator in the validator list above.</label>
+                                    <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators.
+                                        The fee recipient can be overriden per validator by clicking the fee recipient value of any validator on the main page.
+                                    </label>
                                     <div className="control">
                                         <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
                                             id="validators_proposer_default_fee_recipient"
@@ -236,26 +197,18 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                                 </div>
                             </a>
 
-                            <div className="field">
-                                <label className="label" htmlFor="network">Network. Only change this if you know what you are doing</label>
-                                <div className="control">
-                                    <Field name="network" as="select" className="select">
-                                        {supportedNetworks.map(n => <option key={n} value={n} label={n} />)}
-                                    </Field>
-                                    {values.network !== settings.network ? (
-                                        <p className="help is-warning">When the network is changed, Teku needs to sync to the new network. This can be a long operation. Make sure to update the ETH1 endpoints too.</p>
-                                    ) : null}
+                            {NETWORK !== "gnosis" && (
+                                <div className="field">
+                                    <label className="label" htmlFor="mev_boost">
+                                        <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")} />
+                                        Enable MEV-boost
+                                    </label>
+                                    {!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth") && (
+                                        <a href="http://my.ava.do/#/installer">Install MEV-Boost package to enable this option</a>
+                                    )}
                                 </div>
-                            </div>
+                            )}
 
-                            {/* <div>
-                                <div className="container">
-                                    <pre className="transcript">
-                                        Errors : {JSON.stringify(errors)}<br />
-                                        Touched : {JSON.stringify(touched)}
-                                    </pre>
-                                </div>
-                            </div> */}
 
                             <div className="field is-grouped">
                                 <div className="control">
@@ -268,6 +221,23 @@ const Comp = ({ writeSettingsToContainer, settings, setSettings, supervisorCtl }
                                     <div className="button is-danger" onClick={() => confirmResetDefaults()}>Reset defaults</div>
                                 </div>
                             </div>
+
+                            {isAdminMode && (
+                                <div>
+                                    <hr />
+
+
+                                    <div>
+                                        <div className="container">
+                                            <pre className="transcript">
+                                                Errors : {JSON.stringify(errors)}<br />
+                                                Touched : {JSON.stringify(touched)}<br />
+                                                Values : {JSON.stringify(values)}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </Form>
                     }}
                 </Formik>

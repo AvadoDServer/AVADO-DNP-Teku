@@ -1,21 +1,34 @@
-import React from "react";
-import NetworkBanner from "./NetworkBanner";
-import Header from "./Header";
-import Validators from "./Validators";
-import Settings from "./SettingsForm";
+import React, { useCallback } from "react";
+import { Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
+
+import NetworkBanner from "./shared/NetworkBanner";
+import Header from "./shared/Header";
+import SettingsForm from "./SettingsForm";
+import MainPage from "./MainPage";
+import AdminPage from "./AdminPage";
+import NavigationBar from "./shared/NavigationBar";
+import Welcome from "./shared/Welcome";
 
 import tekulogo from "../assets/teku.png";
-import { SettingsType } from "./Types";
-import { RestApi } from "./RestApi";
-import { SupervisorCtl } from "./SupervisorCtl";
-import { useWampSession } from "./useWampSession"
-import { DappManagerHelper } from "./DappManagerHelper";
+import defaultSettings from "./defaultsettings.json"
+import { SettingsType } from "./shared/Types";
+import { RestApi } from "./shared/RestApi";
+import { SupervisorCtl } from "./shared/SupervisorCtl";
+import { useWampSession } from "./shared/useWampSession"
+import { DappManagerHelper } from "./shared/DappManagerHelper";
+import FeeRecepientBanner from "./shared/FeeRecepientBanner";
+import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
+import CheckCheckPointSync from "./shared/CheckCheckPointSync";
+import { NETWORK } from "./network"
 
-export const packageName = "eth2validator-prater.avado.dnp.dappnode.eth";
+export const packagePrefix = NETWORK === "mainnet" ? `nimbus` : `nimbus-${NETWORK}`;
+export const packageName = `${packagePrefix}.avado.dnp.dappnode.eth`;
+export const packageUrl = `${packagePrefix}.my.ava.do`;
+
 
 const Comp = () => {
     const wampSession = useWampSession();
-    const dappManagerHelper = React.useMemo(() => new DappManagerHelper(packageName, wampSession), [wampSession]);
+    const dappManagerHelper = React.useMemo(() => wampSession ? new DappManagerHelper(packageName, wampSession) : null, [wampSession]);
 
     const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
 
@@ -24,59 +37,124 @@ const Comp = () => {
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
 
-    const restApiUrl = "http://prysm-beacon-chain-prater.my.ava.do:3500";
-    const keyManagerAPIUrl = "http://eth2validator-prater.my.ava.do:80"
+
+    const settingsPathInContainer = "/data/"
+    const settingsFileName = "settings.json"
+
+    const restApiUrl = `http://${packageUrl}:5052`;
+    const keyManagerAPIUrl = `https://${packageUrl}:5052`;
+
+    const getTitle = () => {
+        switch (NETWORK) {
+            case "gnosis": return "Avado Teku Gnosis"
+            case "prater": return "Avado Nimbus Prater Testnet"
+            default: return "Avado Nimbus";
+        }
+    }
+
+    const getWikilink = () => {
+        switch (NETWORK) {
+            case "gnosis": return "https://docs.ava.do/packages/gnosis/"
+            default: return "https://docs.ava.do/packages/teku/";
+        }
+    }
+
+    const navigate = useNavigate();
+
+    const applySettingsChanges = useCallback((newSettings: any) => {
+        setSettings(newSettings)
+        dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
+        //wait a bit to make sure the settings file is written
+        setTimeout(function () {
+            supervisorCtl?.callMethod('supervisor.restart', [])
+        }, 5000);
+    }, [dappManagerHelper, supervisorCtl])
 
     React.useEffect(() => {
-        if (wampSession && dappManagerHelper) {
-            dappManagerHelper.getFileContentFromContainer("/data/settings.json")
+        if (wampSession && dappManagerHelper && !settings) {
+            dappManagerHelper.getFileContentFromContainer(settingsPathInContainer + settingsFileName)
                 .then(
-                    (settings) => {
-                        if (settings)
-                            setSettings(JSON.parse(settings));
+                    (rawSettings) => {
+                        if (rawSettings) {
+                            const parsedSettings = JSON.parse(rawSettings)
+                            if (parsedSettings) {
+                                if (!parsedSettings.validators_proposer_default_fee_recipient) {
+                                    parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+                                }
+                                if (!parsedSettings.execution_engine) {
+                                    parsedSettings.execution_engine = "ethchain-geth.public.dappnode.eth"
+                                }
+                                setSettings(parsedSettings)
+                                console.log("Loaded settings: ", parsedSettings);
+                            } else {
+                                setSettings(defaultSettings)
+                            }
+                        } else {
+                            console.log("Missing settings file, writing default settings")
+                            applySettingsChanges(defaultSettings)
+                            // navigate("/welcome");
+                        }
                     }
                 )
         }
+    }, [wampSession, dappManagerHelper, settings, applySettingsChanges, navigate]);
+
+    const [packages, setPackages] = React.useState<string[]>();
+    React.useEffect(() => {
+        if (wampSession && dappManagerHelper) {
+            dappManagerHelper.getPackages().then((packages) => {
+                setPackages(packages)
+            })
+        }
     }, [wampSession, dappManagerHelper]);
 
-    React.useEffect(() => {
-        if (!wampSession || !dappManagerHelper) {
-            setRestApi(null);
-            return;
+    const fetchApiToken = async (dappManagerHelper: DappManagerHelper, settings: SettingsType) => {
+        const reschedule = async () => {
+            // wait 3 seconds and try again
+            await new Promise(r => setTimeout(r, 2000));
+            fetchApiToken(dappManagerHelper, settings)
         }
-        setRestApi(new RestApi(restApiUrl))
 
-        dappManagerHelper.getFileContentFromContainer(`/usr/share/nginx/wizard/auth-token.txt`).then(
+        dappManagerHelper.getFileContentFromContainer(`/data/data-${NETWORK}/validator/key-manager/validator-api-bearer`).then(
             (apiToken) => {
-                if (apiToken && apiToken !== keyManagerAPI?.apiKey) {
-                    console.log("API token:", apiToken)
+                if (apiToken) {
                     setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
+                } else {
+                    reschedule()
                 }
             }
         )
-    }, [wampSession, dappManagerHelper, settings]) // eslint-disable-line
-
-    const toggleTeku = (enable: boolean) => { // eslint-disable-line
-        const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
-        supervisorCtl?.callMethod(method, ["nimbus"]);
     }
 
     React.useEffect(() => {
-        const supervisorCtl = new SupervisorCtl('nimbus.my.ava.do', 5556, '/RPC2')
+        if (!wampSession || !settings || !dappManagerHelper) {
+            setRestApi(null);
+            return;
+        }
+        if (!restApi) {
+            setRestApi(new RestApi(restApiUrl))
+        }
+
+        if (!keyManagerAPI) {
+            fetchApiToken(dappManagerHelper, settings)
+        }
+    }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
+
+    React.useEffect(() => {
+        const supervisorCtl = new SupervisorCtl(`${packagePrefix}.my.ava.do`, 5556, '/RPC2')
+
+
         setSupervisorCtl(supervisorCtl)
         supervisorCtl.callMethod("supervisor.getState", [])
     }, [])
 
-    const writeSettingsToContainer = (settings: any) => {
-        const fileName = "settings.json"
-        const pathInContainer = "/data/"
-
-        dappManagerHelper?.writeFileToContainer(fileName, pathInContainer, JSON.stringify(settings))
-    }
+    const [searchParams] = useSearchParams()
+    const isAdminMode = searchParams.get("admin") !== null
 
     return (
-        <div className="dashboard has-text-white">
-            <NetworkBanner network={settings?.network ?? "mainnet"} />
+
+        <div className="dashboard has-text-black maincontainer">
+            <NetworkBanner network={NETWORK} />
 
             {!dappManagerHelper && (
                 <section className="hero is-danger">
@@ -86,36 +164,24 @@ const Comp = () => {
                 </section>
             )}
 
-            <section className="has-text-white">
+            <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title="Avado Prysm" tagline="Prsym validator" />
+                        <Header restApi={restApi} logo={tekulogo} title={getTitle()} tagline="Teku beacon chain and validator" wikilink={getWikilink()} />
 
-                        {restApi && keyManagerAPI && settings && (<Validators
-                            settings={settings}
-                            restAPI={restApi}
-                            keyManagerAPI={keyManagerAPI}
-                        />)}
+                        <NavigationBar />
 
-                        {supervisorCtl && (<Settings settings={settings} setSettings={setSettings} writeSettingsToContainer={writeSettingsToContainer} supervisorCtl={supervisorCtl} />)}
+                        <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
+                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Teku" />
 
-                        <h2 className="title is-2 has-text-white">Debug</h2>
-                        <div className="content">
-                            <ul>
-                                <li>
-                                    <a href={`${restApiUrl}/swagger-ui`} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
+                        <Routes>
+                            <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
+                            <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
+                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={NETWORK} packageUrl={packageUrl} />} />
+                            {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
+                        </Routes>
 
-                                </li>
-                                <li>
-                                    <a href={`http://my.ava.do/#/Packages/${packageName}/detail`} target="_blank" rel="noopener noreferrer">Avado package management page</a>
-
-                                </li>
-                            </ul>
-                            <div className="field">
-                                <button className="button" onClick={() => toggleTeku(true)}>Start Nimbus</button>
-                                <button className="button" onClick={() => toggleTeku(false)}>Stop Nimbus</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>

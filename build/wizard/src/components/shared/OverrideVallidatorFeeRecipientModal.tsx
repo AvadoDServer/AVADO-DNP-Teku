@@ -25,14 +25,14 @@ const OverrideVallidatorFeeRecipientModal = ({ network, keyManagerAPI, validator
         const beaconChainBaseUrl = ({
             "prater": "https://prater.beaconcha.in",
             "mainnet": "https://beaconcha.in",
-            "kiln": "https://beaconchain.kiln.themerge.dev/"
+            "gnosis": "https://beacon.gnosischain.com"
         })[network]
         return <a href={beaconChainBaseUrl + validatorPubkey}>{text ? text : validatorPubkey}</a>;
     }
 
     React.useEffect(() => {
         window.addEventListener('keyup', (e) => { if (e.key === "Escape") setConfiguringfeeRecipient(null) });
-    }, []) // eslint-disable-line
+    }, [setConfiguringfeeRecipient])
 
     React.useEffect(() => {
         setFeeRecipientFieldValue(configuringfeeRecipient?.feerecipient ?? "")
