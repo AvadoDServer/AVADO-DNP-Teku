@@ -7,7 +7,7 @@ COPY wizard .
 RUN yarn
 RUN rm -Rf build && yarn run build
 
-FROM statusim/nimbus-eth2:amd64-${NIMBUS_VERSION}
+FROM --platform=linux/amd64 statusim/nimbus-eth2:amd64-${NIMBUS_VERSION}
 
 USER root
 RUN apt-get -y update && apt-get -y upgrade && apt-get -y install curl supervisor nginx sudo jq vim
