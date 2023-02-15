@@ -44,8 +44,8 @@ validator-api-docs-enabled: true
 validator-api-enabled: true
 validator-api-host-allowlist: "*"
 validator-api-interface: "0.0.0.0"
-validator-api-keystore-file: /opt/teku/avado.keystore
-validator-api-keystore-password-file: /opt/teku/keystorePasswordFile
+validator-api-keystore-file: /opt/nimbus/avado.keystore
+validator-api-keystore-password-file: /opt/nimbus/keystorePasswordFile
 validator-api-port: 5052
 
 # This is set via command line arguments for now to give users more time to update

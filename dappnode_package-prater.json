@@ -2,7 +2,7 @@
   "name": "nimbus-prater.avado.dnp.dappnode.eth",
   "version": "0.0.1",
   "upstream": "v23.1.1",
-  "title": "Nimbus",
+  "title": "Nimbus Prater",
   "description": "Nimbus-eth2 is an extremely efficient consensus layer (eth2) client implementation.",
   "avatar": "/ipfs/QmPCB9g8ajvstqmGSfbM9jSHUpBK1UEg4Y4gCWVZX9c49k",
   "type": "service",
@@ -21,7 +21,7 @@
   "license": "Apache(c)",
   "dependencies": {},
   "links": {
-    "OnboardingWizard": "http://nimbus.my.ava.do",
+    "OnboardingWizard": "http://nimbus-prater.my.ava.do",
     "HomePage": "https://nimbus.guide/"
   }
 }

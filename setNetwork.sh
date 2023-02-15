@@ -14,9 +14,9 @@ esac
 for file in \
     build/docker-compose.yml \
     dappnode_package.json \
-    ./build/wizard/src/components/defaultsettings.json \
+    build/wizard/src/components/defaultsettings.json \
     build/avatar.png \
-    build/wizard/src/assets/teku.png \
+    build/wizard/src/assets/nimbus.png \
     build/wizard/src/components/network.ts
 do
     BASENAME=${file%.*}

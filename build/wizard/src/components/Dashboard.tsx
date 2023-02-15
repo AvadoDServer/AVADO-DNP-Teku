@@ -9,7 +9,7 @@ import AdminPage from "./AdminPage";
 import NavigationBar from "./shared/NavigationBar";
 import Welcome from "./shared/Welcome";
 
-import tekulogo from "../assets/teku.png";
+import nimbuslogo from "../assets/nimbus.png";
 import defaultSettings from "./defaultsettings.json"
 import { SettingsType } from "./shared/Types";
 import { RestApi } from "./shared/RestApi";
@@ -41,12 +41,12 @@ const Comp = () => {
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
 
-    const restApiUrl = `http://${packageUrl}:5052`;
+    const restApiUrl = `http://${packageUrl}:9999/rest`;
     const keyManagerAPIUrl = `https://${packageUrl}:5052`;
 
     const getTitle = () => {
         switch (NETWORK) {
-            case "gnosis": return "Avado Teku Gnosis"
+            case "gnosis": return "Avado Nimbus Gnosis"
             case "prater": return "Avado Nimbus Prater Testnet"
             default: return "Avado Nimbus";
         }
@@ -55,7 +55,7 @@ const Comp = () => {
     const getWikilink = () => {
         switch (NETWORK) {
             case "gnosis": return "https://docs.ava.do/packages/gnosis/"
-            default: return "https://docs.ava.do/packages/teku/";
+            default: return "https://docs.ava.do/packages/nimbus/";
         }
     }
 
@@ -115,7 +115,7 @@ const Comp = () => {
             fetchApiToken(dappManagerHelper, settings)
         }
 
-        dappManagerHelper.getFileContentFromContainer(`/data/data-${NETWORK}/validator/key-manager/validator-api-bearer`).then(
+        dappManagerHelper.getFileContentFromContainer(`/data/data-${NETWORK}/keymanagertoken`).then(
             (apiToken) => {
                 if (apiToken) {
                     setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
@@ -167,16 +167,16 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={tekulogo} title={getTitle()} tagline="Teku beacon chain and validator" wikilink={getWikilink()} />
+                        <Header restApi={restApi} logo={nimbuslogo} title={getTitle()} tagline="Nimbus beacon chain and validator" wikilink={getWikilink()} />
 
                         <NavigationBar />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
-                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Teku" />
+                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Nimbus" />
 
                         <Routes>
                             <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
-                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={tekulogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={nimbuslogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={NETWORK} packageUrl={packageUrl} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}

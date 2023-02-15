@@ -28,7 +28,7 @@ enum Health { ready, syncing, not_ready }
 const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
-    const [peerCount, setPeerCount] = React.useState<Number>(0);
+    const [peerCount, setPeerCount] = React.useState<number>(0);
     const [peers, setPeers] = React.useState<[Peer]>();
     const [version, setVersion] = React.useState<String | null>(null);
     const [health, setHealth] = React.useState<Health>(Health.not_ready);
@@ -37,7 +37,7 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
         const updateHealth = async () => {
             if (!restApi)
                 return;
-            restApi.get("/eth/v1/node/health", res => {
+            restApi.get("/eth/v1/node/health", res => {      
                 if (res.status === 200) {
                     setHealth(Health.ready)
                 } else if (res.status === 206) {
@@ -79,8 +79,9 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
             if (health !== Health.not_ready && restApi) {
                 callAPI("/eth/v1/node/version", res => {
                     if (res.status === 200) {
-                        const rawversion = res.data.data.version
-                        const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
+                        console.log(res.data)
+                        const rawversion = res.data.version
+                        // const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
                         setVersion(version);
                     }
                 })
@@ -132,7 +133,7 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
                                     <span className="tag is-danger">{error}<FontAwesomeIcon className="fa-spin" icon={faSpinner} /></span>
                                 ) : (syncData && peerCount &&
                                     <>
-                                        status: {(syncData.is_syncing === false && peerCount > 0
+                                        status: {(syncData.is_syncing === false && (peerCount > 0)
                                         ) ? (<span className="tag is-success">in sync</span>
                                         ) : (<><span className="tag is-warning">syncing {getSyncPercentage(syncData)}</span>, sync distance: {syncData.sync_distance}</>
                                         )}

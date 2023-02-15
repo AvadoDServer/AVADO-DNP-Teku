@@ -76,6 +76,35 @@ const get = (url, res, next) => {
         )
 }
 
+server.get('/rest/*', (req, res, next) => {
+    const path = req.params["*"]
+    const url = `http://localhost:5052/${path}`
+    
+    getLocal(url, res, next)
+});
+
+const getLocal = (url, res, next) => {
+    axios.get(url,
+        {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        }).then(
+            response => {
+                // console.dir(response.data.data)
+                const data = response.data
+                res.send(200, data)
+                next();
+            }
+        ).catch(
+            (error) => {
+                console.log("Error contacting ", url, error);
+                res.send(200, "failed")
+                next();
+            }
+        )
+}
+
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
 });

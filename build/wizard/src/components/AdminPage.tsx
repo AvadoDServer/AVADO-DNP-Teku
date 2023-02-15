@@ -12,7 +12,7 @@ interface Props {
 const Comp = ({ restApi, dappManagerHelper, supervisorCtl }: Props) => {
 
 
-    const toggleTeku = (enable: boolean) => {
+    const toggleNimbus = (enable: boolean) => {
         const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
         supervisorCtl?.callMethod(method, ["nimbus"]);
     }
@@ -35,8 +35,8 @@ const Comp = ({ restApi, dappManagerHelper, supervisorCtl }: Props) => {
                     )}
                 </ul>
                 {supervisorCtl && <div className="field">
-                    <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
-                    <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
+                    <button className="button" onClick={() => toggleNimbus(true)}>Start Nimbus</button>
+                    <button className="button" onClick={() => toggleNimbus(false)}>Stop Nimbus</button>
                 </div>
                 }
 

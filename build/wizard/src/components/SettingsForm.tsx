@@ -125,7 +125,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             <div className="field">
                                 <label className="label" htmlFor="validators_graffiti">Validators graffiti</label>
                                 <div className="control">
-                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Teku" />
+                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Nimbus" />
                                     {errors.validators_graffiti ? (
                                         <p className="help is-danger">{errors.validators_graffiti.toString()}</p>
                                     ) : null}
@@ -133,7 +133,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_lower_bound">Lower bound on the target number of peers. Teku will actively seek new peers if the number of peers falls below this value. The default is {defaultSettings.p2p_peer_lower_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_lower_bound">Lower bound on the target number of peers. Nimbus will actively seek new peers if the number of peers falls below this value. The default is {defaultSettings.p2p_peer_lower_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_lower_bound ? " is-danger" : "")} id="p2p_peer_lower_bound" name="p2p_peer_lower_bound" />
                                     {errors.p2p_peer_lower_bound ? (
@@ -143,7 +143,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. Teku will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings.p2p_peer_upper_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. Nimbus will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings.p2p_peer_upper_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
@@ -153,7 +153,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="initial_state">Initial State: Start Teku from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
+                                <label className="label" htmlFor="initial_state">Initial State: Start Nimbus from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (
