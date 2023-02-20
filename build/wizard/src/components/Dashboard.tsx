@@ -108,24 +108,6 @@ const Comp = () => {
         }
     }, [wampSession, dappManagerHelper]);
 
-    const fetchApiToken = async (dappManagerHelper: DappManagerHelper, settings: SettingsType) => {
-        const reschedule = async () => {
-            // wait 3 seconds and try again
-            await new Promise(r => setTimeout(r, 2000));
-            fetchApiToken(dappManagerHelper, settings)
-        }
-
-        dappManagerHelper.getFileContentFromContainer(`/data/data-${NETWORK}/keymanagertoken`).then(
-            (apiToken) => {
-                if (apiToken) {
-                    setKeyManagerAPI(new RestApi(keyManagerAPIUrl, apiToken))
-                } else {
-                    reschedule()
-                }
-            }
-        )
-    }
-
     React.useEffect(() => {
         if (!wampSession || !settings || !dappManagerHelper) {
             setRestApi(null);
@@ -136,7 +118,7 @@ const Comp = () => {
         }
 
         if (!keyManagerAPI) {
-            fetchApiToken(dappManagerHelper, settings)
+            setKeyManagerAPI(new RestApi(keyManagerAPIUrl))
         }
     }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
 
@@ -175,7 +157,7 @@ const Comp = () => {
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Nimbus" />
 
                         <Routes>
-                            <Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />
+                            {restApi && (<Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />)}
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={nimbuslogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={NETWORK} packageUrl={packageUrl} />} />

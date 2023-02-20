@@ -5,7 +5,7 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 
 interface Props {
     restApi: RestApi| undefined | null
-    keyManagerAPI: RestApi| undefined
+    keyManagerAPI: RestApi| undefined| null
     settings: SettingsType| undefined
     dappManagerHelper: DappManagerHelper | null
 }

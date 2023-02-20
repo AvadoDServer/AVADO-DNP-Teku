@@ -11,7 +11,7 @@ export class RestApi {
     }
 
     async get<R>(path: string, callback: (res: any) => R, errorHandler: (e: any) => R) {
-        console.log("get", path)
+        // console.log("get", path)
         try {
             return await axios.get(`${this.baseUrl}${path}`, {
                 headers: {
@@ -19,7 +19,7 @@ export class RestApi {
                     ...(this.apiKey && { Authorization: `Bearer ${this.apiKey}` })
                 }
             }).then(res => {
-                console.log(res)
+                // console.log(res)
                 return callback(res)
             });
         } catch (e: any) {

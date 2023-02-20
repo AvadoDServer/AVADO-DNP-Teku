@@ -69,6 +69,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
         keyManagerAPI.get("/eth/v1/keystores",
             (res) => {
                 if (res.status === 200) {
+                    // console.log(res.data)
                     setValidators(res.data.data.map((d: any) => d.validating_pubkey))
                 } else {
                     console.log("error updating validators", res)
@@ -123,8 +124,9 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                 }
             };
             return await restAPI.get(`/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
-                if (res.status === 200) {
-                    // console.log(res.data.data)
+                // console.dir(res);
+                if (res.status === 200 && res.data != "failed" ) {
+                    console.log(res.data.data)
                     return (res.data.data as ValidatorData);
                 } else
                     return nullValue

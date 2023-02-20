@@ -68,16 +68,12 @@ exec /home/user/nimbus-eth2/build/nimbus_beacon_node \
   --jwt-secret="${JWT_SECRET}" \
   --web3-url="${EE_ENDPOINT}" \
   --keymanager \
-  --keymanager-address="0.0.0.0" \
-  --keymanager-allow-origin="*" \
   ${INITIAL_STATE_FILE:+--finalized-checkpoint-state="${INITIAL_STATE_FILE}"} \
   --keymanager-token-file="${KEYMANAGER_TOKEN}" \
   --tcp-port=${P2P_PORT} \
   --udp-port=${P2P_PORT} \
   --rest \
   --rest-port=5052 \
-  --rest-address="0.0.0.0" \
-  --rest-allow-origin="*" \
   --network=${NETWORK} \
   --data-dir="${DATA_PATH}" \
   --hard-max-peers="${P2P_PEER_UPPER_BOUND}" \

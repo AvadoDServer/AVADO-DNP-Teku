@@ -13,11 +13,7 @@ const server = restify.createServer({
 
 const cors = corsMiddleware({
     preflightMaxAge: 5, //Optional
-    origins: [
-        /^http:\/\/localhost(:[\d]+)?$/,
-        "http://*.dappnode.eth",
-        "http://*.my.ava.do"
-    ]
+    origins: ['*']
 });
 
 server.pre(cors.preflight);
@@ -82,64 +78,39 @@ server.get('/rest/*', (req, res, next) => {
     const path = req.params["*"]
     const url = `http://localhost:5052/${path}`
 
-    axios({
-        method: req.method,
-        url: url,
-        data: req.body,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-    }).then(function (response) {
-        const data = response.data
-        res.send(200, data)
-        next();
-    }).catch(function (error) {
-        console.log("Error contacting ", url, error);
-        res.send(200, "failed")
-        next();
-    });
+    getLocal(url, res, next)
 });
 
 server.get('/keymanager/*', (req, res, next) => {
     const path = req.params["*"]
     const url = `http://localhost:5052/${path}`
-    processKeyMangerRequest(url, req, res, next);1
+        console.log("keymanager", url)
+//    getLocal(url, res, next)
 });
 
 
 server.post('/keymanager/*', (req, res, next) => {
+    console.log("POST");
     const path = req.params["*"]
     const url = `http://localhost:5052/${path}`
-    processKeyMangerRequest(url, req, res, next);
-});
-
-server.del('/keymanager/*', (req, res, next) => {
-    const path = req.params["*"]
-    const url = `http://localhost:5052/${path}`
-    processKeyMangerRequest(url, req, res, next);
-});
-
-const processKeyMangerRequest = (url, req, res, next) => {
     const keymanagertoken = getKeyManagerToken();
-    // console.log(req.body, url, keymanagertoken);
-    axios({
-        method: req.method,
-        url: url,
-        data: req.body,
+    console.log(req.body, url, keymanagertoken);
+    axios.post(url, req.body, {
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${keymanagertoken}`
+            Authorization: `Bearer ${keymanagertoken}`,
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "X-Requested-With",
         },
-    }).then(function (response) {
-        const data = response.data
-        res.send(200, data)
-        next();
-    }).catch(function (error) {
-        console.log("Error contacting ", url, error);
-        res.send(200, "failed")
-        next();
-    });
-  }
+    })
+        .then(function (response) {
+            console.log(response);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+    return next();
+});
 
 const getKeyManagerToken = () => {
     try {
@@ -150,6 +121,34 @@ const getKeyManagerToken = () => {
     }
 }
 
+
+const getLocal = (url, res, next) => {
+    const keymanagertoken = getKeyManagerToken();
+    axios.get(url,
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${keymanagertoken}`,
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "X-Requested-With",
+            },
+        }).then(
+            response => {
+                // console.dir(response.data)
+                const data = response.data
+                res.send(200, data)
+                next();
+            }
+        ).catch(
+            (error) => {
+                console.log("Error contacting ", url, error);
+                res.send(200, "failed")
+                next();
+            }
+        )
+}
+
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
+    console.log("token: ", getKeyManagerToken());
 });
