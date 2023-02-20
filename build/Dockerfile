@@ -10,7 +10,7 @@ RUN rm -Rf build && yarn run build
 # build monitor
 WORKDIR /usr/src/monitor
 COPY monitor .
-RUN yarn
+RUN rm -Rf build && yarn run build
 
 FROM --platform=linux/amd64 statusim/nimbus-eth2:amd64-${NIMBUS_VERSION}
 
@@ -32,7 +32,7 @@ RUN mkdir /data  && chown user /data
 VOLUME /data
 
 COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
-COPY --from=builder /usr/src/monitor /usr/local/monitor
+COPY --from=builder /usr/src/monitor/build /usr/local/monitor
 
 COPY startNimbus.sh /opt/nimbus/
 COPY reload-certs.sh /opt/nimbus/reload-certs.sh
