@@ -79,7 +79,7 @@ const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
             if (health !== Health.not_ready && restApi) {
                 callAPI("/eth/v1/node/version", res => {
                     if (res.status === 200) {
-                        console.log(res.data)
+                        // console.log(res.data)
                         const rawversion = res.data.version
                         // const version = rawversion.replace(/.*\/(v[\d.]+).*/, "$1")
                         setVersion(version);

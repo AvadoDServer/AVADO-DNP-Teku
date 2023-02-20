@@ -1,6 +1,8 @@
 const restify = require("restify");
 const corsMiddleware = require("restify-cors-middleware2");
 const axios = require('axios').default;
+const fs = require('fs');
+const { server_config } = require('./config.js');
 
 console.log("Monitor starting...");
 
@@ -79,19 +81,59 @@ const get = (url, res, next) => {
 server.get('/rest/*', (req, res, next) => {
     const path = req.params["*"]
     const url = `http://localhost:5052/${path}`
-    
+
     getLocal(url, res, next)
 });
 
+server.get('/keymanager/*', (req, res, next) => {
+    const path = req.params["*"]
+    const url = `http://localhost:5052/${path}`
+    getLocal(url, res, next)
+});
+
+
+server.post('/keymanager/*', (req, res, next) => {
+    console.log("POST");
+    const path = req.params["*"]
+    const url = `http://localhost:5052/${path}`
+    const keymanagertoken = getKeyManagerToken();
+    console.log(req.body, url, keymanagertoken);
+    axios.post(url, req.body, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${keymanagertoken}`
+        },
+    })
+        .then(function (response) {
+            console.log(response);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+    return next();
+});
+
+const getKeyManagerToken = () => {
+    try {
+        const keymanagertoken = fs.readFileSync(server_config.keymanager_token_path, 'utf8');
+        return keymanagertoken.trim();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+
 const getLocal = (url, res, next) => {
+    const keymanagertoken = getKeyManagerToken();
     axios.get(url,
         {
             headers: {
                 'Content-Type': 'application/json',
+                Authorization: `Bearer ${keymanagertoken}`
             },
         }).then(
             response => {
-                // console.dir(response.data.data)
+                // console.dir(response.data)
                 const data = response.data
                 res.send(200, data)
                 next();
@@ -107,4 +149,5 @@ const getLocal = (url, res, next) => {
 
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
+    console.log("token: ", getKeyManagerToken());
 });

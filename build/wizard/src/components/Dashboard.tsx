@@ -42,7 +42,7 @@ const Comp = () => {
     const settingsFileName = "settings.json"
 
     const restApiUrl = `http://${packageUrl}:9999/rest`;
-    const keyManagerAPIUrl = `https://${packageUrl}:5052`;
+    const keyManagerAPIUrl = `http://${packageUrl}:9999/keymanager`;
 
     const getTitle = () => {
         switch (NETWORK) {
