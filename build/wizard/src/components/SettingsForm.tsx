@@ -7,16 +7,17 @@ import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import { Network, SettingsType, supportedNetworks } from "./shared/Types";
 import defaultSettings from "./defaultsettings.json"
-import { NETWORK } from "./network";
+import server_config from "../server_config.json"
 
 interface Props {
+    name : string
     settings: SettingsType | undefined,
     applySettingsChanges: (settings: any) => void
     installedPackages: string[] | undefined
     isAdminMode?: boolean
 }
 
-const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
+const Comp = ({ name, settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
 
     const settingsSchema = yup.object().shape({
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
@@ -69,7 +70,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
             if (installedPackages && settings) {
                 const sees = execution_engines.filter(ee => ee.network === settings.network)
                 if (isAdminMode)
-                    console.log("Execution clients", NETWORK, sees.map(ee => ee.packagename))
+                    console.log("Execution clients", server_config.network, sees.map(ee => ee.packagename))
                 setSpportedExecutionEngines(sees)
             }
         }
@@ -125,7 +126,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             <div className="field">
                                 <label className="label" htmlFor="validators_graffiti">Validators graffiti</label>
                                 <div className="control">
-                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder="Avado Nimbus" />
+                                    <Field className={"input" + (errors?.validators_graffiti ? " is-danger" : "")} id="validators_graffiti" name="validators_graffiti" placeholder={`Avado ${name}`} />
                                     {errors.validators_graffiti ? (
                                         <p className="help is-danger">{errors.validators_graffiti.toString()}</p>
                                     ) : null}
@@ -133,17 +134,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_lower_bound">Lower bound on the target number of peers. Nimbus will actively seek new peers if the number of peers falls below this value. The default is {defaultSettings.p2p_peer_lower_bound}</label>
-                                <div className="control">
-                                    <Field className={"input" + (errors?.p2p_peer_lower_bound ? " is-danger" : "")} id="p2p_peer_lower_bound" name="p2p_peer_lower_bound" />
-                                    {errors.p2p_peer_lower_bound ? (
-                                        <p className="help is-danger">{errors.p2p_peer_lower_bound.toString()}</p>
-                                    ) : null}
-                                </div>
-                            </div>
-
-                            <div className="field">
-                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. Nimbus will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings.p2p_peer_upper_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. `${name}` will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings.p2p_peer_upper_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
@@ -153,7 +144,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="initial_state">Initial State: Start Nimbus from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
+                                <label className="label" htmlFor="initial_state">Initial State: Start `${name}` from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (
@@ -183,7 +174,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                             <a id="validators_proposer_default_fee_recipient">
                                 <div className="field">
                                     <label className="label" htmlFor="validators_proposer_default_fee_recipient">Default transaction fee recipient for the validators.
-                                        The fee recipient can be overriden per validator by clicking the fee recipient value of any validator on the main page.
+                                        The fee recipient can be overridden per validator by clicking the fee recipient value of any validator on the main page.
                                     </label>
                                     <div className="control">
                                         <Field className={"input" + (errors?.validators_proposer_default_fee_recipient ? " is-danger" : "")}
@@ -197,7 +188,7 @@ const Comp = ({ settings, applySettingsChanges, installedPackages, isAdminMode =
                                 </div>
                             </a>
 
-                            {NETWORK !== "gnosis" && (
+                            {server_config.network !== "gnosis" && (
                                 <div className="field">
                                     <label className="label" htmlFor="mev_boost">
                                         <Field type="checkbox" id="mev_boost" name="mev_boost" disabled={!installedPackages?.includes("mevboost.avado.dnp.dappnode.eth")} />

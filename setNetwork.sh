@@ -11,13 +11,15 @@ case ${NETWORK} in
     ;;
 esac
 
+# sed -i -- "s/const network = \".*\"/const network =  \"${NETWORK}\"/" build/wizard/src/server_config.ts 
+yq -o=json eval --inplace '.network = "'${NETWORK}'"' build/wizard/src/server_config.json
+
 for file in \
     build/docker-compose.yml \
     dappnode_package.json \
     build/wizard/src/components/defaultsettings.json \
     build/avatar.png \
-    build/wizard/src/assets/nimbus.png \
-    build/wizard/src/components/network.ts
+    build/wizard/src/assets/nimbus.png
 do
     BASENAME=${file%.*}
     EXT=${file##*.}

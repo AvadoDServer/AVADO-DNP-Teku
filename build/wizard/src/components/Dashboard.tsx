@@ -9,7 +9,7 @@ import AdminPage from "./AdminPage";
 import NavigationBar from "./shared/NavigationBar";
 import Welcome from "./shared/Welcome";
 
-import nimbuslogo from "../assets/nimbus.png";
+import logo from "../assets/nimbus.png";
 import defaultSettings from "./defaultsettings.json"
 import { SettingsType } from "./shared/Types";
 import { RestApi } from "./shared/RestApi";
@@ -19,9 +19,10 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
 import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 import CheckCheckPointSync from "./shared/CheckCheckPointSync";
-import { NETWORK } from "./network"
 
-export const packagePrefix = NETWORK === "mainnet" ? `nimbus` : `nimbus-${NETWORK}`;
+import server_config from "../server_config.json";
+
+export const packagePrefix = server_config.network === "mainnet" ? server_config.name : `${server_config.name}-${server_config.network}`;
 export const packageName = `${packagePrefix}.avado.dnp.dappnode.eth`;
 export const packageUrl = `${packagePrefix}.my.ava.do`;
 
@@ -42,20 +43,24 @@ const Comp = () => {
     const settingsFileName = "settings.json"
 
     const restApiUrl = `http://${packageUrl}:9999/rest`;
-    const keyManagerAPIUrl = `http://${packageUrl}:9999/keymanager`;
+    const keyManagerAPIUrl = `http://${packageUrl}:9999/rest`;
+
+    const capitalizeFirstLetter = (name:string) => name.charAt(0).toUpperCase() + name.slice(1);
 
     const getTitle = () => {
-        switch (NETWORK) {
-            case "gnosis": return "Avado Nimbus Gnosis"
-            case "prater": return "Avado Nimbus Prater Testnet"
-            default: return "Avado Nimbus";
+        const clientName = capitalizeFirstLetter(server_config.name)
+        const networkName = capitalizeFirstLetter(server_config.network)
+        switch (server_config.network) {
+            case "gnosis": return `Avado ${clientName} ${networkName}`
+            case "prater": return `Avado ${clientName} ${networkName} Testnet`
+            default: return `Avado ${clientName}`;
         }
     }
 
     const getWikilink = () => {
-        switch (NETWORK) {
+        switch (server_config.network) {
             case "gnosis": return "https://docs.ava.do/packages/gnosis/"
-            default: return "https://docs.ava.do/packages/nimbus/";
+            default: return `https://docs.ava.do/packages/${server_config.name}/`;
         }
     }
 
@@ -136,7 +141,7 @@ const Comp = () => {
     return (
 
         <div className="dashboard has-text-black maincontainer">
-            <NetworkBanner network={NETWORK} />
+            <NetworkBanner network={server_config.network} />
 
             {!dappManagerHelper && (
                 <section className="hero is-danger">
@@ -149,18 +154,18 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={nimbuslogo} title={getTitle()} tagline="Nimbus beacon chain and validator" wikilink={getWikilink()} />
+                        <Header restApi={restApi} logo={logo} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
 
                         <NavigationBar />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
-                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client="Nimbus" />
+                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
 
                         <Routes>
                             {restApi && (<Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />)}
-                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={nimbuslogo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
-                            <Route path="/settings" element={<SettingsForm settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
-                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={NETWORK} packageUrl={packageUrl} />} />
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={logo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
+                            <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
+                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={server_config.network} packageUrl={packageUrl} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 

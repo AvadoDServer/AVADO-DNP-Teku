@@ -1,11 +1,9 @@
 import * as restify from "restify";
 import corsMiddleware from "restify-cors-middleware2"
-// const axios = require('axios').default;
 import axios, { Method } from "axios";
 import * as fs from 'fs';
 
-import {server_config} from "./config";
-
+import server_config from "../wizard/src/server_config.json";
 
 console.log("Monitor starting...");
 
@@ -156,8 +154,7 @@ const processKeyMangerRequest = (url: string, req: restify.Request, res: restify
 
 const getKeyManagerToken = () => {
     try {
-        const keymanagertoken = fs.readFileSync(server_config.keymanager_token_path, 'utf8');
-        return keymanagertoken.trim();
+        return fs.readFileSync(`/data/data-${server_config.network}/keymanagertoken`, 'utf8').trim();
     } catch (err) {
         console.error(err);
     }
