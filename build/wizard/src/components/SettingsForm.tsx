@@ -6,18 +6,18 @@ import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import { Network, SettingsType, supportedNetworks } from "./shared/Types";
-import defaultSettings from "./defaultsettings.json"
 import server_config from "../server_config.json"
 
 interface Props {
     name : string
     settings: SettingsType | undefined,
+    defaultSettings: SettingsType | undefined,
     applySettingsChanges: (settings: any) => void
     installedPackages: string[] | undefined
     isAdminMode?: boolean
 }
 
-const Comp = ({ name, settings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
+const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installedPackages, isAdminMode = false }: Props) => {
 
     const settingsSchema = yup.object().shape({
         validators_graffiti: yup.string().label("validators-graffiti").max(32, 'The graffiti can be maximum 32 characters long').optional(),
@@ -134,7 +134,7 @@ const Comp = ({ name, settings, applySettingsChanges, installedPackages, isAdmin
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. `${name}` will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings.p2p_peer_upper_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. `${name}` will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings?.p2p_peer_upper_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (

@@ -32,11 +32,11 @@ RUN mkdir /data  && chown user /data
 VOLUME /data
 
 COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
-COPY --from=builder /usr/src/monitor/build /usr/local/monitor
+COPY --from=builder /usr/src/monitor/ /usr/local/monitor
 
 COPY startNimbus.sh /opt/nimbus/
 COPY reload-certs.sh /opt/nimbus/reload-certs.sh
-COPY wizard/src/components/defaultsettings.json /opt/nimbus
+COPY monitor/settings/defaultsettings.json /opt/nimbus
 RUN chmod a+x /opt/nimbus/startNimbus.sh /opt/nimbus/reload-certs.sh
 COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/

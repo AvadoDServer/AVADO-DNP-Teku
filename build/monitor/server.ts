@@ -3,7 +3,8 @@ import corsMiddleware from "restify-cors-middleware2"
 import axios, { Method } from "axios";
 import * as fs from 'fs';
 
-import server_config from "../wizard/src/server_config.json";
+import {server_config} from "./server_config";
+import defaultsettings from "./settings/defaultsettings.json";
 
 console.log("Monitor starting...");
 
@@ -25,6 +26,7 @@ server.pre(cors.preflight);
 server.use(cors.actual);
 server.use(restify.plugins.bodyParser());
 
+const settings_file_path = '/data/settings.json';
 
 server.get("/ping", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, "pong");
@@ -39,6 +41,34 @@ server.get("/network", (req: restify.Request, res: restify.Response, next: resti
 server.get("/name", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, server_config.name);
     next()
+});
+
+server.get("/settings", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    try {
+        const settings = JSON.parse(fs.readFileSync(settings_file_path, 'utf8'))
+        res.send(200, settings ? JSON.stringify(settings) : defaultsettings );
+        next()
+    } catch (err) {
+        res.send(200, defaultsettings);
+        next();
+    }
+});
+
+server.post("/settings", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+        const settings = JSON.stringify(req.body, null, 4);
+        fs.writeFileSync(settings_file_path, settings, 'utf8');
+        res.send(200, `Saved settings`);
+        return next();
+});
+
+server.get("/defaultsettings", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    try {
+        res.send(200, defaultsettings);
+        next()
+    } catch (err) {
+        res.send(200, "failed")
+        next();
+    }
 });
 
 // checkpoints APIs
@@ -76,14 +106,13 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
         }).then(
             (response: any) => {
                 // console.dir(response.data.data)
-                const data = response.data.data
-                res.send(200, data)
+                res.send(response.status, response.data.data)
                 next();
             }
         ).catch(
             (error: any) => {
                 console.log("Error contacting ", url, error);
-                res.send(200, "failed")
+                res.send(500, "failed")
                 next();
             }
         )
@@ -91,7 +120,7 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
 
 server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `http://localhost:5052/${path}`
+    const url = `${server_config.rest_url}/${path}`
 
     axios.request({
         method: req.method as Method,
@@ -101,32 +130,31 @@ server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restif
             'Content-Type': 'application/json'
         },
     }).then((response: any) => {
-        const data = response.data
-        res.send(200, data)
+        res.send(response.status, response.data)
         next();
     }).catch((error: any) => {
         console.log("Error contacting ", url, error);
-        res.send(200, "failed")
+        res.send(500, "failed")
         next();
     });
 });
 
 server.get('/keymanager/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `http://localhost:5052/${path}`
+    const url = `${server_config.keymanager_url}/${path}`
     processKeyMangerRequest(url, req, res, next); 1
 });
 
 
 server.post('/keymanager/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `http://localhost:5052/${path}`
+    const url = `${server_config.keymanager_url}/${path}`
     processKeyMangerRequest(url, req, res, next);
 });
 
 server.del('/keymanager/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `http://localhost:5052/${path}`
+    const url = `${server_config.keymanager_url}/${path}`
     processKeyMangerRequest(url, req, res, next);
 });
 
@@ -143,18 +171,18 @@ const processKeyMangerRequest = (url: string, req: restify.Request, res: restify
         },
     }).then((response: any) => {
         const data = response.data
-        res.send(200, data)
+        res.send(response.status, data)
         next();
     }).catch((error: any) => {
         console.log("Error contacting ", url, error);
-        res.send(200, "failed")
+        res.send(500, "failed")
         next();
     });
 }
 
 const getKeyManagerToken = () => {
     try {
-        return fs.readFileSync(`/data/data-${server_config.network}/keymanagertoken`, 'utf8').trim();
+        return fs.readFileSync(server_config.keymanager_token_path, 'utf8').trim();
     } catch (err) {
         console.error(err);
     }

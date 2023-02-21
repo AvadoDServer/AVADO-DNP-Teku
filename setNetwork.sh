@@ -17,7 +17,7 @@ yq -o=json eval --inplace '.network = "'${NETWORK}'"' build/wizard/src/server_co
 for file in \
     build/docker-compose.yml \
     dappnode_package.json \
-    build/wizard/src/components/defaultsettings.json \
+    build/monitor/settings/defaultsettings.json \
     build/avatar.png \
     build/wizard/src/assets/nimbus.png
 do

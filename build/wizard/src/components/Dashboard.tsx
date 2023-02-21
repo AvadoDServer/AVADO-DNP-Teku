@@ -10,7 +10,6 @@ import NavigationBar from "./shared/NavigationBar";
 import Welcome from "./shared/Welcome";
 
 import logo from "../assets/nimbus.png";
-import defaultSettings from "./defaultsettings.json"
 import { SettingsType } from "./shared/Types";
 import { RestApi } from "./shared/RestApi";
 import { SupervisorCtl } from "./shared/SupervisorCtl";
@@ -34,16 +33,19 @@ const Comp = () => {
     const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
 
     const [settings, setSettings] = React.useState<SettingsType>();
+    const [defaultSettings, setDefaultSettings] = React.useState<SettingsType>();
 
+    const [api, setApi] = React.useState<RestApi | null>();
     const [restApi, setRestApi] = React.useState<RestApi | null>();
-    const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi>();
+    const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi|null>();
 
 
     const settingsPathInContainer = "/data/"
     const settingsFileName = "settings.json"
 
-    const restApiUrl = `http://${packageUrl}:9999/rest`;
-    const keyManagerAPIUrl = `http://${packageUrl}:9999/rest`;
+    const apiUrl = `http://${packageUrl}:9999`;
+    const restApiUrl = `${apiUrl}/rest`;
+    const keyManagerAPIUrl = `${apiUrl}/keymanager`;
 
     const capitalizeFirstLetter = (name:string) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -68,41 +70,50 @@ const Comp = () => {
 
     const applySettingsChanges = useCallback((newSettings: any) => {
         setSettings(newSettings)
-        dappManagerHelper?.writeFileToContainer(settingsFileName, settingsPathInContainer, JSON.stringify(newSettings))
-        //wait a bit to make sure the settings file is written
-        setTimeout(function () {
-            supervisorCtl?.callMethod('supervisor.restart', [])
-        }, 5000);
-    }, [dappManagerHelper, supervisorCtl])
+        if (api) {
+            api.post("/settings", newSettings, (res) => {
+                supervisorCtl?.callMethod('supervisor.restart', [])
+            }, (err) => {
+                //ERROR TODO
+            });
+        }
+    }, [restApi, supervisorCtl])
 
     React.useEffect(() => {
-        if (wampSession && dappManagerHelper && !settings) {
-            dappManagerHelper.getFileContentFromContainer(settingsPathInContainer + settingsFileName)
-                .then(
-                    (rawSettings) => {
-                        if (rawSettings) {
-                            const parsedSettings = JSON.parse(rawSettings)
-                            if (parsedSettings) {
-                                if (!parsedSettings.validators_proposer_default_fee_recipient) {
-                                    parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
-                                }
-                                if (!parsedSettings.execution_engine) {
-                                    parsedSettings.execution_engine = "ethchain-geth.public.dappnode.eth"
-                                }
-                                setSettings(parsedSettings)
-                                console.log("Loaded settings: ", parsedSettings);
-                            } else {
-                                setSettings(defaultSettings)
-                            }
-                        } else {
-                            console.log("Missing settings file, writing default settings")
-                            applySettingsChanges(defaultSettings)
-                            // navigate("/welcome");
-                        }
-                    }
-                )
+        console.log("get default settings")
+        if (api) {
+            console.log("get default settings2")
+            api.get("/defaultsettings", (res) => {                
+                console.log("default", res.data)
+                setDefaultSettings(res.data)
+            }, (err) => {
+                console.log("default", err)
+            });
         }
-    }, [wampSession, dappManagerHelper, settings, applySettingsChanges, navigate]);
+    }, [restApi])
+
+    React.useEffect(() => {
+        if (wampSession && dappManagerHelper && !settings && api) {
+            api.get("/settings", (res) => {
+                console.log("settings", res.data)
+                const parsedSettings = JSON.parse(res.data)
+                if (parsedSettings) {
+                    if (!parsedSettings.validators_proposer_default_fee_recipient) {
+                        parsedSettings.validators_proposer_default_fee_recipient = "" // force check on intial load after update
+                    }
+                    if (!parsedSettings.execution_engine) {
+                        parsedSettings.execution_engine = "ethchain-geth.public.dappnode.eth"
+                    }
+                    setSettings(parsedSettings)
+                    console.log("Loaded settings: ", parsedSettings);
+                } else {
+                    //ERROR TODO
+                }
+            }, (err) => {
+                //ERROR TODO
+            } )
+        }
+    }, [wampSession, dappManagerHelper, settings, restApi, applySettingsChanges, navigate]);
 
     const [packages, setPackages] = React.useState<string[]>();
     React.useEffect(() => {
@@ -114,10 +125,10 @@ const Comp = () => {
     }, [wampSession, dappManagerHelper]);
 
     React.useEffect(() => {
-        if (!wampSession || !settings || !dappManagerHelper) {
-            setRestApi(null);
-            return;
+        if (!api) {
+            setApi(new RestApi(apiUrl))
         }
+
         if (!restApi) {
             setRestApi(new RestApi(restApiUrl))
         }
@@ -125,7 +136,7 @@ const Comp = () => {
         if (!keyManagerAPI) {
             setKeyManagerAPI(new RestApi(keyManagerAPIUrl))
         }
-    }, [wampSession, dappManagerHelper, settings, keyManagerAPI, restApi])
+    }, [wampSession, dappManagerHelper])
 
     React.useEffect(() => {
         const supervisorCtl = new SupervisorCtl(`${packagePrefix}.my.ava.do`, 5556, '/RPC2')
@@ -164,7 +175,7 @@ const Comp = () => {
                         <Routes>
                             {restApi && (<Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />)}
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={logo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
-                            <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
+                            <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} defaultSettings={defaultSettings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={server_config.network} packageUrl={packageUrl} />} />
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>

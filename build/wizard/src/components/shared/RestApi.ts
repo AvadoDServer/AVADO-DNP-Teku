@@ -8,7 +8,6 @@ export class RestApi {
     }
 
     async get<R>(path: string, callback: (res: any) => R, errorHandler: (e: any) => R) {
-        // console.log("get", path)
         try {
             return await axios.get(`${this.baseUrl}${path}`, {
                 headers: {
