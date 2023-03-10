@@ -41,6 +41,12 @@ P2P_PORT=${P2P_PORT} \
 NETWORK="${NETWORK}" \
     envsubst < $(dirname "$0")/teku-config.template > $TARGETCONFIGFILE
 
+# Clean up stale locks if they exist
+if compgen -G "/data/data-${NETWORK}/validator/key-manager/local/*.json.lock" > /dev/null; then
+    echo "Found validator locks at startup."
+    rm /data/data-${NETWORK}/validator/key-manager/local/*.json.lock
+fi
+
 # Start teku
 VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT=$(cat ${SETTINGSFILE} | jq -r '."validators_proposer_default_fee_recipient" // empty')
 MEV_BOOST_ENABLED=$(cat ${SETTINGSFILE} | jq -r '."mev_boost" // empty')
