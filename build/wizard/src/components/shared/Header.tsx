@@ -2,10 +2,9 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faBook } from "@fortawesome/free-solid-svg-icons";
 import { RestApi } from "./RestApi";
-
+import {logo} from "../Logo"
 interface Props {
     restApi: RestApi | undefined | null
-    logo: string
     title: string
     tagline: string
     wikilink: string
@@ -25,7 +24,7 @@ interface Peer {
 
 enum Health { ready, syncing, not_ready }
 
-const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
+const Comp = ({ restApi, title, tagline, wikilink }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
     const [peerCount, setPeerCount] = React.useState<number>(0);

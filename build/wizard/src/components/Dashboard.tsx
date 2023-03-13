@@ -9,10 +9,8 @@ import AdminPage from "./AdminPage";
 import NavigationBar from "./shared/NavigationBar";
 import Welcome from "./shared/Welcome";
 
-import logo from "../assets/nimbus.png";
 import { SettingsType } from "./shared/Types";
 import { RestApi } from "./shared/RestApi";
-import { SupervisorCtl } from "./shared/SupervisorCtl";
 import { useWampSession } from "./shared/useWampSession"
 import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
@@ -23,14 +21,12 @@ import server_config from "../server_config.json";
 
 export const packagePrefix = server_config.network === "mainnet" ? server_config.name : `${server_config.name}-${server_config.network}`;
 export const packageName = `${packagePrefix}.avado.dnp.dappnode.eth`;
-export const packageUrl = `${packagePrefix}.my.ava.do`;
+export const packageUrl = true ? `${packagePrefix}.my.ava.do` : `localhost`;
 
 
 const Comp = () => {
     const wampSession = useWampSession();
     const dappManagerHelper = React.useMemo(() => wampSession ? new DappManagerHelper(packageName, wampSession) : null, [wampSession]);
-
-    const [supervisorCtl, setSupervisorCtl] = React.useState<SupervisorCtl>();
 
     const [settings, setSettings] = React.useState<SettingsType>();
     const [defaultSettings, setDefaultSettings] = React.useState<SettingsType>();
@@ -38,10 +34,6 @@ const Comp = () => {
     const [api, setApi] = React.useState<RestApi | null>();
     const [restApi, setRestApi] = React.useState<RestApi | null>();
     const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi|null>();
-
-
-    const settingsPathInContainer = "/data/"
-    const settingsFileName = "settings.json"
 
     const apiUrl = `http://${packageUrl}:9999`;
     const restApiUrl = `${apiUrl}/rest`;
@@ -72,12 +64,12 @@ const Comp = () => {
         setSettings(newSettings)
         if (api) {
             api.post("/settings", newSettings, (res) => {
-                supervisorCtl?.callMethod('supervisor.restart', [])
+                console.log("Settings saved")
             }, (err) => {
-                //ERROR TODO
+                console.error("Settings not saved", err)
             });
         }
-    }, [restApi, supervisorCtl])
+    }, [api])
 
     React.useEffect(() => {
         console.log("get default settings")
@@ -138,14 +130,6 @@ const Comp = () => {
         }
     }, [wampSession, dappManagerHelper])
 
-    React.useEffect(() => {
-        const supervisorCtl = new SupervisorCtl(`${packagePrefix}.my.ava.do`, 5556, '/RPC2')
-
-
-        setSupervisorCtl(supervisorCtl)
-        supervisorCtl.callMethod("supervisor.getState", [])
-    }, [])
-
     const [searchParams] = useSearchParams()
     const isAdminMode = searchParams.get("admin") !== null
 
@@ -165,7 +149,7 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} logo={logo} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
+                        <Header restApi={restApi} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
 
                         <NavigationBar />
 
@@ -174,10 +158,10 @@ const Comp = () => {
 
                         <Routes>
                             {restApi && (<Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />)}
-                            {dappManagerHelper && <Route path="/welcome" element={<Welcome logo={logo} title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
+                            {dappManagerHelper && <Route path="/welcome" element={<Welcome title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} defaultSettings={defaultSettings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={server_config.network} packageUrl={packageUrl} />} />
-                            {dappManagerHelper && <Route path="/admin" element={<AdminPage supervisorCtl={supervisorCtl} restApi={restApi} dappManagerHelper={dappManagerHelper} />} />}
+                            {dappManagerHelper && <Route path="/admin" element={<AdminPage restApi={api} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 
                     </div>

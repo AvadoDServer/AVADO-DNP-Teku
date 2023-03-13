@@ -28,6 +28,12 @@ RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/false nginx
 
+# Instal node v16.15.0
+RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
+    && . /root/.nvm/nvm.sh \
+    && nvm install v16.15.0 \
+    && nvm use v16.15.0
+
 RUN mkdir /data  && chown user /data
 VOLUME /data
 
