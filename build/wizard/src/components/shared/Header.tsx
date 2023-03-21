@@ -28,7 +28,7 @@ enum Health { ready, syncing, not_ready }
 const Comp = ({ restApi, logo, title, tagline, wikilink }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
-    const [peerCount, setPeerCount] = React.useState<Number>(0);
+    const [peerCount, setPeerCount] = React.useState<number>(0);
     const [peers, setPeers] = React.useState<[Peer]>();
     const [version, setVersion] = React.useState<String | null>(null);
     const [health, setHealth] = React.useState<Health>(Health.not_ready);
