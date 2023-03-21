@@ -1,3 +1,3 @@
 import { Network } from "./shared/Types";
 
-export const NETWORK : Network ="prater"
+export const NETWORK : Network ="mainnet"
