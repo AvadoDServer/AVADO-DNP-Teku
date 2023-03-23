@@ -11,7 +11,7 @@ RUN rm -Rf build && yarn run build
 # build monitor
 WORKDIR /usr/src/monitor
 COPY monitor .
-RUN yarn
+RUN rm -Rf build && yarn run build
 
 # https://github.com/ConsenSys/teku/blob/master/docker/jdk17/Dockerfile
 FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}
@@ -23,22 +23,29 @@ RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
     jq \
     nginx \
     nodejs \
+    procps \
     sudo \
     supervisor \
     vim-tiny \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/false nginx
 
+# Instal node v16.15.0
+RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
+    && . /root/.nvm/nvm.sh \
+    && nvm install v16.15.0 \
+    && nvm use v16.15.0
+
 RUN mkdir /data  && chown teku /data
 VOLUME /data
 
 COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
-COPY --from=builder /usr/src/monitor /usr/local/monitor
+COPY --from=builder /usr/src/monitor/ /usr/local/monitor
 
 COPY startTeku.sh /opt/teku
 COPY reload-certs.sh /opt/teku/reload-certs.sh
 COPY teku-config.template /opt/teku
-COPY wizard/src/components/defaultsettings.json /opt/teku
+COPY monitor/settings/defaultsettings.json /opt/teku
 RUN chmod a+x /opt/teku/startTeku.sh /opt/teku/reload-certs.sh
 COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/

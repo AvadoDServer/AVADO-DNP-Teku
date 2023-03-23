@@ -1,9 +1,14 @@
-import { Network } from "./Types";
+import Validators from "./Validators";
+import { Network, SettingsType } from "./Types";
 import { RestApi } from "./RestApi";
+import { DappManagerHelper } from "./DappManagerHelper";
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faCircleXmark, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faBook, faCircleXmark, faCircleCheck, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { json } from "stream/consumers";
 import axios from "axios";
+import { rest } from "lodash";
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const debug = false;
 
