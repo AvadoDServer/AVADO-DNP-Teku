@@ -2,18 +2,18 @@ import { Network } from "./Types";
 import { RestApi } from "./RestApi";
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faCircleXmark, faCircleCheck, faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faCircleXmark, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
 const debug = false;
 
 interface Props {
-    restApi: RestApi | undefined | null
+    api: RestApi | undefined | null
     network: Network
     packageUrl: String
 }
 
-const CheckCheckPointSync = ({ restApi, network, packageUrl }: Props) => {
+const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
 
     type responseType = {
         "data": {
@@ -47,14 +47,14 @@ const CheckCheckPointSync = ({ restApi, network, packageUrl }: Props) => {
 
     // Get finalized state
     React.useEffect(() => {
-        if (restApi)
-            getFinalizedState(restApi);
-    }, [restApi]);
+        if (api)
+            getFinalizedState(api);
+    }, [api]);
 
-    const getFinalizedState = async (restApi: RestApi) => {
-        if (!restApi)
+    const getFinalizedState = async (api: RestApi) => {
+        if (!api)
             return;
-        restApi.get("/eth/v1/beacon/headers/finalized", res => {
+        api.get("/rest/eth/v1/beacon/headers/finalized", res => {
             if (res.status === 200) {
                 setFinalizedState(res.data)
             }
@@ -125,14 +125,14 @@ const CheckCheckPointSync = ({ restApi, network, packageUrl }: Props) => {
     }, [finalizedState]);
 
     const refresh = () => {
-        if (restApi) {
-            getFinalizedState(restApi);
+        if (api) {
+            getFinalizedState(api);
         }
     }
 
     return (
         <>
-            {restApi && (
+            {api && (
                 <div>
                     <div className="container has-text-centered ">
                         <div className="columns is-vcentered">

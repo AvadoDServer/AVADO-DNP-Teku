@@ -12,9 +12,7 @@ import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
     settings: SettingsType | undefined
-    restAPI: RestApi
-    keyManagerAPI: RestApi
-    dappManagerHelper: DappManagerHelper | null
+    api: RestApi
     readonly?: boolean
 }
 
@@ -50,7 +48,7 @@ export const createBeaconchainUrl = (network: Network | null | undefined, valida
     return <a href={beaconChainBaseUrl + validatorPubkey} target="_blank" rel="noopener noreferrer">{text ? text : validatorPubkey}</a>;
 }
 
-const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, readonly = false }: Props) => {
+const Validators = ({ settings, api, readonly = false }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
@@ -65,7 +63,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
 
     const updateValidators = React.useCallback(async () => {
         console.log("Trying to update validators")
-        keyManagerAPI.get("/eth/v1/keystores",
+        api.get("/keymanager/eth/v1/keystores",
             (res) => {
                 if (res.status === 200) {
                     // console.log(res.data)
@@ -76,11 +74,11 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
             }, (e) => {
                 console.log("error updating validators", e)
             });
-    }, [keyManagerAPI])
+    }, [api])
 
     React.useEffect(() => {
         updateValidators();
-    }, [keyManagerAPI, settings, updateValidators])
+    }, [api, settings, updateValidators])
 
     React.useEffect(() => {
         const getFeeRecipient = async (pubKey: string) => {
@@ -88,7 +86,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                 return "Configure default setting first!"
             }
 
-            return keyManagerAPI.get<string>(`/eth/v1/validator/${pubKey}/feerecipient`,
+            return api.get<string>(`/keymanager/eth/v1/validator/${pubKey}/feerecipient`,
                 (res) => {
                     if (res.status === 200) {
                         // console.log(res)
@@ -122,7 +120,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                     "withdrawable_epoch": "0"
                 }
             };
-            return await restAPI.get(`/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
+            return await api.get(`/rest/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
                 // console.dir(res);
                 if (res.status === 200 && res.data !== "failed") {
                     // console.log(res.data.data)
@@ -138,7 +136,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
             Promise.all(validators.map(pubKey => getValidatorData(pubKey))).then(result => setValidatorData(result))
             Promise.all(validators.map(pubKey => getFeeRecipient(pubKey))).then(result => setFeeRecipients(result))
         }
-    }, [validators, settings?.validators_proposer_default_fee_recipient, keyManagerAPI, restAPI]);
+    }, [validators, settings?.validators_proposer_default_fee_recipient, api]);
 
     function askConfirmationRemoveValidator(pubKey: string) {
         confirmAlert({
@@ -168,7 +166,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
     const removeValidator = (pubKey: string) => {
         console.log("Deleting " + pubKey);
         //https://ethereum.github.io/keymanager-APIs/#/Local%20Key%20Manager/DeleteKeys
-        keyManagerAPI.delete("/eth/v1/keystores", { pubkeys: [pubKey] }, (res) => {
+        api.delete("/keymanager/eth/v1/keystores", { pubkeys: [pubKey] }, (res) => {
             console.dir(res)
             console.log(res)
             downloadSlashingData(res.data.slashing_protection)
@@ -202,15 +200,15 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
     const exitValidator = (pubKey: string) => {
         console.log("Exiting " + pubKey);
 
-        restAPI.post(`/exit_validator/${pubKey}`, {}, (res) => {
-            console.dir(res)
-            console.log(res)
+        api.post(`/exit_validator/${pubKey}`, {}, (res) => {
+            console.log(res.data)
             if (res.status === 200) {
                 updateValidators();
             }
+            alert(res.data);
         }, (e) => {
             console.log(e)
-            console.dir(e)
+            alert(e);
         });
     }
 
@@ -266,7 +264,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                 <OverrideVallidatorFeeRecipientModal
                                     network={settings?.network ?? "mainnet"}
                                     updateValidators={updateValidators}
-                                    keyManagerAPI={keyManagerAPI}
+                                    api={api}
                                     validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient}
                                     configuringfeeRecipient={configuringfeeRecipient}
                                     setConfiguringfeeRecipient={setConfiguringfeeRecipient}
@@ -325,7 +323,7 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                 </table>
                             </>
                         )}
-                        {validators && !readonly && (<AddValidator updateValidators={updateValidators} keyManagerAPI={keyManagerAPI} />)}
+                        {validators && !readonly && (<AddValidator updateValidators={updateValidators} api={api} />)}
                     </div>
                 </div>
             </div>

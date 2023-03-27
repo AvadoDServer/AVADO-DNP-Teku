@@ -1,11 +1,9 @@
 import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { Formik, Field, Form, FieldArray } from 'formik';
+import { Formik, Field, Form } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { Network, SettingsType, supportedNetworks } from "./shared/Types";
+import { Network, SettingsType } from "./shared/Types";
 import server_config from "../server_config.json"
 
 interface Props {

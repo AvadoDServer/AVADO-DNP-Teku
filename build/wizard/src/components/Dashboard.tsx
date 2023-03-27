@@ -32,12 +32,8 @@ const Comp = () => {
     const [defaultSettings, setDefaultSettings] = React.useState<SettingsType>();
 
     const [api, setApi] = React.useState<RestApi | null>();
-    const [restApi, setRestApi] = React.useState<RestApi | null>();
-    const [keyManagerAPI, setKeyManagerAPI] = React.useState<RestApi|null>();
 
     const apiUrl = `http://${packageUrl}:9999`;
-    const restApiUrl = `${apiUrl}/rest`;
-    const keyManagerAPIUrl = `${apiUrl}/keymanager`;
 
     const capitalizeFirstLetter = (name:string) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -72,17 +68,14 @@ const Comp = () => {
     }, [api])
 
     React.useEffect(() => {
-        console.log("get default settings")
         if (api) {
-            console.log("get default settings2")
             api.get("/defaultsettings", (res) => {                
-                console.log("default", res.data)
                 setDefaultSettings(res.data)
             }, (err) => {
                 console.log("default", err)
             });
         }
-    }, [restApi])
+    }, [api])
 
     React.useEffect(() => {
         if (wampSession && dappManagerHelper && !settings && api) {
@@ -105,7 +98,7 @@ const Comp = () => {
                 //ERROR TODO
             } )
         }
-    }, [wampSession, dappManagerHelper, settings, restApi, applySettingsChanges, navigate]);
+    }, [wampSession, dappManagerHelper, settings, api, applySettingsChanges, navigate]);
 
     const [packages, setPackages] = React.useState<string[]>();
     React.useEffect(() => {
@@ -119,14 +112,6 @@ const Comp = () => {
     React.useEffect(() => {
         if (!api) {
             setApi(new RestApi(apiUrl))
-        }
-
-        if (!restApi) {
-            setRestApi(new RestApi(restApiUrl))
-        }
-
-        if (!keyManagerAPI) {
-            setKeyManagerAPI(new RestApi(keyManagerAPIUrl))
         }
     }, [wampSession, dappManagerHelper])
 
@@ -149,7 +134,7 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header restApi={restApi} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
+                        <Header api={api} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
 
                         <NavigationBar />
 
@@ -157,11 +142,11 @@ const Comp = () => {
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
 
                         <Routes>
-                            {restApi && (<Route path="/" element={<MainPage settings={settings} restApi={restApi} keyManagerAPI={keyManagerAPI} dappManagerHelper={dappManagerHelper} />} />)}
+                            {api && (<Route path="/" element={<MainPage settings={settings} api={api} dappManagerHelper={dappManagerHelper} />} />)}
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} defaultSettings={defaultSettings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
-                            <Route path="/checksync" element={<CheckCheckPointSync restApi={restApi} network={server_config.network} packageUrl={packageUrl} />} />
-                            {dappManagerHelper && <Route path="/admin" element={<AdminPage restApi={api} dappManagerHelper={dappManagerHelper} />} />}
+                            <Route path="/checksync" element={<CheckCheckPointSync api={api} network={server_config.network} packageUrl={packageUrl} />} />
+                            {dappManagerHelper && <Route path="/admin" element={<AdminPage api={api} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 
                     </div>

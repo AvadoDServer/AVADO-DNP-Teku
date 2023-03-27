@@ -2,26 +2,29 @@ import { RestApi } from "./shared/RestApi";
 import { DappManagerHelper } from "./shared/DappManagerHelper";
 import Logs from "./shared/Logs";
 import { useEffect, useState } from "react";
+import server_config from "../server_config.json";
 
 interface Props {
-    restApi: RestApi | undefined | null
+    api: RestApi | undefined | null
     dappManagerHelper: DappManagerHelper
 }
 
-const Comp = ({ restApi, dappManagerHelper }: Props) => {
+const Comp = ({ api, dappManagerHelper }: Props) => {
 
 
-    const stop = async () => {restApi?.post("/service/stop", {}, (res) => { 
-        console.log("Stop")
-    }, (err) => { })}
-    const start = async () => {restApi?.post("/service/start", {}, (res) => { }, (err) => { })}
-    const restart = async () => {restApi?.post("/service/restart", {}, (res) => { }, (err) => { })}
+    const stop = async () => {
+        api?.post("/service/stop", {}, (res) => {
+            console.log("Stop")
+        }, (err) => { })
+    }
+    const start = async () => { api?.post("/service/start", {}, (res) => { }, (err) => { }) }
+    const restart = async () => { api?.post("/service/restart", {}, (res) => { }, (err) => { }) }
 
     const [status, setStatus] = useState<any[]>();
 
     useEffect(() => {
         const interval = setInterval(() => {
-            restApi?.get("/service/status", (res) => {
+            api?.get("/service/status", (res) => {
                 setStatus(res.data);
             }, (err) => {
                 setStatus([]);
@@ -32,12 +35,12 @@ const Comp = ({ restApi, dappManagerHelper }: Props) => {
 
     return (
         <>
-            <h2 className="title is-2 has-text-white">Debug</h2>
+            <h2 className="title is-2">Debug</h2>
             <div className="content">
                 <ul>
-                    {restApi && (
+                    {server_config.name === "teku" && (
                         <li>
-                            <a href={`${restApi?.baseUrl}/swagger-ui`} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
+                            <a href={"http://teku-prater.my.ava.do:5051/swagger-ui"} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
 
                         </li>
                     )}
@@ -50,11 +53,11 @@ const Comp = ({ restApi, dappManagerHelper }: Props) => {
                 </ul>
                 {status && (
                     <ul>
-                        {status.map((program) => 
+                        {status.map((program) =>
                             <li>
                                 <b>{program.name}</b>: {program.statename}
                             </li>
-                        )}                        
+                        )}
                     </ul>
                 )}
                 {
