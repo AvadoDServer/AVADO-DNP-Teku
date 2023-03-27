@@ -31,6 +31,7 @@ const Comp = ({ api, dappManagerHelper }: Props) => {
             });
         }, 5 * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
+        // eslint-disable-next-line
     }, []);
 
     return (

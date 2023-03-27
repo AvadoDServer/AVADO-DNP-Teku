@@ -113,6 +113,7 @@ const Comp = () => {
         if (!api) {
             setApi(new RestApi(apiUrl))
         }
+    // eslint-disable-next-line
     }, [wampSession, dappManagerHelper])
 
     const [searchParams] = useSearchParams()

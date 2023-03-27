@@ -8,7 +8,6 @@ import { Network, SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
-import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
     settings: SettingsType | undefined

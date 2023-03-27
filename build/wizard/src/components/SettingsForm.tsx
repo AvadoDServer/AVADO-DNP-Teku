@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Formik, Field, Form } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
@@ -32,7 +32,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
         network: Network
     }
 
-    const execution_engines: execution_engine[] = [
+    const execution_engines: execution_engine[] = useMemo( () => [
         {
             name: "Geth Mainnet",
             packagename: "ethchain-geth.public.dappnode.eth",
@@ -59,9 +59,9 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
             ee_endpoint: "http://nethermind-gnosis.my.ava.do:8551",
             network: "gnosis"
         }
-    ]
+    ], [])
 
-    const [supportedExecutionEngines, setSpportedExecutionEngines] = React.useState<execution_engine[]>([]);
+    const [supportedExecutionEngines, setSupportedExecutionEngines] = React.useState<execution_engine[]>([]);
     React.useEffect(() => {
         if (installedPackages && settings) {
             console.log(installedPackages)
@@ -69,10 +69,10 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                 const sees = execution_engines.filter(ee => ee.network === settings.network)
                 if (isAdminMode)
                     console.log("Execution clients", server_config.network, sees.map(ee => ee.packagename))
-                setSpportedExecutionEngines(sees)
+                setSupportedExecutionEngines(sees)
             }
         }
-    }, [installedPackages, settings])
+    }, [installedPackages, settings, isAdminMode, execution_engines])
 
     const isInstalled = (execution_engine_name: string) => installedPackages?.includes(execution_engine_name) ?? false
 

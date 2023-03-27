@@ -33,10 +33,6 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
         "execution_optimistic": boolean
     }
 
-    const monitorAPI = () => {
-        return (debug ? "http://localhost:9999" : `http://${packageUrl}:9999`)
-    }
-
     type tableDateType = {
         url: string
         state_root: string
@@ -88,6 +84,10 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                         // "mainnet.checkpoint.sigp.io"
                     ]
 
+            const monitorAPI = () => {
+                return (debug ? "http://localhost:9999" : `http://${packageUrl}:9999`)
+            }
+
             const fetchFromCheckpointzEndPoint = async (endpoint: string): Promise<tableDateType> => {
                 const url = monitorAPI() + `/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
                 console.log(url)
@@ -122,7 +122,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                     .concat(fetchFromBeaconChain())
             ).then(values => setOtherStateRoots(values))
         }
-    }, [finalizedState]);
+    }, [finalizedState, packageUrl, network]);
 
     const refresh = () => {
         if (api) {
