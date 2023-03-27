@@ -1,5 +1,5 @@
 ARG TEKU_VERSION
-FROM node:16.15.0 as builder
+FROM node:18.15.0 as builder
 
 # build wizard
 WORKDIR /usr/src/app/wizard
@@ -11,6 +11,7 @@ RUN rm -Rf build && yarn run build
 # build monitor
 WORKDIR /usr/src/monitor
 COPY monitor .
+RUN yarn
 RUN rm -Rf build && yarn run build
 
 # https://github.com/ConsenSys/teku/blob/master/docker/jdk17/Dockerfile
@@ -30,11 +31,11 @@ RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/false nginx
 
-# Instal node v16.15.0
+# Instal node v18.15.0
 RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
     && . /root/.nvm/nvm.sh \
-    && nvm install v16.15.0 \
-    && nvm use v16.15.0
+    && nvm install v18.15.0 \
+    && nvm use v18.15.0
 
 RUN mkdir /data  && chown teku /data
 VOLUME /data
