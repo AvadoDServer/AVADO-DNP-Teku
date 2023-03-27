@@ -134,7 +134,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. `${name}` will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings?.p2p_peer_upper_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. {name} will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings?.p2p_peer_upper_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
@@ -144,7 +144,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="initial_state">Initial State: Start `${name}` from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
+                                <label className="label" htmlFor="initial_state">Initial State: Start {name} from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (

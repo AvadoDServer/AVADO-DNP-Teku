@@ -83,7 +83,9 @@ export class DappManagerHelper {
             if (res.success !== true) return [];
 
             // console.dir(res)
-            const packageNames = res.result.map((r: any) => r.name) as string[];
+            const packageNames = res.result
+                .filter((r: any) => r.running) // only running packages
+                .map((r: any) => r.name) as string[];
 
             return packageNames;
         }

@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSatelliteDish, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faSatelliteDish, faTrash, faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
 import AddValidator from "./AddValidator";
@@ -8,7 +8,6 @@ import { Network, SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
-import thereIsNothingHereYet from "../../assets/there-is-nothing-here-yet.jpeg";
 import { DappManagerHelper } from "./DappManagerHelper";
 
 interface Props {
@@ -125,8 +124,8 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
             };
             return await restAPI.get(`/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
                 // console.dir(res);
-                if (res.status === 200 && res.data !== "failed" ) {
-                    console.log(res.data.data)
+                if (res.status === 200 && res.data !== "failed") {
+                    // console.log(res.data.data)
                     return (res.data.data as ValidatorData);
                 } else
                     return nullValue
@@ -173,6 +172,39 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
             console.dir(res)
             console.log(res)
             downloadSlashingData(res.data.slashing_protection)
+            if (res.status === 200) {
+                updateValidators();
+            }
+        }, (e) => {
+            console.log(e)
+            console.dir(e)
+        });
+    }
+
+    function askConfirmationExitValidator(pubKey: string) {
+        confirmAlert({
+            message: `Are you sure you want to exit validator "${pubKey}"?
+            Please make sure you understand the consequences of performing a voluntary exit.
+            Once an account is exited, the action cannot be reverted.`,
+            buttons: [
+                {
+                    label: 'Exit',
+                    onClick: () => exitValidator(pubKey)
+                },
+                {
+                    label: 'Cancel',
+                    onClick: () => { }
+                }
+            ]
+        });
+    }
+
+    const exitValidator = (pubKey: string) => {
+        console.log("Exiting " + pubKey);
+
+        restAPI.post(`/exit_validator/${pubKey}`, {}, (res) => {
+            console.dir(res)
+            console.log(res)
             if (res.status === 200) {
                 updateValidators();
             }
@@ -246,23 +278,24 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th>Public key</th>
                                             <th>Index</th>
+                                            <th>Public key</th>
                                             <th>Balance</th>
                                             <th>Effective Balance</th>
                                             {/* <th>Activation Epoch</th> */}
                                             {/* <th>Exit Epoch</th> */}
                                             <th>Fee recipient</th>
+                                            <th>Withdrawals</th>
                                             <th>Status</th>
                                             {!readonly && (<th>Actions</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {validatorData.map((validator, i) =>
+                                        {validatorData.sort((v1, v2) => v1.index.localeCompare(v2.index)).map((validator, i) =>
                                             <tr key={validator.index}>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
-                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, validator.index)}</td>
+                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>
                                                 <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
                                                 <td>{(parseFloat(validator.validator.effective_balance) / 1000000000.0).toFixed(4)}</td>
                                                 {/* <td>{validator.validator.activation_epoch}</td> */}
@@ -273,8 +306,19 @@ const Validators = ({ settings, restAPI, keyManagerAPI, dappManagerHelper, reado
                                                         {abbreviatePublicKey(feeRecipients[i])}
                                                     </a>
                                                 </td>
+                                                <td>
+                                                    {validator.validator.withdrawal_credentials.startsWith("0x01") ?
+                                                        <span className="tag is-success">ready</span>
+                                                        : <span className="tag is-warning">TODO</span>}
+                                                </td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
-                                                {!readonly && (<td><button className="button is-text has-text-grey-light" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button></td>)}
+                                                {!readonly && (
+                                                    <td>
+                                                        <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
+                                                        <button className="button is-text has-text-grey-light" name="exit" onClick={() => askConfirmationExitValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faArrowUpFromBracket} /></button>
+                                                    </td>
+                                                )}
+
                                             </tr>
                                         )}
                                     </tbody>

@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
+import { execSync } from "child_process";
 
 console.log("Monitor starting...");
 
@@ -17,7 +18,6 @@ const cors = corsMiddleware({
     preflightMaxAge: 5, //Optional
     origins: [
         /^http:\/\/localhost(:[\d]+)?$/,
-        "http://*.dappnode.eth",
         "http://*.my.ava.do"
     ]
 });
@@ -132,6 +132,37 @@ server.get("/service/status", (req: restify.Request, res: restify.Response, next
             next();
         });
 });
+
+////////////////////////
+// EXIT validator    ///
+////////////////////////
+
+server.post("/exit_validator/:pubkey", async (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    const pubkey = req.params?.pubkey
+
+    if (!pubkey) {
+        res.send(500, "missing pubkey")
+        next();
+    }
+
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    console.log(`Sending exit message for validator ${pubkey}`)
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+
+    const teku = "/opt/teku/bin/teku"
+    const fixed_opts = `--data-path=/data/data-${server_config.network}/ --beacon-node-api-endpoint=http://127.0.0.1:5051 --include-keymanager-keys=true --confirmation-enabled=false`
+    const cmd = `${teku} voluntary-exit --validator-public-keys="${pubkey}" ${fixed_opts}`
+
+    try {
+        const stdout = execSync(cmd)
+        res.send(200, stdout.toString().trim() || "success")
+        next();
+    } catch (e: any) {
+        // console.log(e.stderr.toString())
+        res.send(500, e.stderr.toString().trim())
+        next();
+    }
+})
 
 ////////////////////////
 // Checkpoint API    ///
@@ -261,7 +292,4 @@ const getKeyManagerToken = () => {
 
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
-    supervisorCtl.callMethod("supervisor.getState", []).then((value: any) => {
-        console.log("supervisor", value.statename)
-    })
 });
