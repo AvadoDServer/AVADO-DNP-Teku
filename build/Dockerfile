@@ -54,8 +54,8 @@ COPY nginx.conf /etc/nginx/
 # keystore for ssl access to key store api
 EXPOSE 5052
 USER teku
-RUN curl "http://iso.ava.do/my.ava.do.crt" --output /opt/teku/my.ava.do.crt --silent
-RUN curl "http://iso.ava.do/my.ava.do.key" --output /opt/teku/my.ava.do.key --silent
+RUN curl "https://iso.ava.do/my.ava.do.crt" --output /opt/teku/my.ava.do.crt --silent
+RUN curl "https://iso.ava.do/my.ava.do.key" --output /opt/teku/my.ava.do.key --silent
 RUN openssl pkcs12 -export -in /opt/teku/my.ava.do.crt -inkey /opt/teku/my.ava.do.key -out /opt/teku/my.ava.do.p12 -name myavado -CAfile myavado.crt -caname root -password  pass:avadoKeyStorePassword
 RUN keytool -importkeystore -deststorepass avadoKeyStorePassword -destkeystore /opt/teku/avado.keystore  -srckeystore /opt/teku/my.ava.do.p12 -srcstoretype PKCS12 -srcstorepass avadoKeyStorePassword -alias myavado
 
