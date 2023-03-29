@@ -305,14 +305,16 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                 </td>
                                                 <td>
                                                     {validator.validator.withdrawal_credentials.startsWith("0x01") ?
-                                                        <span className="tag is-success">ready</span>
-                                                        : <span className="tag is-warning">TODO</span>}
+                                                        <span className="tag is-success">coming soon</span>
+                                                        : <span className="tag is-warning">coming soon</span>}
                                                 </td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
                                                 {!readonly && (
                                                     <td>
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
-                                                        <button className="button is-text has-text-grey-light" name="exit" onClick={() => askConfirmationExitValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faArrowUpFromBracket} /></button>
+                                                        {settings?.network === "prater" && (
+                                                            <button className="button is-text has-text-grey-light" name="exit" onClick={() => askConfirmationExitValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faArrowUpFromBracket} /></button>
+                                                        )}
                                                     </td>
                                                 )}
 
