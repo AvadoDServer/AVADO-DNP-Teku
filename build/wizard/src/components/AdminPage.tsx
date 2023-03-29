@@ -1,29 +1,47 @@
 import { RestApi } from "./shared/RestApi";
 import { DappManagerHelper } from "./shared/DappManagerHelper";
-import { SupervisorCtl } from "./shared/SupervisorCtl";
 import Logs from "./shared/Logs";
+import { useEffect, useState } from "react";
+import server_config from "../server_config.json";
 
 interface Props {
-    restApi: RestApi | undefined | null
+    api: RestApi | undefined | null
     dappManagerHelper: DappManagerHelper
-    supervisorCtl: SupervisorCtl | undefined
 }
 
-const Comp = ({ restApi, dappManagerHelper, supervisorCtl }: Props) => {
+const Comp = ({ api, dappManagerHelper }: Props) => {
 
 
-    const toggleTeku = (enable: boolean) => {
-        const method = enable ? 'supervisor.startProcess' : 'supervisor.stopProcess'
-        supervisorCtl?.callMethod(method, ["teku"]);
+    const stop = async () => {
+        api?.post("/service/stop", {}, (res) => {
+            console.log("Stop")
+        }, (err) => { })
     }
+    const start = async () => { api?.post("/service/start", {}, (res) => { }, (err) => { }) }
+    const restart = async () => { api?.post("/service/restart", {}, (res) => { }, (err) => { }) }
+
+    const [status, setStatus] = useState<any[]>();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            api?.get("/service/status", (res) => {
+                setStatus(res.data);
+            }, (err) => {
+                setStatus([]);
+            });
+        }, 5 * 1000); // 5 seconds refresh
+        return () => clearInterval(interval);
+        // eslint-disable-next-line
+    }, []);
+
     return (
         <>
-            <h2 className="title is-2 has-text-white">Debug</h2>
+            <h2 className="title is-2">Debug</h2>
             <div className="content">
                 <ul>
-                    {restApi && (
+                    {server_config.name === "teku" && (
                         <li>
-                            <a href={`${restApi?.baseUrl}/swagger-ui`} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
+                            <a href={"http://teku-prater.my.ava.do:5051/swagger-ui"} target="_blank" rel="noopener noreferrer">Swagger RPC UI</a>
 
                         </li>
                     )}
@@ -34,10 +52,21 @@ const Comp = ({ restApi, dappManagerHelper, supervisorCtl }: Props) => {
                         </li>
                     )}
                 </ul>
-                {supervisorCtl && <div className="field">
-                    <button className="button" onClick={() => toggleTeku(true)}>Start Teku</button>
-                    <button className="button" onClick={() => toggleTeku(false)}>Stop Teku</button>
-                </div>
+                {status && (
+                    <ul>
+                        {status.map((program) =>
+                            <li>
+                                <b>{program.name}</b>: {program.statename}
+                            </li>
+                        )}
+                    </ul>
+                )}
+                {
+                    <div className="field">
+                        <button className="button" onClick={() => stop()}>Stop</button>
+                        <button className="button" onClick={() => start()}>Start</button>
+                        <button className="button" onClick={() => restart()}>Restart</button>
+                    </div>
                 }
 
                 {dappManagerHelper && (<Logs dappManagerHelper={dappManagerHelper} />)}

@@ -51,7 +51,7 @@ fi
 VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT=$(cat ${SETTINGSFILE} | jq -r '."validators_proposer_default_fee_recipient" // empty')
 MEV_BOOST_ENABLED=$(cat ${SETTINGSFILE} | jq -r '."mev_boost" // empty')
 exec /opt/teku/bin/teku \
-  --ee-jwt-secret-file="/data/data-${NETWORK}/jwttoken" \
+  --ee-jwt-secret-file="${JWT_SECRET}" \
   --config-file="$TARGETCONFIGFILE" \
   ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
   ${MEV_BOOST_ENABLED:+--builder-endpoint="http://mevboost.my.ava.do:18550"} \
