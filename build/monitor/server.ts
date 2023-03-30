@@ -74,7 +74,6 @@ server.get("/defaultsettings", (req: restify.Request, res: restify.Response, nex
 });
 
 const supervisorCtl = new SupervisorCtl(`localhost`, 5555, '/RPC2')
-const emptyCallBack = (error: Object, value: any) => { };
 
 const restart = async () => {
     await Promise.all([
