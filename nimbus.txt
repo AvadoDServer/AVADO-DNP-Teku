@@ -229,3 +229,4 @@ The following options are available:
                                "head" [=finalized].[0m
      [34m[1m--backfill              [0m  Backfill blocks directly from REST server instead of fetching via API [=true].[0m
 
+--rest-address=0.0.0.0 --rest-allow-origin=*

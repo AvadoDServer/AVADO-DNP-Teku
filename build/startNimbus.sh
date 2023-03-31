@@ -77,7 +77,7 @@ exec /home/user/nimbus-eth2/build/nimbus_beacon_node \
   --network=${NETWORK} \
   --data-dir="${DATA_PATH}" \
   --hard-max-peers="${P2P_PEER_UPPER_BOUND}" \
-  --graffiti="${GRAFFITI}"
+  --graffiti="${GRAFFITI}" \
   ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--suggested-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
   ${MEV_BOOST_ENABLED:+--payload-builder-url="http://mevboost.my.ava.do:18550"} \
   ${MEV_BOOST_ENABLED:+--payload-builder=${MEV_BOOST_ENABLED}} \

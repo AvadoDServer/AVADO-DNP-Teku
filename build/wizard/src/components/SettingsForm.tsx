@@ -1,11 +1,9 @@
-import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { Formik, Field, Form, FieldArray } from 'formik';
+import React, { useMemo } from "react";
+import { Formik, Field, Form } from 'formik';
 import * as yup from 'yup';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css'; // Import css
-import { Network, SettingsType, supportedNetworks } from "./shared/Types";
+import { Network, SettingsType } from "./shared/Types";
 import server_config from "../server_config.json"
 
 interface Props {
@@ -34,7 +32,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
         network: Network
     }
 
-    const execution_engines: execution_engine[] = [
+    const execution_engines: execution_engine[] = useMemo( () => [
         {
             name: "Geth Mainnet",
             packagename: "ethchain-geth.public.dappnode.eth",
@@ -61,9 +59,9 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
             ee_endpoint: "http://nethermind-gnosis.my.ava.do:8551",
             network: "gnosis"
         }
-    ]
+    ], [])
 
-    const [supportedExecutionEngines, setSpportedExecutionEngines] = React.useState<execution_engine[]>([]);
+    const [supportedExecutionEngines, setSupportedExecutionEngines] = React.useState<execution_engine[]>([]);
     React.useEffect(() => {
         if (installedPackages && settings) {
             console.log(installedPackages)
@@ -71,10 +69,10 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                 const sees = execution_engines.filter(ee => ee.network === settings.network)
                 if (isAdminMode)
                     console.log("Execution clients", server_config.network, sees.map(ee => ee.packagename))
-                setSpportedExecutionEngines(sees)
+                setSupportedExecutionEngines(sees)
             }
         }
-    }, [installedPackages, settings])
+    }, [installedPackages, settings, isAdminMode, execution_engines])
 
     const isInstalled = (execution_engine_name: string) => installedPackages?.includes(execution_engine_name) ?? false
 
@@ -134,7 +132,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. `${name}` will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings?.p2p_peer_upper_bound}</label>
+                                <label className="label" htmlFor="p2p_peer_upper_bound">Upper bound on the target number of peers. {name} will refuse new peer requests that would cause the number of peers to exceed this value. The default is {defaultSettings?.p2p_peer_upper_bound}</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.p2p_peer_upper_bound ? " is-danger" : "")} id="p2p_peer_upper_bound" name="p2p_peer_upper_bound" />
                                     {errors.p2p_peer_upper_bound ? (
@@ -144,7 +142,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
                             </div>
 
                             <div className="field">
-                                <label className="label" htmlFor="initial_state">Initial State: Start `${name}` from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
+                                <label className="label" htmlFor="initial_state">Initial State: Start {name} from a recent finalized checkpoint state rather than syncing from genesis. URL to an SSZ-encoded state. The default uses a checkpoint cached on an Avado server</label>
                                 <div className="control">
                                     <Field className={"input" + (errors?.initial_state ? " is-danger" : "")} id="initial_state" name="initial_state" />
                                     {errors.initial_state ? (

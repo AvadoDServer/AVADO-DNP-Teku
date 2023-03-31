@@ -4,20 +4,17 @@ import { RestApi } from "./shared/RestApi";
 import { DappManagerHelper } from "./shared/DappManagerHelper";
 
 interface Props {
-    restApi: RestApi| undefined | null
-    keyManagerAPI: RestApi| undefined| null
+    api: RestApi| undefined | null
     settings: SettingsType| undefined
     dappManagerHelper: DappManagerHelper | null
 }
 
-const Comp = ({ restApi, keyManagerAPI, settings, dappManagerHelper }: Props) => {
+const Comp = ({ api, settings, dappManagerHelper }: Props) => {
     return (
         <>
-            {restApi && keyManagerAPI && settings && dappManagerHelper ? (<Validators
+            {api && settings && dappManagerHelper ? (<Validators
                 settings={settings}
-                restAPI={restApi}
-                keyManagerAPI={keyManagerAPI}
-                dappManagerHelper={dappManagerHelper}
+                api={api}
             />)
                 : <p>Loading...</p>}
         </>

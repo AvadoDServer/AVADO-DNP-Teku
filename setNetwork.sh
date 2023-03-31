@@ -13,6 +13,7 @@ esac
 
 # sed -i -- "s/const network = \".*\"/const network =  \"${NETWORK}\"/" build/wizard/src/server_config.ts 
 yq -o=json eval --inplace '.network = "'${NETWORK}'"' build/wizard/src/server_config.json
+yq -o=json eval --inplace '.network = "'${NETWORK}'"' build/monitor/server_config.json
 
 for file in \
     build/docker-compose.yml \

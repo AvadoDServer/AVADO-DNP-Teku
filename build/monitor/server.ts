@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
+import { execSync } from "child_process";
 
 console.log("Monitor starting...");
 
@@ -17,7 +18,6 @@ const cors = corsMiddleware({
     preflightMaxAge: 5, //Optional
     origins: [
         /^http:\/\/localhost(:[\d]+)?$/,
-        "http://*.dappnode.eth",
         "http://*.my.ava.do"
     ]
 });
@@ -74,14 +74,13 @@ server.get("/defaultsettings", (req: restify.Request, res: restify.Response, nex
 });
 
 const supervisorCtl = new SupervisorCtl(`localhost`, 5555, '/RPC2')
-const emptyCallBack = (error: Object, value: any) => { };
 
 const restart = async () => {
     await Promise.all([
-        supervisorCtl.callMethod('supervisor.stopProcess', ["nimbus", true]),
+        supervisorCtl.callMethod('supervisor.stopProcess', [server_config.name, true]),
     ])
     return Promise.all([
-        supervisorCtl.callMethod('supervisor.startProcess', ["nimbus", true]),
+        supervisorCtl.callMethod('supervisor.startProcess', [server_config.name, true]),
     ])
 }
 
@@ -98,7 +97,7 @@ server.post("/service/restart", (req: restify.Request, res: restify.Response, ne
 server.post("/service/stop", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const method = 'supervisor.stopProcess'
     Promise.all([
-        supervisorCtl.callMethod(method, ["nimbus"]),
+        supervisorCtl.callMethod(method, [server_config.name]),
     ]).then(result => {
         res.send(200, "stopped");
         next()
@@ -111,7 +110,7 @@ server.post("/service/stop", (req: restify.Request, res: restify.Response, next:
 server.post("/service/start", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const method = 'supervisor.startProcess'
     Promise.all([
-        supervisorCtl.callMethod(method, ["nimbus"]),
+        supervisorCtl.callMethod(method, [server_config.name]),
     ]).then(result => {
         res.send(200, "started");
         next()
@@ -132,6 +131,47 @@ server.get("/service/status", (req: restify.Request, res: restify.Response, next
             next();
         });
 });
+
+////////////////////////
+// EXIT validator    ///
+////////////////////////
+
+// nimbus_beacon_node deposits exit [OPTIONS]...
+
+// Submits a validator voluntary exit.
+
+// The following options are available:
+
+//  --validator  Validator index, public key or a keystore path of the exited validator.
+//  --epoch  The desired exit epoch.
+//  --rest-url  URL of the beacon node REST service [=http://127.0.0.1:5052].
+//  --print  Print signed exit message instead of publishing it [=false].
+
+server.post("/exit_validator/:pubkey", async (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    const pubkey = req.params?.pubkey
+
+    if (!pubkey) {
+        res.send(500, "missing pubkey")
+        next();
+    }
+
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    console.log(`Sending exit message for validator ${pubkey}`)
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+
+    const nimbus = "/home/user/nimbus-eth2/build/nimbus_beacon_node"
+    const cmd = `${nimbus} deposits exit --validator="${pubkey}"`
+
+    try {
+        const stdout = execSync(cmd)
+        res.send(200, stdout.toString().trim() || "success")
+        next();
+    } catch (e: any) {
+        // console.log(e.stderr.toString())
+        res.send(500, e.stderr.toString().trim())
+        next();
+    }
+})
 
 ////////////////////////
 // Checkpoint API    ///
@@ -261,7 +301,4 @@ const getKeyManagerToken = () => {
 
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
-    supervisorCtl.callMethod("supervisor.getState", []).then((value: any) => {
-        console.log("supervisor", value.statename)
-    })
 });
