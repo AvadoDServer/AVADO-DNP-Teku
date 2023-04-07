@@ -9,6 +9,7 @@ import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipien
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
 import ExitValidatorModal from "./ExitValidatorModal";
+import RocketPoolLink from "./RocketPoolLink";
 
 interface Props {
     settings: SettingsType | undefined
@@ -291,7 +292,10 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                     <tbody>
                                         {validatorData.sort((v1, v2) => v1.index.localeCompare(v2.index)).map((validator, i) =>
                                             <tr key={validator.index}>
-                                                <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, <FontAwesomeIcon className="icon" icon={faSatelliteDish} />)}</td>
+                                                <td>
+                                                    {beaconchainUrl("/validator/" + validator.validator.pubkey, <span className="icon has-text-info"><FontAwesomeIcon className="icon" icon={faSatelliteDish} /></span>)}
+                                                    <RocketPoolLink validator={validator} />
+                                                </td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, validator.index)}</td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>
                                                 <td>{(parseFloat(validator.balance) / 1000000000.0).toFixed(4)}</td>
@@ -314,7 +318,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                     <td>
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
                                                         {settings?.network === "prater" && (
-                                                            <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network}/>
+                                                            <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network} />
                                                         )}
                                                     </td>
                                                 )}
