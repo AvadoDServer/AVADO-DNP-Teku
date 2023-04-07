@@ -35,7 +35,7 @@ const Comp = () => {
 
     const apiUrl = `http://${packageUrl}:9999`;
 
-    const capitalizeFirstLetter = (name:string) => name.charAt(0).toUpperCase() + name.slice(1);
+    const capitalizeFirstLetter = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
     const getTitle = () => {
         const clientName = capitalizeFirstLetter(server_config.name)
@@ -69,7 +69,7 @@ const Comp = () => {
 
     React.useEffect(() => {
         if (api) {
-            api.get("/defaultsettings", (res) => {                
+            api.get("/defaultsettings", (res) => {
                 setDefaultSettings(res.data)
             }, (err) => {
                 console.log("default", err)
@@ -96,7 +96,7 @@ const Comp = () => {
                 }
             }, (err) => {
                 //ERROR TODO
-            } )
+            })
         }
     }, [wampSession, dappManagerHelper, settings, api, applySettingsChanges, navigate]);
 
@@ -113,7 +113,7 @@ const Comp = () => {
         if (!api) {
             setApi(new RestApi(apiUrl))
         }
-    // eslint-disable-next-line
+        // eslint-disable-next-line
     }, [wampSession, dappManagerHelper])
 
     const [searchParams] = useSearchParams()
@@ -137,7 +137,7 @@ const Comp = () => {
                     <div className="column">
                         <Header api={api} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
 
-                        <NavigationBar />
+                        <NavigationBar network={settings?.network??"mainnet"} />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
@@ -147,6 +147,7 @@ const Comp = () => {
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
                             <Route path="/settings" element={<SettingsForm name={capitalizeFirstLetter(server_config.name)} settings={settings} defaultSettings={defaultSettings} applySettingsChanges={applySettingsChanges} installedPackages={packages} isAdminMode={isAdminMode} />} />
                             <Route path="/checksync" element={<CheckCheckPointSync api={api} network={server_config.network} packageUrl={packageUrl} />} />
+
                             {dappManagerHelper && <Route path="/admin" element={<AdminPage api={api} dappManagerHelper={dappManagerHelper} />} />}
                         </Routes>
 
