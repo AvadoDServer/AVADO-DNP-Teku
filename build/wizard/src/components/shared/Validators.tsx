@@ -8,6 +8,7 @@ import { Network, SettingsType } from "./Types";
 import OverrideVallidatorFeeRecipientModal from "./OverrideVallidatorFeeRecipientModal";
 import { RestApi } from "./RestApi";
 import { useNavigate } from "react-router-dom";
+import ExitValidatorModal from "./ExitValidatorModal";
 
 interface Props {
     settings: SettingsType | undefined
@@ -15,7 +16,7 @@ interface Props {
     readonly?: boolean
 }
 
-interface ValidatorData {
+export interface ValidatorData {
     "index": string
     "balance": string,
     "status": string,
@@ -119,7 +120,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                     "withdrawable_epoch": "0"
                 }
             };
-            return await api.get(`/rest/eth/v1/beacon/states/finalized/validators/${pubKey}`, res => {
+            return await api.get(`/rest/eth/v1/beacon/states/head/validators/${pubKey}`, res => {
                 // console.dir(res);
                 if (res.status === 200 && res.data !== "failed") {
                     // console.log(res.data.data)
@@ -313,7 +314,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                     <td>
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
                                                         {settings?.network === "prater" && (
-                                                            <button className="button is-text has-text-grey-light" name="exit" onClick={() => askConfirmationExitValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faArrowUpFromBracket} /></button>
+                                                            <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network}/>
                                                         )}
                                                     </td>
                                                 )}
