@@ -53,6 +53,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
     const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
+    const [postCapella, setPostCapella] = React.useState<boolean>(false);
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
 
@@ -74,6 +75,18 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                 }
             }, (e) => {
                 console.log("error updating validators", e)
+            });
+
+        api.get("/rest/eth/v2/beacon/blocks/head",
+            (res) => {
+                if (res.status === 200) {
+                    // console.log("head", res.data)
+                    setPostCapella(res.data.version === "capella")
+                } else {
+                    console.log("error getting head block info", res)
+                }
+            }, (e) => {
+                console.log("error getting head block info", e)
             });
     }, [api])
 
@@ -237,6 +250,19 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
         }
     }
 
+    const withdrawalTag = (validator: ValidatorData) => {
+        const ready = validator.validator.withdrawal_credentials.startsWith("0x01")
+        const message = () => {
+            if (!postCapella)
+                return "comming soon"
+            if (ready && postCapella)
+                return "enabled"
+            if (!ready && postCapella)
+                return "todo"
+        }
+        return <span className={"tag " + (ready ? "is-success" : "is-warning")}>{message()}</span>
+    }
+
     return (
         <div>
             <div className="container has-text-centered ">
@@ -260,7 +286,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                 </div>
                             </>
                         )}
-                        {validators && validatorData && feeRecipients && validators.length > 0 && (
+                        {validators && validatorData && feeRecipients && validators.length > 0 && settings && (
                             <>
                                 <OverrideVallidatorFeeRecipientModal
                                     network={settings?.network ?? "mainnet"}
@@ -294,7 +320,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                             <tr key={validator.index}>
                                                 <td>
                                                     {beaconchainUrl("/validator/" + validator.validator.pubkey, <span className="icon has-text-info"><FontAwesomeIcon className="icon" icon={faSatelliteDish} /></span>)}
-                                                    <RocketPoolLink validator={validator} />
+                                                    <RocketPoolLink validator={validator} network={settings.network} />
                                                 </td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, validator.index)}</td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>
@@ -308,16 +334,12 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                         {abbreviatePublicKey(feeRecipients[i])}
                                                     </a>
                                                 </td>
-                                                <td>
-                                                    {validator.validator.withdrawal_credentials.startsWith("0x01") ?
-                                                        <span className="tag is-success">coming soon</span>
-                                                        : <span className="tag is-warning">coming soon</span>}
-                                                </td>
+                                                <td>{withdrawalTag(validator)}</td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
                                                 {!readonly && (
                                                     <td>
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
-                                                        {settings?.network === "prater" && (
+                                                        {postCapella && (
                                                             <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network} />
                                                         )}
                                                     </td>
