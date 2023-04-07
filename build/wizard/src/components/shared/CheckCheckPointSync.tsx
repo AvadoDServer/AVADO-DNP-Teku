@@ -5,8 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCircleXmark, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 
-const debug = false;
-
 interface Props {
     api: RestApi | undefined | null
     network: Network
@@ -84,17 +82,14 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                         // "mainnet.checkpoint.sigp.io"
                     ]
 
-            const monitorAPI = () => {
-                return (debug ? "http://localhost:9999" : `http://${packageUrl}:9999`)
-            }
 
             const fetchFromCheckpointzEndPoint = async (endpoint: string): Promise<tableDateType> => {
-                const url = monitorAPI() + `/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
+                const url = api?.baseUrl + `/${endpoint}/checkpointz/v1/beacon/slots/${slot}`
                 console.log(url)
                 return {
                     url: `https://${endpoint}`, state_root: await axios.get(url)
                         .then(res => network === "gnosis" ?
-                            res.data.block.Altair.message.state_root
+                    res.data.block.Altair.message.state_root
                             : res.data.block.Bellatrix.message.state_root)
                         .catch(error => "could not fetch, check manually")
                 }
@@ -108,7 +103,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                     "mainnet": "beaconcha.in"
                 })[network]
 
-                const url = monitorAPI() + `/${base_url}/api/v1/block/${slot}`
+                const url = api?.baseUrl + `/${base_url}/api/v1/block/${slot}`
                 console.log(url)
                 return {
                     url: `https://${base_url}/slot/${slot}`, state_root: await axios.get(url)
@@ -122,7 +117,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                     .concat(fetchFromBeaconChain())
             ).then(values => setOtherStateRoots(values))
         }
-    }, [finalizedState, packageUrl, network]);
+    }, [finalizedState, packageUrl, network, api]);
 
     const refresh = () => {
         if (api) {
