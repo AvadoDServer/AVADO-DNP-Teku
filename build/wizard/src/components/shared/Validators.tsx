@@ -52,7 +52,9 @@ export const createBeaconchainUrl = (network: Network | null | undefined, valida
 const Validators = ({ settings, api, readonly = false }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
-    const [feeRecipients, setFeeRecipients] = React.useState<string[]>();
+
+    type feeRecipientType = {pubKey: string, recipient: string}
+    const [feeRecipients, setFeeRecipients] = React.useState<feeRecipientType[]>();
     const [postCapella, setPostCapella] = React.useState<boolean>(false);
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
@@ -96,25 +98,27 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
 
     React.useEffect(() => {
         const getFeeRecipient = async (pubKey: string) => {
+            const result = (recipient: string) => ({pubKey: pubKey, recipient: recipient})
+
             if (!settings?.validators_proposer_default_fee_recipient) {
-                return "Configure default setting first!"
+                return result("Configure default setting first!")
             }
 
-            return api.get<string>(`/keymanager/eth/v1/validator/${pubKey}/feerecipient`,
+            return api.get(`/keymanager/eth/v1/validator/${pubKey}/feerecipient`,
                 (res) => {
                     if (res.status === 200) {
                         // console.log(res)
                         const address = res.data.data.ethaddress;
                         if (address && address !== "0x0000000000000000000000000000000000000000")
-                            return address
+                            return result(address)
                         else
-                            return settings?.validators_proposer_default_fee_recipient
+                            return result(settings?.validators_proposer_default_fee_recipient)
                     } else {
-                        return settings?.validators_proposer_default_fee_recipient
+                        return result(settings?.validators_proposer_default_fee_recipient)
                     }
                 }, (err) => {
                     console.log("Error in validators_proposer_default_fee_recipient", err)
-                    return settings?.validators_proposer_default_fee_recipient
+                    return result(settings?.validators_proposer_default_fee_recipient)
                 });
         }
 
@@ -263,6 +267,8 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
         return <span className={"tag " + (ready ? "is-success" : "is-warning")}>{message()}</span>
     }
 
+    const getFeeRecipient = (feeRecipients: feeRecipientType[], pubkey: string) => feeRecipients.find(x => (x.pubKey === pubkey))!.recipient
+
     return (
         <div>
             <div className="container has-text-centered ">
@@ -316,7 +322,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {validatorData.sort((v1, v2) => v1.index.localeCompare(v2.index)).map((validator, i) =>
+                                        {validatorData.sort((v1, v2) => parseInt(v1.index) - parseInt(v2.index)).map((validator, i) =>
                                             <tr key={validator.index}>
                                                 <td>
                                                     {beaconchainUrl("/validator/" + validator.validator.pubkey, <span className="icon has-text-info"><FontAwesomeIcon className="icon" icon={faSatelliteDish} /></span>)}
@@ -330,8 +336,8 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                 {/* <td>{validator.validator.exit_epoch}</td> */}
                                                 <td>
                                                     {/* eslint-disable-next-line */}
-                                                    <a className="link" onClick={() => { if (!readonly) configureFeeRecipient(validator.validator.pubkey, feeRecipients[i]) }}>
-                                                        {abbreviatePublicKey(feeRecipients[i])}
+                                                    <a className="link" onClick={() => { if (!readonly) configureFeeRecipient(validator.validator.pubkey, getFeeRecipient(feeRecipients, validator.validator.pubkey)) }}>
+                                                        {abbreviatePublicKey(getFeeRecipient(feeRecipients, validator.validator.pubkey))}
                                                     </a>
                                                 </td>
                                                 <td>{withdrawalTag(validator)}</td>
