@@ -55,7 +55,6 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
 
     type feeRecipientType = {pubKey: string, recipient: string}
     const [feeRecipients, setFeeRecipients] = React.useState<feeRecipientType[]>();
-    const [postCapella, setPostCapella] = React.useState<boolean>(false);
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
 
@@ -77,18 +76,6 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                 }
             }, (e) => {
                 console.log("error updating validators", e)
-            });
-
-        api.get("/rest/eth/v2/beacon/blocks/head",
-            (res) => {
-                if (res.status === 200) {
-                    // console.log("head", res.data)
-                    setPostCapella(res.data.version === "capella")
-                } else {
-                    console.log("error getting head block info", res)
-                }
-            }, (e) => {
-                console.log("error getting head block info", e)
             });
     }, [api])
 
@@ -257,15 +244,15 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
     const withdrawalTag = (validator: ValidatorData) => {
         const ready = validator.validator.withdrawal_credentials.startsWith("0x01")
         const message = () => {
-            if (!postCapella)
-                return "comming soon"
-            if (ready && postCapella)
+            if (ready)
                 return "enabled"
-            if (!ready && postCapella)
+            if (!ready)
                 return "todo"
         }
         return <span className={"tag " + (ready ? "is-success" : "is-warning")}>{message()}</span>
     }
+
+    const canExit = (validator: ValidatorData) => validator.status === "active_ongoing"
 
     const getFeeRecipient = (feeRecipients: feeRecipientType[], pubkey: string) => feeRecipients.find(x => (x.pubKey === pubkey))!.recipient
 
@@ -345,7 +332,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                 {!readonly && (
                                                     <td>
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
-                                                        {postCapella && (
+                                                        {canExit(validator) && (
                                                             <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network} />
                                                         )}
                                                     </td>
