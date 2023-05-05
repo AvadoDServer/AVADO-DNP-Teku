@@ -3,8 +3,8 @@
 SETTINGSFILE=$1
 
 if [ ! -f "${SETTINGSFILE}" ]; then
-    echo "Starting with default settings"
-    cp /opt/nimbus/defaultsettings.json ${SETTINGSFILE}
+  echo "Starting with default settings"
+  cp /opt/nimbus/defaultsettings.json ${SETTINGSFILE}
 fi
 
 NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"')
@@ -19,16 +19,16 @@ done
 
 KEYMANAGER_TOKEN="/data/data-${NETWORK}/keymanagertoken"
 if [[ ! -e ${KEYMANAGER_TOKEN} ]]; then
-    openssl rand -hex 32 > ${KEYMANAGER_TOKEN}
+  openssl rand -hex 32 >${KEYMANAGER_TOKEN}
 fi
 
 case ${NETWORK} in
-  "prater")
-    P2P_PORT=9003
-    ;;
-  *)
-    P2P_PORT=9000
-    ;;
+"prater")
+  P2P_PORT=9003
+  ;;
+*)
+  P2P_PORT=9000
+  ;;
 esac
 
 # Create config file
@@ -44,18 +44,18 @@ if [ ! -d "${DATA_PATH}/db" ]; then
   INITIAL_STATE_FILE="/data/data-${NETWORK}/initial_state.ssz"
   if [ ! -f "${INITIAL_STATE_FILE}" ]; then
     case ${NETWORK} in
-      "prater")
-        until $(curl -sH 'Accept: application/octet-stream' --silent --fail "${INITIAL_STATE}" --output "${INITIAL_STATE_FILE}"); do
-          echo "Waiting for initial state download"
-          sleep 5
-        done
-        ;;
-      *)
-        until $(curl --insecure --silent --fail "${INITIAL_STATE}" --output "${INITIAL_STATE_FILE}"); do
-          echo "Waiting for initial state download"
-          sleep 5
-        done
-        ;;
+    "prater")
+      until $(curl -sH 'Accept: application/octet-stream' --silent --fail "${INITIAL_STATE}" --output "${INITIAL_STATE_FILE}"); do
+        echo "Waiting for initial state download"
+        sleep 5
+      done
+      ;;
+    *)
+      until $(curl --insecure --silent --fail "${INITIAL_STATE}" --output "${INITIAL_STATE_FILE}"); do
+        echo "Waiting for initial state download"
+        sleep 5
+      done
+      ;;
     esac
   fi
 fi
@@ -74,6 +74,7 @@ exec /home/user/nimbus-eth2/build/nimbus_beacon_node \
   --udp-port=${P2P_PORT} \
   --rest \
   --rest-port=5052 \
+  --rest-address=0.0.0.0 \
   --network=${NETWORK} \
   --data-dir="${DATA_PATH}" \
   --hard-max-peers="${P2P_PEER_UPPER_BOUND}" \
