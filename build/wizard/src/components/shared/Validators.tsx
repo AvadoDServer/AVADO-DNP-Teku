@@ -44,7 +44,7 @@ export const createBeaconchainUrl = (network: Network | null | undefined, valida
     const beaconChainBaseUrl = ({
         "prater": "https://prater.beaconcha.in",
         "mainnet": "https://beaconcha.in",
-        "gnosis": "https://beacon.gnosischain.com"
+        "gnosis": "https://gnosischa.in"
     })[network ?? "mainnet"]
     return <a href={beaconChainBaseUrl + validatorPubkey} target="_blank" rel="noopener noreferrer">{text ? text : validatorPubkey}</a>;
 }
@@ -53,7 +53,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
     const [validatorData, setValidatorData] = React.useState<ValidatorData[]>();
     const [validators, setValidators] = React.useState<string[]>();
 
-    type feeRecipientType = {pubKey: string, recipient: string}
+    type feeRecipientType = { pubKey: string, recipient: string }
     const [feeRecipients, setFeeRecipients] = React.useState<feeRecipientType[]>();
 
     const [configuringfeeRecipient, setConfiguringfeeRecipient] = React.useState<ConfiguringfeeRecipient | null>();
@@ -85,7 +85,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
 
     React.useEffect(() => {
         const getFeeRecipient = async (pubKey: string) => {
-            const result = (recipient: string) => ({pubKey: pubKey, recipient: recipient})
+            const result = (recipient: string) => ({ pubKey: pubKey, recipient: recipient })
 
             if (!settings?.validators_proposer_default_fee_recipient) {
                 return result("Configure default setting first!")
