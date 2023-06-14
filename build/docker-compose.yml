@@ -1,7 +1,7 @@
 version: '3.4'
 services:
-  teku-prater.avado.dnp.dappnode.eth:
-    image: 'teku-prater.avado.dnp.dappnode.eth:0.0.12'
+  teku-gnosis.avado.dnp.dappnode.eth:
+    image: 'teku-gnosis.avado.dnp.dappnode.eth:0.0.8'
     build:
       context: ./build
       args:
@@ -9,7 +9,7 @@ services:
     volumes:
       - 'data:/data'
     environment:
-      - JAVA_OPTS=-Xmx3g
+      - JAVA_OPTS=-Xmx4g
       - EXTRA_OPTS=
 volumes:
   data: {}
