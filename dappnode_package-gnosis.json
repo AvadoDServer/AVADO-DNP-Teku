@@ -17,7 +17,7 @@
     ],
     "environment": [
       "EXTRA_OPTS=",
-      "JAVA_OPTS=-Xmx3g"
+      "JAVA_OPTS=-Xmx5g"
     ],
     "restart": "always"
   },
