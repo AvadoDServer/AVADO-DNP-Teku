@@ -9,7 +9,7 @@ services:
     volumes:
       - 'data:/data'
     environment:
-      - JAVA_OPTS=-Xmx3g
+      - JAVA_OPTS=-Xmx8g
       - EXTRA_OPTS=
 volumes:
   data: {}
