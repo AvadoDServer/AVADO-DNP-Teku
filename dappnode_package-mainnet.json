@@ -1,7 +1,7 @@
 {
   "name": "nimbus.avado.dnp.dappnode.eth",
-  "version": "0.0.9",
-  "upstream": "v23.5.1",
+  "version": "0.0.10",
+  "upstream": "v23.7.0",
   "title": "Nimbus",
   "description": "Nimbus-eth2 is an extremely efficient consensus layer (eth2) client implementation.",
   "avatar": "/ipfs/QmPCB9g8ajvstqmGSfbM9jSHUpBK1UEg4Y4gCWVZX9c49k",
