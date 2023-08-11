@@ -11,7 +11,10 @@
     "volumes": [
       "data:/data"
     ],
-    "ports": [],
+    "ports": [
+      "9101:9101/tcp",
+      "9101:9101/udp"
+    ],
     "environment": [
       "EXTRA_OPTS="
     ],

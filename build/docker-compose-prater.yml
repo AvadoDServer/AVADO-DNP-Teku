@@ -7,8 +7,8 @@ services:
       args:
         NIMBUS_VERSION: v23.7.0
     ports:
-      - '9000:9000/udp'
-      - '9000:9000'
+      - '9101:9101/udp'
+      - '9101:9101'
     volumes:
       - 'data:/data'
     environment:

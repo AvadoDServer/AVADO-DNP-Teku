@@ -24,10 +24,10 @@ fi
 
 case ${NETWORK} in
 "prater")
-  P2P_PORT=9003
+  P2P_PORT=9101
   ;;
 *)
-  P2P_PORT=9000
+  P2P_PORT=9100
   ;;
 esac
 
