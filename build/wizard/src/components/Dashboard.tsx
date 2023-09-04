@@ -90,7 +90,7 @@ const Comp = () => {
                         parsedSettings.execution_engine = "ethchain-geth.public.dappnode.eth"
                     }
                     setSettings(parsedSettings)
-                    console.log("Loaded settings: ", parsedSettings);
+                    // console.log("Loaded settings: ", parsedSettings);
                 } else {
                     //ERROR TODO
                 }
@@ -137,7 +137,7 @@ const Comp = () => {
                     <div className="column">
                         <Header api={api} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} />
 
-                        <NavigationBar network={settings?.network??"mainnet"} />
+                        <NavigationBar network={settings?.network ?? "mainnet"} />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />

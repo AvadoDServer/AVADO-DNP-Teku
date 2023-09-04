@@ -133,37 +133,6 @@ server.get("/service/status", (req: restify.Request, res: restify.Response, next
 });
 
 ////////////////////////
-// EXIT validator    ///
-////////////////////////
-
-server.post("/exit_validator/:pubkey", async (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const pubkey = req.params?.pubkey
-
-    if (!pubkey) {
-        res.send(500, "missing pubkey")
-        next();
-    }
-
-    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    console.log(`Sending exit message for validator ${pubkey}`)
-    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-
-    const teku = "/opt/teku/bin/teku"
-    const fixed_opts = `--data-path=/data/data-${server_config.network}/ --beacon-node-api-endpoint=http://127.0.0.1:5051 --include-keymanager-keys=true --confirmation-enabled=false`
-    const cmd = `${teku} voluntary-exit --validator-public-keys="${pubkey}" ${fixed_opts}`
-
-    try {
-        const stdout = execSync(cmd)
-        res.send(200, stdout.toString().trim() || "success")
-        next();
-    } catch (e: any) {
-        // console.log(e.stderr.toString())
-        res.send(500, e.stderr.toString().trim())
-        next();
-    }
-})
-
-////////////////////////
 // Checkpoint API    ///
 ////////////////////////
 
@@ -201,13 +170,23 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
             res.send(response.status, response.data.data)
             next();
         }
-    ).catch(
-        (error: any) => {
-            console.log("Error contacting ", url, error);
-            res.send(500, "failed")
+    ).catch(function (error) {
+        console.log("Error contacting ", url, error);
+        console.log("config", JSON.stringify(error.config));
+        if (error.response) {
+            console.log('Error', error.response.data);
+            res.send(error.response.status, error.response.data)
+            next();
+        } else if (error.request) {
+            console.log(error.request);
+            res.send(500, error.request)
+            next();
+        } else {
+            console.log('Error', error.message);
+            res.send(500, error.message)
             next();
         }
-    )
+    })
 }
 
 /////////////////////////////
@@ -215,6 +194,14 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
 /////////////////////////////
 
 server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(req, res, next);
+});
+
+server.post('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(req, res, next);
+});
+
+const processRestRequest = (req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
     const url = `${server_config.rest_url}/${path}`
     const headers = {
@@ -227,7 +214,7 @@ server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restif
         res,
         next
     )
-});
+}
 
 /////////////////////////////
 // Key manager API         //
@@ -274,11 +261,31 @@ const axiosRequest = (url: string, headers: object, req: restify.Request, res: r
     }).then((response: any) => {
         res.send(response.status, response.data)
         next();
-    }).catch((error: any) => {
-        console.log("Error contacting ", url, error.cause);
-        res.send(500, "failed")
-        next();
+    }).catch(function (error) {
+        if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.log('Error', error.response.data);
+            // console.log(error.response.status);
+            // console.log(error.response.headers);
+            res.send(error.response.status, error.response.data)
+            next();
+        } else if (error.request) {
+            // The request was made but no response was received
+            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+            // http.ClientRequest in node.js
+            console.log(error.request);
+            res.send(500, error.request)
+            next();
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            console.log('Error', error.message);
+            res.send(500, error.message)
+            next();
+        }
+        console.log("config", JSON.stringify(error.config));
     });
+
 }
 
 const getKeyManagerToken = () => {
