@@ -31,11 +31,19 @@ RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/false nginx
 
+
 # Instal node v18.15.0
+ENV NVM_DIR /root/.nvm
+ENV NODE_VERSION v18.15.0
+
 RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
-    && . /root/.nvm/nvm.sh \
-    && nvm install v18.15.0 \
-    && nvm use v18.15.0
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
+
+ENV NODE_PATH $NVM_DIR/$NODE_VERSION/lib/node_modules
+ENV PATH      $NVM_DIR/$NODE_VERSION/bin:$PATH
 
 RUN mkdir /data  && chown teku /data
 VOLUME /data
