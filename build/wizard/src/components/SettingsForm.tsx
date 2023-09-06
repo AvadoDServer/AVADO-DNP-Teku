@@ -7,7 +7,7 @@ import { Network, SettingsType } from "./shared/Types";
 import server_config from "../server_config.json"
 
 interface Props {
-    name : string
+    name: string
     settings: SettingsType | undefined,
     defaultSettings: SettingsType | undefined,
     applySettingsChanges: (settings: any) => void
@@ -32,7 +32,7 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
         network: Network
     }
 
-    const execution_engines: execution_engine[] = useMemo( () => [
+    const execution_engines: execution_engine[] = useMemo(() => [
         {
             name: "Geth Mainnet",
             packagename: "ethchain-geth.public.dappnode.eth",
