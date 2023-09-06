@@ -5,11 +5,13 @@ import lighthouse_prater from "../assets/lighthouse-prater.png";
 import teku_mainnet from "../assets/teku-mainnet.png";
 import teku_prater from "../assets/teku-prater.png";
 import teku_gnosis from "../assets/teku-gnosis.png";
+import prsym from "../assets/PrysmStripe.png";
+
 
 import server_config from "../server_config.json"
 import { Client, Network } from "./SupportedClientsAndNetworks";
 
-const client = server_config.name as Client 
+const client = server_config.name as Client
 const network = server_config.network as Network
 
 export const logo = ({
@@ -27,5 +29,10 @@ export const logo = ({
         "prater": teku_prater,
         "mainnet": teku_mainnet,
         "gnosis": teku_gnosis
+    }),
+    "prysm": ({
+        "prater": prsym,
+        "mainnet": prsym,
+        "gnosis": prsym
     })
 })[client][network]

@@ -3,11 +3,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faBook } from "@fortawesome/free-solid-svg-icons";
 import { RestApi } from "./RestApi";
 import { logo } from "../Logo"
+import { Network } from "./Types";
 interface Props {
     api: RestApi | undefined | null
     title: string
     tagline: string
     wikilink: string
+    network: Network
 }
 
 interface SyncData {
@@ -24,7 +26,7 @@ interface Peer {
 
 enum Health { ready, syncing, not_ready }
 
-const Comp = ({ api, title, tagline, wikilink }: Props) => {
+const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
     const [peerCount, setPeerCount] = React.useState<number>(0);
@@ -108,6 +110,8 @@ const Comp = ({ api, title, tagline, wikilink }: Props) => {
         return (Math.floor(headSlot * 100.0 * 100.0 / total) / 100.0).toFixed(2) + "%" // round down to two decimal places
     }
 
+    const slots_per_epoch = network === "gnosis" ? 16 : 32
+
     return (
         <div>
             <div className="hero-body is-small is-primary py-0">
@@ -144,7 +148,7 @@ const Comp = ({ api, title, tagline, wikilink }: Props) => {
                                         )}
 
                                         <br />
-                                        epoch: {Math.floor(parseFloat(syncData.head_slot) / 32.0)}, slot {syncData.head_slot}
+                                        epoch: {Math.floor(parseFloat(syncData.head_slot) / slots_per_epoch)}, slot {syncData.head_slot}
                                     </>
                                 )}
                         </p>
