@@ -1,9 +1,9 @@
 {
-  "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.41",
+  "name": "teku-prater.avado.dnp.dappnode.eth",
+  "version": "0.0.20",
   "upstream": "23.9.0",
-  "title": "Teku",
-  "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
+  "title": "Teku Goerli/Prater Testnet",
+  "description": "Teku is a Java implementation of the Ethereum Consensus and Validator client",
   "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
   "type": "service",
   "autoupdate": true,
@@ -12,8 +12,8 @@
       "data:/data"
     ],
     "ports": [
-      "9000:9000/udp",
-      "9000:9000"
+      "9003:9003/udp",
+      "9003:9003"
     ],
     "environment": [
       "EXTRA_OPTS=",
@@ -26,12 +26,12 @@
   "dependencies": {},
   "ui": {
     "OnboardingWizard": {
-      "url": "http://teku.my.ava.do",
+      "url": "http://teku-prater.my.ava.do",
       "external": true
     }
   },
   "links": {
-    "OnboardingWizard": "http://teku.my.ava.do",
+    "OnboardingWizard": "http://teku-prater.my.ava.do",
     "HomePage": "https://docs.teku.consensys.net/en/23.9.0/"
   }
 }
