@@ -1,10 +1,10 @@
 {
-  "name": "teku-prater.avado.dnp.dappnode.eth",
-  "version": "0.0.21",
+  "name": "teku-gnosis.avado.dnp.dappnode.eth",
+  "version": "0.0.13",
   "upstream": "23.10.0",
-  "title": "Teku Goerli/Prater Testnet",
-  "description": "Teku is a Java implementation of the Ethereum Consensus and Validator client",
-  "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
+  "title": "Teku-Gnosis",
+  "description": "Teku is a Java implementation of the Gnosis Beacon Chain.",
+  "avatar": "/ipfs/QmZc3AiweTGtDywdoN2oXcgMgTzz58iGaAyBNQtp8msHHq",
   "type": "service",
   "autoupdate": true,
   "image": {
@@ -12,8 +12,8 @@
       "data:/data"
     ],
     "ports": [
-      "9003:9003/udp",
-      "9003:9003"
+      "9006:9006/udp",
+      "9006:9006"
     ],
     "environment": [
       "EXTRA_OPTS=",
@@ -26,12 +26,12 @@
   "dependencies": {},
   "ui": {
     "OnboardingWizard": {
-      "url": "http://teku-prater.my.ava.do",
+      "url": "http://teku-gnosis.my.ava.do",
       "external": true
     }
   },
   "links": {
-    "OnboardingWizard": "http://teku-prater.my.ava.do",
-    "HomePage": "https://docs.teku.consensys.net/en/23.10.0/"
+    "OnboardingWizard": "http://teku-gnosis.my.ava.do",
+    "HomePage": "https://docs.teku.consensys.net/en/23.3.0/"
   }
 }
