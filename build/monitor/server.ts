@@ -1,11 +1,11 @@
 import * as restify from "restify";
 import corsMiddleware from "restify-cors-middleware2"
-import axios, { Method, AxiosRequestHeaders } from "axios";
+import axios, { Method } from "axios";
 import * as fs from 'fs';
 import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
-import { execSync } from "child_process";
+
 
 console.log("Monitor starting...");
 
@@ -144,20 +144,22 @@ server.get("/:name/checkpointz/v1/beacon/slots/:slot", (req: restify.Request, re
     get(url, res, next)
 });
 
-// beacon chain is different
-server.get("/beaconcha.in/api/v1/block/:slot", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const slot = req.params.slot;
-    const url = `https://beaconcha.in/api/v1/block/${slot}`
+////////////////////////
+// beaconcha.in API   //
+////////////////////////
+server.get("/beaconcha.in/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    const path = req.params["*"]
+    const url = `https://beaconcha.in/${path}`
     get(url, res, next)
 });
-server.get("/prater.beaconcha.in/api/v1/block/:slot", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const slot = req.params.slot;
-    const url = `https://prater.beaconcha.in/api/v1/block/${slot}`
+server.get("/prater.beaconcha.in/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    const path = req.params["*"]
+    const url = `https://prater.beaconcha.in/${path}`
     get(url, res, next)
 });
-server.get("/beacon.gnosischain.com/api/v1/block/:slot", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const slot = req.params.slot;
-    const url = `https://beacon.gnosischain.com/api/v1/block/${slot}`
+server.get("/beacon.gnosischain.com/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    const path = req.params["*"]
+    const url = `https://beacon.gnosischain.com/${path}`
     get(url, res, next)
 });
 
