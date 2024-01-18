@@ -1,7 +1,7 @@
 {
   "name": "teku-prater.avado.dnp.dappnode.eth",
-  "version": "0.0.24",
-  "upstream": "23.12.1",
+  "version": "0.0.25",
+  "upstream": "24.1.0",
   "title": "Teku Goerli/Prater Testnet",
   "description": "Teku is a Java implementation of the Ethereum Consensus and Validator client",
   "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
@@ -32,6 +32,6 @@
   },
   "links": {
     "OnboardingWizard": "http://teku-prater.my.ava.do",
-    "HomePage": "https://docs.teku.consensys.net/en/23.12.1/"
+    "HomePage": "https://docs.teku.consensys.net/en/24.1.0/"
   }
 }
