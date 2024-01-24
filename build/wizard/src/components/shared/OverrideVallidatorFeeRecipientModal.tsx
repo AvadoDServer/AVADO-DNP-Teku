@@ -24,6 +24,7 @@ const OverrideVallidatorFeeRecipientModal = ({ network, api, validators_proposer
     const beaconchainUrl = (validatorPubkey: string, text: any) => {
         const beaconChainBaseUrl = ({
             "prater": "https://prater.beaconcha.in",
+            "holesky": "https://holesky.beaconcha.in",
             "mainnet": "https://beaconcha.in",
             "gnosis": "https://beacon.gnosischain.com"
         })[network]

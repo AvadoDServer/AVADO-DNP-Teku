@@ -1,4 +1,4 @@
 {
-  "network": "mainnet",
+  "network": "holesky",
   "name": "teku"
 }
