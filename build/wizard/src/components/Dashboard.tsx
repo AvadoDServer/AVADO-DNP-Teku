@@ -43,6 +43,7 @@ const Comp = () => {
         switch (server_config.network) {
             case "gnosis": return `Avado ${clientName} ${networkName}`
             case "prater": return `Avado ${clientName} ${networkName} Testnet`
+            case "holesky": return `Avado ${clientName} ${networkName} Testnet`
             default: return `Avado ${clientName}`;
         }
     }

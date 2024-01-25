@@ -44,6 +44,11 @@ const Comp = ({ name, settings, defaultSettings, applySettingsChanges, installed
             ee_endpoint: "http://goerli-geth.my.ava.do:8551",
             network: "prater"
         }, {
+            name: "Geth Holesky Testnet",
+            packagename: "holesky-geth.avado.dnp.dappnode.eth",
+            ee_endpoint: "http://holesky-geth.my.ava.do:8551",
+            network: "holesky"
+        }, {
             name: "Nethermind",
             packagename: "avado-dnp-nethermind.public.dappnode.eth",
             ee_endpoint: "http://avado-dnp-nethermind.my.ava.do:8551",

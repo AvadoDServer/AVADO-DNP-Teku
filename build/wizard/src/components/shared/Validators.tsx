@@ -43,6 +43,7 @@ export const abbreviatePublicKey = (key: string) => <abbr title={key}>{key?.subs
 export const createBeaconchainUrl = (network: Network | null | undefined, validatorPubkey: string, text?: any) => {
     const beaconChainBaseUrl = ({
         "prater": "https://prater.beaconcha.in",
+        "holesky": "https://holesky.beaconcha.in",
         "mainnet": "https://beaconcha.in",
         "gnosis": "https://gnosischa.in"
     })[network ?? "mainnet"]
@@ -286,7 +287,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                             <tr key={`validator-${i}`}>
                                                 <td>
                                                     {beaconchainUrl("/validator/" + validator.validator.pubkey, <span className="icon has-text-info"><FontAwesomeIcon className="icon" icon={faSatelliteDish} /></span>)}
-                                                    <RocketPoolLink validator={validator} network={settings.network} />
+                                                    <RocketPoolLink api={api} validator={validator} network={settings.network} />
                                                 </td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, validator.index)}</td>
                                                 <td>{beaconchainUrl("/validator/" + validator.validator.pubkey, abbreviatePublicKey(validator.validator.pubkey))}</td>

@@ -1,9 +1,11 @@
 import nimbus_mainnet from "../assets/nimbus-mainnet.png";
 import nimbus_prater from "../assets/nimbus-prater.png";
+import nimbus_holesky from "../assets/nimbus-holesky.png";
 import lighthouse_mainnet from "../assets/lighthouse-mainnet.png";
 import lighthouse_prater from "../assets/lighthouse-prater.png";
 import teku_mainnet from "../assets/teku-mainnet.png";
 import teku_prater from "../assets/teku-prater.png";
+import teku_holesky from "../assets/teku-holesky.png";
 import teku_gnosis from "../assets/teku-gnosis.png";
 import prsym from "../assets/PrysmStripe.png";
 
@@ -18,6 +20,7 @@ export const logo = ({
     "nimbus": ({
         "prater": nimbus_prater,
         "mainnet": nimbus_mainnet,
+        "holesky": nimbus_holesky,
         "gnosis": undefined
     }),
     "lighthouse": ({
@@ -28,7 +31,8 @@ export const logo = ({
     "teku": ({
         "prater": teku_prater,
         "mainnet": teku_mainnet,
-        "gnosis": teku_gnosis
+        "gnosis": teku_gnosis,
+        "holesky": teku_holesky,
     }),
     "prysm": ({
         "prater": prsym,
