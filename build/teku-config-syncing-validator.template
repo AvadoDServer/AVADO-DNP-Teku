@@ -1,0 +1,29 @@
+# Generated file.
+# Do not change this file, manual changes will be overwritten
+# You can overwrite settings via EXTRA_OPTS (advanced)
+
+# network
+network: "${NETWORK}"
+initial-state: "${INITIAL_STATE}"
+
+# validators
+validators-graffiti: "${GRAFFITI}"
+
+# database
+data-path: "${DATA_PATH}"
+data-storage-mode: "prune"
+
+# validator api
+# Validator api requires ssl keystore to be defined.
+
+validator-api-cors-origins: "*"
+validator-api-docs-enabled: true
+validator-api-enabled: true
+validator-api-host-allowlist: "*"
+validator-api-interface: "0.0.0.0"
+validator-api-keystore-file: /opt/teku/avado.keystore
+validator-api-keystore-password-file: /opt/teku/keystorePasswordFile
+validator-api-port: 5052
+
+# logging
+log-include-validator-duties-enabled: true

@@ -11,5 +11,6 @@ services:
     environment:
       - JAVA_OPTS=-Xmx8g
       - EXTRA_OPTS=
+      - MODE=syncing
 volumes:
   data: {}

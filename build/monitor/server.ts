@@ -6,7 +6,6 @@ import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
 
-
 console.log("Monitor starting...");
 
 const server = restify.createServer({
@@ -21,6 +20,13 @@ const cors = corsMiddleware({
         "http://*.my.ava.do"
     ]
 });
+
+// if (process.env.MODE === "syncing"){
+//     console.log(`Starting in "syncing" modus`);
+//     rest_url = server_config.rest_url_failover
+// }
+
+// console.log(`Will connect to beacon chain at ${rest_url}`);
 
 server.pre(cors.preflight);
 server.use(cors.actual);
@@ -40,6 +46,12 @@ server.get("/network", (req: restify.Request, res: restify.Response, next: resti
 
 server.get("/name", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, server_config.name);
+    next()
+});
+
+// what mode are we in : failover or local
+server.get("/mode", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    res.send(200, process.env.MODE);
     next()
 });
 
@@ -191,21 +203,34 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
     })
 }
 
-/////////////////////////////
-// Beacon chain rest API   //
-/////////////////////////////
+///////////////////////////////////
+// Local Beacon chain rest API   //
+///////////////////////////////////
 
 server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(req, res, next);
+    processRestRequest(server_config.rest_url_local,req, res, next);
 });
 
 server.post('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(req, res, next);
+    processRestRequest(server_config.rest_url_local,req, res, next);
 });
 
-const processRestRequest = (req: restify.Request, res: restify.Response, next: restify.Next) => {
+//////////////////////////////////////
+// Failover Beacon chain rest API   //
+//////////////////////////////////////
+
+
+server.get('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_failover,req, res, next);
+});
+
+server.post('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_failover,req, res, next);
+});
+const processRestRequest = (rest_url: string, req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `${server_config.rest_url}/${path}`
+    const url = `${rest_url}/${path}`
+    console.log(`fething ${url}`);
     const headers = {
         'Content-Type': 'application/json'
     }

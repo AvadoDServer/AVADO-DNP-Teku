@@ -16,6 +16,7 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
 import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 import CheckCheckPointSync from "./shared/CheckCheckPointSync";
+import FailoverBanner from "./shared/FailoverBanner";
 
 import server_config from "../server_config.json";
 
@@ -136,13 +137,21 @@ const Comp = () => {
             <section className="has-text-black">
                 <div className="columns is-mobile">
                     <div className="column">
-                        <Header api={api} title={getTitle()} tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`} wikilink={getWikilink()} network={server_config.network} />
+                        <Header
+                            api={api}
+                            title={getTitle()}
+                            tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`}
+                            wikilink={getWikilink()}
+                            network={server_config.network}
+                        />
 
                         <NavigationBar network={settings?.network ?? "mainnet"} />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
 
+                        {/* <FailoverBanner api={api} network={server_config.network} /> */}
+                        
                         <Routes>
                             {api && (<Route path="/" element={<MainPage settings={settings} api={api} dappManagerHelper={dappManagerHelper} />} />)}
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}
