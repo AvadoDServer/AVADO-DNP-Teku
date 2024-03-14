@@ -18,7 +18,7 @@
     "environment": [
       "EXTRA_OPTS=",
       "JAVA_OPTS=-Xmx8g",
-      "MODE=syncing"
+      "MODE=sta"
     ],
     "restart": "always"
   },
