@@ -6,8 +6,9 @@ import { Network } from "./Types";
 interface Props {
     api: RestApi | null | undefined
     prefix: string,
-    title: string
-    network: Network
+    title: string,
+    network: Network,
+    refreshinterval?: number,
 }
 
 interface SyncData {
@@ -24,7 +25,7 @@ interface Peer {
 
 enum Health { ready, syncing, not_ready }
 
-const Comp = ({ api, prefix, title, network }: Props) => {
+const Comp = ({ api, prefix, title, network, refreshinterval = 30 }: Props) => {
     const [syncData, setSyncData] = React.useState<SyncData | null>(null);
     const [error, setError] = React.useState<String | null>(null);
     const [peerCount, setPeerCount] = React.useState<number>(0);
@@ -52,7 +53,7 @@ const Comp = ({ api, prefix, title, network }: Props) => {
         updateHealth();
         const interval = setInterval(() => {
             updateHealth();
-        }, 5 * 1000); // 5 seconds refresh
+        }, refreshinterval * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
     }, [api]);
 
@@ -90,7 +91,7 @@ const Comp = ({ api, prefix, title, network }: Props) => {
         getVersion();
         const interval = setInterval(() => {
             updateStats();
-        }, 5 * 1000); // 5 seconds refresh
+        }, refreshinterval * 1000); // 5 seconds refresh
         return () => clearInterval(interval);
     }, [health, api]);
 
@@ -116,7 +117,7 @@ const Comp = ({ api, prefix, title, network }: Props) => {
                 ? (
                     <span className="tag is-danger">{error}<FontAwesomeIcon className="fa-spin" icon={faSpinner} /></span>
                 ) : (syncData && peerCount &&
-                    <><h4>{title}</h4><br/>
+                    <><h4>{title}</h4><br />
                         status: {(syncData.is_syncing === false && (peerCount > 0)
                         ) ? (<span className="tag is-success">in sync</span>
                         ) : (<><span className="tag is-warning">syncing {getSyncPercentage(syncData)}</span>, sync distance: {syncData.sync_distance}</>

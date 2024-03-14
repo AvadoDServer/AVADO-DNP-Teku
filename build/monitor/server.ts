@@ -5,7 +5,10 @@ import * as fs from 'fs';
 import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
-
+import AdmZip from "adm-zip";
+import { DappManagerHelper } from "./DappManagerHelper";
+// import {open,close} from "./wampsession"
+import autobahn from "autobahn";
 console.log("Monitor starting...");
 
 const server = restify.createServer({
@@ -20,13 +23,6 @@ const cors = corsMiddleware({
         "http://*.my.ava.do"
     ]
 });
-
-// if (process.env.MODE === "syncing"){
-//     console.log(`Starting in "syncing" modus`);
-//     rest_url = server_config.rest_url_failover
-// }
-
-// console.log(`Will connect to beacon chain at ${rest_url}`);
 
 server.pre(cors.preflight);
 server.use(cors.actual);
@@ -53,6 +49,16 @@ server.get("/name", (req: restify.Request, res: restify.Response, next: restify.
 server.get("/mode", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, process.env.MODE);
     next()
+});
+
+// overview of node status
+server.get("/nodestatus", async (req: restify.Request, res: restify.Response, next: restify.Next) => {
+
+    const clients = (await getInstalledClients())
+    console.log(clients);
+    res.send(200, "ok");
+    return next()
+
 });
 
 server.get("/settings", (req: restify.Request, res: restify.Response, next: restify.Next) => {
@@ -208,24 +214,23 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
 ///////////////////////////////////
 
 server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_local,req, res, next);
+    processRestRequest(server_config.rest_url_local, req, res, next);
 });
 
 server.post('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_local,req, res, next);
+    processRestRequest(server_config.rest_url_local, req, res, next);
 });
 
 //////////////////////////////////////
 // Failover Beacon chain rest API   //
 //////////////////////////////////////
 
-
 server.get('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_failover,req, res, next);
+    processRestRequest(server_config.rest_url_failover, req, res, next);
 });
 
 server.post('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_failover,req, res, next);
+    processRestRequest(server_config.rest_url_failover, req, res, next);
 });
 const processRestRequest = (rest_url: string, req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
@@ -322,6 +327,128 @@ const getKeyManagerToken = () => {
         console.error(err);
     }
 }
+
+// backup/restore
+
+
+//backup
+const backupFileName = `teku-backup-${server_config.network}-${Date.toString()}.zip`;
+server.get("/backup", (req, res, next) => {
+    res.setHeader("Content-Disposition", "attachment; " + backupFileName);
+    res.setHeader("Content-Type", "application/zip");
+
+    const zip = new AdmZip();
+    zip.addLocalFolder("/rocketpool/data", "data");
+    zip.toBuffer(
+        (buffer: Buffer) => {
+            // if (err) {
+            //     reject(err);
+            // } else {
+            res.setHeader("Content-Length", buffer.length);
+            res.end(buffer, "binary");
+            next()
+            // }
+        }
+    )
+});
+
+//restore
+server.post('/restore', (req, res, next) => {
+    console.log("upload backup zip file");
+    if (req.files?.file) {
+        const file = req.files.file;
+        // req.info = file.name;
+        const zipfilePath = "/tmp/" + file.name;
+        fs.renameSync(file.path, zipfilePath); //, (err) => { if (err) console.log('ERROR: ' + err) });
+        console.log("received backup file " + file.name);
+        try {
+            validateZipFile(zipfilePath);
+
+            // delete existing data folder (if it exists)
+            fs.rmSync("/rocketpool/data", { recursive: true, force: true /* ignore if not exists */ });
+
+            // unzip
+            const zip = new AdmZip(zipfilePath);
+            zip.extractAllTo("/rocketpool/", /*overwrite*/ true);
+
+            res.send({
+                code: 200,
+                message: "Successfully uploaded the Rocket Pool backup. Click restart to complete the restore.",
+            });
+            return next();
+        } catch (err) {
+            if (err instanceof Error) {
+                console.dir(err);
+                console.log(err);
+                res.send({
+                    code: 400,
+                    message: err.message,
+                });
+            } else {
+                res.send({
+                    code: 400,
+                    message: "unknown error",
+                });
+
+            }
+            return next();
+        }
+    }
+
+    function validateZipFile(zipfilePath: string) {
+        console.log("Validating " + zipfilePath);
+        const zip = new AdmZip(zipfilePath);
+        const zipEntries = zip.getEntries();
+
+        checkFileExistsInZipFile(zipEntries, "data/password")
+        checkFileExistsInZipFile(zipEntries, "data/mnemonic")
+        checkFileExistsInZipFile(zipEntries, "data/wallet")
+        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/accounts/all-accounts.keystore.json")
+        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/accounts/secret")
+        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/keymanageropts.json")
+    }
+
+    function checkFileExistsInZipFile(zipEntries: AdmZip.IZipEntry[], expectedPath: string) {
+        const containsFile = zipEntries.some((entry) => entry.entryName == expectedPath);
+        if (!containsFile)
+            throw { message: `Invalid backup file. The zip file must contain "${expectedPath}"` }
+    }
+});
+
+
+let wampSession: any = null;
+{
+    const url = "ws://wamp.my.ava.do:8080/ws";
+    const realm = "dappnode_admin";
+
+    const connection = new autobahn.Connection({ url, realm });
+    connection.onopen = (session: any) => {
+        console.log("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
+        wampSession = session;
+    };
+    connection.open();
+}
+
+const getInstalledClients = async () => {
+    const dappManagerHelper = new DappManagerHelper(server_config.name, wampSession);
+    const packages = await dappManagerHelper.getPackages();
+
+
+    console.log(`packages`,packages)
+
+
+    // const installed_clients = supported_beacon_chain_clients
+    //     .filter(client => (packages.includes(getAvadoPackageName(client, "beaconchain"))
+    //         && packages.includes(getAvadoPackageName(client, "validator")))
+    //     )
+    //     .map(client => ({
+    //         name: client,
+    //         url: `http://${client_url(client)}`,
+    //         validatorAPI: `http://${client_url(client)}:9999/keymanager`
+    //     }))
+    // return installed_clients;
+}
+
 
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);
