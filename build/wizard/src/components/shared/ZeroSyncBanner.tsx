@@ -20,14 +20,14 @@ const Comp = ({ api, network }: Props) => {
                     
                     <div className="column">
                         <span>
-                            <h1 className="title is-1 has-text-black">Failover node</h1>
+                            <h1 className="title is-1 has-text-black">Zero Sync node</h1>
                         </span>
-                        <p>As your own node is syncing - your validator will use a failover server provided by AVADO.</p>
+                        <p>As your own node is syncing - your validator will use a beacon chain provided by AVADO.</p>
                     </div>
                     <div className="column">
                        <ChainStatus api={api} 
-                       prefix="failover" 
-                       title="Failover Beacon Chain" 
+                       prefix="Zero Sync" 
+                       title="Zero Sync Beacon Chain" 
                        network={network}/>
                     </div>
                 </div>

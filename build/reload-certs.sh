@@ -1,4 +1,8 @@
 #!/bin/sh
+
+# Give teku time to start up 
+sleep 10
+
 while true; do
     date > /tmp/reload-certs.txt
 

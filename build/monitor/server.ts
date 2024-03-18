@@ -45,7 +45,7 @@ server.get("/name", (req: restify.Request, res: restify.Response, next: restify.
     next()
 });
 
-// what mode are we in : failover or local
+// what mode are we in : zerosync or local
 server.get("/mode", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, process.env.MODE);
     next()
@@ -222,15 +222,15 @@ server.post('/rest/*', (req: restify.Request, res: restify.Response, next: resti
 });
 
 //////////////////////////////////////
-// Failover Beacon chain rest API   //
+// zerosync Beacon chain rest API   //
 //////////////////////////////////////
 
-server.get('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_failover, req, res, next);
+server.get('/zerosync/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_zerosync, req, res, next);
 });
 
-server.post('/failover/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(server_config.rest_url_failover, req, res, next);
+server.post('/zerosync/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_zerosync, req, res, next);
 });
 const processRestRequest = (rest_url: string, req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
@@ -306,8 +306,9 @@ const axiosRequest = (url: string, headers: object, req: restify.Request, res: r
             // The request was made but no response was received
             // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
             // http.ClientRequest in node.js
-            console.log(error.request);
-            res.send(500, error.request)
+            // console.log(error.request);
+            console.log(`fetching ${url} returned en error without a response`)
+            res.send(500, error.message)
             next();
         } else {
             // Something happened in setting up the request that triggered an Error
@@ -338,7 +339,9 @@ server.get("/backup", (req, res, next) => {
     res.setHeader("Content-Type", "application/zip");
 
     const zip = new AdmZip();
-    zip.addLocalFolder("/rocketpool/data", "data");
+    zip.addLocalFile("/data/config.yml","data/config.yml");
+    zip.addLocalFile("/data/settings.json","data/settings.json");    
+    zip.addLocalFolder("/data/data-mainnet/validator", "data/data-mainnet/validator");
     zip.toBuffer(
         (buffer: Buffer) => {
             // if (err) {
@@ -400,12 +403,10 @@ server.post('/restore', (req, res, next) => {
         const zip = new AdmZip(zipfilePath);
         const zipEntries = zip.getEntries();
 
-        checkFileExistsInZipFile(zipEntries, "data/password")
-        checkFileExistsInZipFile(zipEntries, "data/mnemonic")
-        checkFileExistsInZipFile(zipEntries, "data/wallet")
-        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/accounts/all-accounts.keystore.json")
-        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/accounts/secret")
-        checkFileExistsInZipFile(zipEntries, "data/validators/prysm-non-hd/direct/keymanageropts.json")
+        checkFileExistsInZipFile(zipEntries, "data/settings.json")
+        checkFileExistsInZipFile(zipEntries, "data/config.yml")
+        checkFileExistsInZipFile(zipEntries, "data/data-mainnet")
+        checkFileExistsInZipFile(zipEntries, "data/data-mainnet/validators")
     }
 
     function checkFileExistsInZipFile(zipEntries: AdmZip.IZipEntry[], expectedPath: string) {

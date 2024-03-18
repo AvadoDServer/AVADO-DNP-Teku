@@ -16,7 +16,7 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
 import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 import CheckCheckPointSync from "./shared/CheckCheckPointSync";
-import FailoverBanner from "./shared/FailoverBanner";
+import ZeroSyncBanner from "./shared/ZeroSyncBanner";
 
 import server_config from "../server_config.json";
 
@@ -150,7 +150,7 @@ const Comp = () => {
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
                         <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
 
-                        {/* <FailoverBanner api={api} network={server_config.network} /> */}
+                        {/* <ZeroSyncBanner api={api} network={server_config.network} /> */}
                         
                         <Routes>
                             {api && (<Route path="/" element={<MainPage settings={settings} api={api} dappManagerHelper={dappManagerHelper} />} />)}

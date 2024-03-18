@@ -1,44 +1,42 @@
 #!/bin/bash
 
-
 SETTINGSFILE=$1
 TARGETCONFIGFILE=$2
 
-  if [ ! -f "${SETTINGSFILE}" ]; then
-      echo "Starting with default settings"
-      cp /opt/teku/defaultsettings.json ${SETTINGSFILE}
-  fi
+if [ ! -f "${SETTINGSFILE}" ]; then
+    echo "Starting with default settings"
+    cp /opt/teku/defaultsettings.json ${SETTINGSFILE}
+fi
 
-  NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"')
-  mkdir -p "/data/data-${NETWORK}/" && chown teku:teku "/data/data-${NETWORK}/"
+NETWORK=$(cat ${SETTINGSFILE} | jq '."network"' | tr -d '"')
+mkdir -p "/data/data-${NETWORK}/" && chown teku:teku "/data/data-${NETWORK}/"
 
-  # Get JWT Token
-  JWT_SECRET="/data/data-${NETWORK}/jwttoken"
-  until $(curl --silent --fail "http://dappmanager.my.ava.do/jwttoken.txt" --output "${JWT_SECRET}"); do
-    echo "Waiting for the JWT Token"
-    sleep 5
-  done
+# Get JWT Token
+JWT_SECRET="/data/data-${NETWORK}/jwttoken"
+until $(curl --silent --fail "http://dappmanager.my.ava.do/jwttoken.txt" --output "${JWT_SECRET}"); do
+  echo "Waiting for the JWT Token"
+  sleep 5
+done
 
-  case ${NETWORK} in
-    "gnosis")
-      P2P_PORT=9006
-      ;;
-    "prater")
-      P2P_PORT=9003
-      ;;
-    *)
-      P2P_PORT=9000
-      ;;
-  esac
+case ${NETWORK} in
+  "gnosis")
+    P2P_PORT=9006
+    ;;
+  "prater")
+    P2P_PORT=9003
+    ;;
+  *)
+    P2P_PORT=9000
+    ;;
+esac
 
+# Clean up stale locks if they exist
+if compgen -G "/data/data-${NETWORK}/validator/key-manager/local/*.json.lock" > /dev/null; then
+    echo "Found validator locks at startup."
+    rm /data/data-${NETWORK}/validator/key-manager/local/*.json.lock
+fi
 
-  # Clean up stale locks if they exist
-  if compgen -G "/data/data-${NETWORK}/validator/key-manager/local/*.json.lock" > /dev/null; then
-      echo "Found validator locks at startup."
-      rm /data/data-${NETWORK}/validator/key-manager/local/*.json.lock
-  fi
-
-if [ "$MODE" = "syncing" ]; then
+if [ "$MODE" = "zerosync" ]; then
 
   echo "Starting Teku in dual process mode"
 

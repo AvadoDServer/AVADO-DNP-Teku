@@ -22,7 +22,7 @@ const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
             return;
         api.get(`/mode`, res => {
             if (res.status === 200) {
-                setMode(res.data.data);
+                setMode(res.data);
             } else {
                 setMode(null)
             }
@@ -44,7 +44,10 @@ const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
                         <span>
                             <h1 className="title is-1 has-text-black">{title}</h1>
                         </span>
-                        <p>{tagline}</p>
+                        <p>
+                            {tagline}
+                            {(mode === "zerosync") && (<>(Zero Sync mode)</>)}
+                        </p>
                         <p><a href={wikilink}><FontAwesomeIcon className="fa-book" icon={faBook} /> {title} documentation</a></p>
                     </div>
                     <div className="column">
@@ -53,12 +56,15 @@ const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
                             title="Local Beacon Chain (AVADO)"
                             network={network} />
                     </div>
-                    <div className="column">
-                        <ChainStatus api={api}
-                            prefix="failover"
-                            title="Failover Beacon Chain"
-                            network={network} />
-                    </div>
+                    {(mode === "zerosync") && (
+                        <div className="column">
+                            <ChainStatus api={api}
+                                prefix="zerosync"
+                                title="Zero Sync Beacon Chain"
+                                network={network} />
+                        </div>
+
+                    )}
                 </div>
             </div>
         </div>
