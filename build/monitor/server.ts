@@ -333,15 +333,15 @@ const getKeyManagerToken = () => {
 
 
 //backup
-const backupFileName = `teku-backup-${server_config.network}-${Date.toString()}.zip`;
+const backupFileName = `teku-backup-${server_config.network}-${(new Date()).toDateString()}.zip`;
 server.get("/backup", (req, res, next) => {
-    res.setHeader("Content-Disposition", "attachment; " + backupFileName);
+    res.setHeader("Content-Disposition", `attachment; filename="${backupFileName}"`);
     res.setHeader("Content-Type", "application/zip");
 
     const zip = new AdmZip();
-    zip.addLocalFile("/data/config.yml","data/config.yml");
-    zip.addLocalFile("/data/settings.json","data/settings.json");    
-    zip.addLocalFolder("/data/data-mainnet/validator", "data/data-mainnet/validator");
+    zip.addLocalFile("/data/config.yml",);
+    zip.addLocalFile("/data/settings.json",);    
+    zip.addLocalFolder("/data/data-mainnet/validator","data-mainnet/validator");
     zip.toBuffer(
         (buffer: Buffer) => {
             // if (err) {
@@ -355,66 +355,66 @@ server.get("/backup", (req, res, next) => {
     )
 });
 
-//restore
-server.post('/restore', (req, res, next) => {
-    console.log("upload backup zip file");
-    if (req.files?.file) {
-        const file = req.files.file;
-        // req.info = file.name;
-        const zipfilePath = "/tmp/" + file.name;
-        fs.renameSync(file.path, zipfilePath); //, (err) => { if (err) console.log('ERROR: ' + err) });
-        console.log("received backup file " + file.name);
-        try {
-            validateZipFile(zipfilePath);
+// //restore
+// server.post('/restore', (req, res, next) => {
+//     console.log("upload backup zip file");
+//     if (req.files?.file) {
+//         const file = req.files.file;
+//         // req.info = file.name;
+//         const zipfilePath = "/tmp/" + file.name;
+//         fs.renameSync(file.path, zipfilePath); //, (err) => { if (err) console.log('ERROR: ' + err) });
+//         console.log("received backup file " + file.name);
+//         try {
+//             validateZipFile(zipfilePath);
 
-            // delete existing data folder (if it exists)
-            fs.rmSync("/rocketpool/data", { recursive: true, force: true /* ignore if not exists */ });
+//             // delete existing data folder (if it exists)
+//             fs.rmSync("/rocketpool/data", { recursive: true, force: true /* ignore if not exists */ });
 
-            // unzip
-            const zip = new AdmZip(zipfilePath);
-            zip.extractAllTo("/rocketpool/", /*overwrite*/ true);
+//             // unzip
+//             const zip = new AdmZip(zipfilePath);
+//             zip.extractAllTo("/rocketpool/", /*overwrite*/ true);
 
-            res.send({
-                code: 200,
-                message: "Successfully uploaded the Rocket Pool backup. Click restart to complete the restore.",
-            });
-            return next();
-        } catch (err) {
-            if (err instanceof Error) {
-                console.dir(err);
-                console.log(err);
-                res.send({
-                    code: 400,
-                    message: err.message,
-                });
-            } else {
-                res.send({
-                    code: 400,
-                    message: "unknown error",
-                });
+//             res.send({
+//                 code: 200,
+//                 message: "Successfully uploaded the Rocket Pool backup. Click restart to complete the restore.",
+//             });
+//             return next();
+//         } catch (err) {
+//             if (err instanceof Error) {
+//                 console.dir(err);
+//                 console.log(err);
+//                 res.send({
+//                     code: 400,
+//                     message: err.message,
+//                 });
+//             } else {
+//                 res.send({
+//                     code: 400,
+//                     message: "unknown error",
+//                 });
 
-            }
-            return next();
-        }
-    }
+//             }
+//             return next();
+//         }
+//     }
 
-    function validateZipFile(zipfilePath: string) {
-        console.log("Validating " + zipfilePath);
-        const zip = new AdmZip(zipfilePath);
-        const zipEntries = zip.getEntries();
+//     function validateZipFile(zipfilePath: string) {
+//         console.log("Validating " + zipfilePath);
+//         const zip = new AdmZip(zipfilePath);
+//         const zipEntries = zip.getEntries();
 
-        checkFileExistsInZipFile(zipEntries, "data/settings.json")
-        checkFileExistsInZipFile(zipEntries, "data/config.yml")
-        checkFileExistsInZipFile(zipEntries, "data/data-mainnet")
-        checkFileExistsInZipFile(zipEntries, "data/data-mainnet/validators")
-    }
+//         checkFileExistsInZipFile(zipEntries, "data/settings.json")
+//         checkFileExistsInZipFile(zipEntries, "data/config.yml")
+//         checkFileExistsInZipFile(zipEntries, "data/data-mainnet")
+//         checkFileExistsInZipFile(zipEntries, "data/data-mainnet/validators")
+//     }
 
-    function checkFileExistsInZipFile(zipEntries: AdmZip.IZipEntry[], expectedPath: string) {
-        const containsFile = zipEntries.some((entry) => entry.entryName == expectedPath);
-        if (!containsFile)
-            throw { message: `Invalid backup file. The zip file must contain "${expectedPath}"` }
-    }
-});
+//     function checkFileExistsInZipFile(zipEntries: AdmZip.IZipEntry[], expectedPath: string) {
+//         const containsFile = zipEntries.some((entry) => entry.entryName == expectedPath);
+//         if (!containsFile)
+//             throw { message: `Invalid backup file. The zip file must contain "${expectedPath}"` }
+//     }
+// });
 
 
 let wampSession: any = null;

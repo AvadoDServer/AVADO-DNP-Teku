@@ -7,32 +7,23 @@ import { Network } from "./Types";
 import ChainStatus from "./ChainStatus";
 
 interface Props {
-    api: RestApi | undefined | null
+    mode: string | null
     network: Network
 }
 
-const Comp = ({ api, network }: Props) => {
+const Comp = ({ mode, network }: Props) => {
 
     return (
-        <div>
-            <div className="hero-body is-small is-primary py-0">
-                <div className="columns">
-                    
-                    <div className="column">
-                        <span>
-                            <h1 className="title is-1 has-text-black">Zero Sync node</h1>
-                        </span>
-                        <p>As your own node is syncing - your validator will use a beacon chain provided by AVADO.</p>
-                    </div>
-                    <div className="column">
-                       <ChainStatus api={api} 
-                       prefix="Zero Sync" 
-                       title="Zero Sync Beacon Chain" 
-                       network={network}/>
-                    </div>
-                </div>
+
+
+        <section className="notification">
+            <div className="">
+                {/* eslint-disable-next-line */}
+                <p className="has-text-centered">Zero Sync mode is enabled.
+                </p>
             </div>
-        </div>
+        </section>
+
     );
 
 }

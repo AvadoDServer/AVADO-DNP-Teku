@@ -7,6 +7,7 @@ import { Network } from "./Types";
 import ChainStatus from "./ChainStatus";
 
 interface Props {
+    mode: string | null,
     api: RestApi | undefined | null
     title: string
     tagline: string
@@ -14,22 +15,8 @@ interface Props {
     network: Network
 }
 
-const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
-    const [mode, setMode] = React.useState<String | null>(null);
-
-    React.useEffect(() => {
-        if (!api)
-            return;
-        api.get(`/mode`, res => {
-            if (res.status === 200) {
-                setMode(res.data);
-            } else {
-                setMode(null)
-            }
-        }, (e) => {
-            setMode(null)
-        });
-    }, [api]);
+const Comp = ({ mode, api, title, tagline, wikilink, network }: Props) => {
+    
 
     return (
         <div>
@@ -46,21 +33,20 @@ const Comp = ({ api, title, tagline, wikilink, network }: Props) => {
                         </span>
                         <p>
                             {tagline}
-                            {(mode === "zerosync") && (<>(Zero Sync mode)</>)}
                         </p>
                         <p><a href={wikilink}><FontAwesomeIcon className="fa-book" icon={faBook} /> {title} documentation</a></p>
                     </div>
                     <div className="column">
                         <ChainStatus api={api}
                             prefix="rest"
-                            title="Local Beacon Chain (AVADO)"
+                            title="My Local Beacon Chain"
                             network={network} />
                     </div>
                     {(mode === "zerosync") && (
                         <div className="column">
                             <ChainStatus api={api}
                                 prefix="zerosync"
-                                title="Zero Sync Beacon Chain"
+                                title="AVADO's Zero Sync Beacon Chain"
                                 network={network} />
                         </div>
 

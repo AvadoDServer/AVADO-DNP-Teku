@@ -33,6 +33,7 @@ const Comp = () => {
     const [defaultSettings, setDefaultSettings] = React.useState<SettingsType>();
 
     const [api, setApi] = React.useState<RestApi | null>();
+    const [mode, setMode] = React.useState<string | null>(null);
 
     const apiUrl = `http://${packageUrl}:9999`;
 
@@ -76,8 +77,18 @@ const Comp = () => {
             }, (err) => {
                 console.log("default", err)
             });
+            api.get(`/mode`, res => {
+                if (res.status === 200) {
+                    setMode(res.data);
+                } else {
+                    setMode(null)
+                }
+            }, (e) => {
+                setMode(null)
+            });
         }
     }, [api])
+
 
     React.useEffect(() => {
         if (wampSession && dappManagerHelper && !settings && api) {
@@ -138,6 +149,7 @@ const Comp = () => {
                 <div className="columns is-mobile">
                     <div className="column">
                         <Header
+                            mode={mode}
                             api={api}
                             title={getTitle()}
                             tagline={`${capitalizeFirstLetter(server_config.name)} beacon chain and validator`}
@@ -148,10 +160,10 @@ const Comp = () => {
                         <NavigationBar network={settings?.network ?? "mainnet"} />
 
                         <FeeRecepientBanner validators_proposer_default_fee_recipient={settings?.validators_proposer_default_fee_recipient} navigate={navigate} />
-                        <ExecutionEngineBanner execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
+                        <ExecutionEngineBanner mode={mode} execution_engine={settings?.execution_engine} wikilink={getWikilink()} installedPackages={packages} client={capitalizeFirstLetter(server_config.name)} />
 
-                        {/* <ZeroSyncBanner api={api} network={server_config.network} /> */}
-                        
+                        {/* <ZeroSyncBanner mode={mode} network={server_config.network} /> */}
+
                         <Routes>
                             {api && (<Route path="/" element={<MainPage settings={settings} api={api} dappManagerHelper={dappManagerHelper} />} />)}
                             {dappManagerHelper && <Route path="/welcome" element={<Welcome title={getTitle()} dappManagerHelper={dappManagerHelper} />} />}

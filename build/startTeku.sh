@@ -90,7 +90,7 @@ echo "---"
   echo "*** Starting validator"
 
   exec /opt/teku/bin/teku validator-client \
-    --beacon-node-api-endpoint="https://wearesyncing.ava.do" \
+    --beacon-node-api-endpoint=http://127.0.0.1:5051,https://wearesyncing.ava.do \
     --config-file="/data/syncing-validator.yml"  
 
 else

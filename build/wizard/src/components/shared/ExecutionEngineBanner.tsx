@@ -1,11 +1,13 @@
+import React from "react";
 interface IProps {
     execution_engine: string | undefined,
     installedPackages: string[] | undefined
     wikilink: string
-    client: string
+    client: string,
+    mode: string | null,
 }
 
-const ExecutionEngineBanner = ({ execution_engine, installedPackages, wikilink, client }: IProps) => {
+const ExecutionEngineBanner = ({ execution_engine, installedPackages, wikilink, client, mode }: IProps) => {
 
     const isExecutionClientAvailable = () => {
         if (!installedPackages || !execution_engine) {
@@ -16,8 +18,8 @@ const ExecutionEngineBanner = ({ execution_engine, installedPackages, wikilink, 
 
     return (
         <>
-            {!isExecutionClientAvailable() && (
-                <section className="notification is-danger">
+            {!isExecutionClientAvailable() && (mode !== "zerosync") && (
+                <section className="notification">
                     <div className="hero-body is-small">
                         {/* eslint-disable-next-line */}
                         <p className="has-text-centered">You did not install an execution client yet, or it is not running. This is required for {client} to work.

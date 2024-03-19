@@ -117,10 +117,10 @@ const Comp = ({ api, prefix, title, network, refreshinterval = 30 }: Props) => {
                 ? (
                     <span className="tag is-danger">{error}<FontAwesomeIcon className="fa-spin" icon={faSpinner} /></span>
                 ) : (syncData && peerCount &&
-                    <><h4>{title}</h4><br />
+                    <><h4 className="is-size-5">{title}</h4>
                         status: {(syncData.is_syncing === false && (peerCount > 0)
                         ) ? (<span className="tag is-success">in sync</span>
-                        ) : (<><span className="tag is-warning">syncing {getSyncPercentage(syncData)}</span>, sync distance: {syncData.sync_distance}</>
+                        ) : (<><span className="tag is-warning">syncing</span></>
                         )}
                         {(version && <><br />version: {version}</>)}
                         <br />
