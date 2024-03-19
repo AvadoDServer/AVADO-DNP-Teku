@@ -5,8 +5,10 @@ import * as fs from 'fs';
 import { SupervisorCtl } from "./SupervisorCtl";
 import { server_config } from "./server_config";
 import defaultsettings from "./settings/defaultsettings.json";
-
-
+import AdmZip from "adm-zip";
+import { DappManagerHelper } from "./DappManagerHelper";
+// import {open,close} from "./wampsession"
+import autobahn from "autobahn";
 console.log("Monitor starting...");
 
 const server = restify.createServer({
@@ -41,6 +43,22 @@ server.get("/network", (req: restify.Request, res: restify.Response, next: resti
 server.get("/name", (req: restify.Request, res: restify.Response, next: restify.Next) => {
     res.send(200, server_config.name);
     next()
+});
+
+// what mode are we in : zerosync or local
+server.get("/mode", (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    res.send(200, process.env.MODE);
+    next()
+});
+
+// overview of node status
+server.get("/nodestatus", async (req: restify.Request, res: restify.Response, next: restify.Next) => {
+
+    const clients = (await getInstalledClients())
+    console.log(clients);
+    res.send(200, "ok");
+    return next()
+
 });
 
 server.get("/settings", (req: restify.Request, res: restify.Response, next: restify.Next) => {
@@ -191,21 +209,33 @@ const get = (url: string, res: restify.Response, next: restify.Next) => {
     })
 }
 
-/////////////////////////////
-// Beacon chain rest API   //
-/////////////////////////////
+///////////////////////////////////
+// Local Beacon chain rest API   //
+///////////////////////////////////
 
 server.get('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(req, res, next);
+    processRestRequest(server_config.rest_url_local, req, res, next);
 });
 
 server.post('/rest/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    processRestRequest(req, res, next);
+    processRestRequest(server_config.rest_url_local, req, res, next);
 });
 
-const processRestRequest = (req: restify.Request, res: restify.Response, next: restify.Next) => {
+//////////////////////////////////////
+// zerosync Beacon chain rest API   //
+//////////////////////////////////////
+
+server.get('/zerosync/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_zerosync, req, res, next);
+});
+
+server.post('/zerosync/*', (req: restify.Request, res: restify.Response, next: restify.Next) => {
+    processRestRequest(server_config.rest_url_zerosync, req, res, next);
+});
+const processRestRequest = (rest_url: string, req: restify.Request, res: restify.Response, next: restify.Next) => {
     const path = req.params["*"]
-    const url = `${server_config.rest_url}/${path}`
+    const url = `${rest_url}/${path}`
+    console.log(`fething ${url}`);
     const headers = {
         'Content-Type': 'application/json'
     }
@@ -276,8 +306,9 @@ const axiosRequest = (url: string, headers: object, req: restify.Request, res: r
             // The request was made but no response was received
             // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
             // http.ClientRequest in node.js
-            console.log(error.request);
-            res.send(500, error.request)
+            // console.log(error.request);
+            console.log(`fetching ${url} returned en error without a response`)
+            res.send(500, error.message)
             next();
         } else {
             // Something happened in setting up the request that triggered an Error
@@ -297,6 +328,128 @@ const getKeyManagerToken = () => {
         console.error(err);
     }
 }
+
+// backup/restore
+
+
+//backup
+const backupFileName = `teku-backup-${server_config.network}-${(new Date()).toDateString()}.zip`;
+server.get("/backup", (req, res, next) => {
+    res.setHeader("Content-Disposition", `attachment; filename="${backupFileName}"`);
+    res.setHeader("Content-Type", "application/zip");
+
+    const zip = new AdmZip();
+    zip.addLocalFile("/data/config.yml",);
+    zip.addLocalFile("/data/settings.json",);    
+    zip.addLocalFolder("/data/data-mainnet/validator","data-mainnet/validator");
+    zip.toBuffer(
+        (buffer: Buffer) => {
+            // if (err) {
+            //     reject(err);
+            // } else {
+            res.setHeader("Content-Length", buffer.length);
+            res.end(buffer, "binary");
+            next()
+            // }
+        }
+    )
+});
+
+// //restore
+// server.post('/restore', (req, res, next) => {
+//     console.log("upload backup zip file");
+//     if (req.files?.file) {
+//         const file = req.files.file;
+//         // req.info = file.name;
+//         const zipfilePath = "/tmp/" + file.name;
+//         fs.renameSync(file.path, zipfilePath); //, (err) => { if (err) console.log('ERROR: ' + err) });
+//         console.log("received backup file " + file.name);
+//         try {
+//             validateZipFile(zipfilePath);
+
+//             // delete existing data folder (if it exists)
+//             fs.rmSync("/rocketpool/data", { recursive: true, force: true /* ignore if not exists */ });
+
+//             // unzip
+//             const zip = new AdmZip(zipfilePath);
+//             zip.extractAllTo("/rocketpool/", /*overwrite*/ true);
+
+//             res.send({
+//                 code: 200,
+//                 message: "Successfully uploaded the Rocket Pool backup. Click restart to complete the restore.",
+//             });
+//             return next();
+//         } catch (err) {
+//             if (err instanceof Error) {
+//                 console.dir(err);
+//                 console.log(err);
+//                 res.send({
+//                     code: 400,
+//                     message: err.message,
+//                 });
+//             } else {
+//                 res.send({
+//                     code: 400,
+//                     message: "unknown error",
+//                 });
+
+//             }
+//             return next();
+//         }
+//     }
+
+//     function validateZipFile(zipfilePath: string) {
+//         console.log("Validating " + zipfilePath);
+//         const zip = new AdmZip(zipfilePath);
+//         const zipEntries = zip.getEntries();
+
+//         checkFileExistsInZipFile(zipEntries, "data/settings.json")
+//         checkFileExistsInZipFile(zipEntries, "data/config.yml")
+//         checkFileExistsInZipFile(zipEntries, "data/data-mainnet")
+//         checkFileExistsInZipFile(zipEntries, "data/data-mainnet/validators")
+//     }
+
+//     function checkFileExistsInZipFile(zipEntries: AdmZip.IZipEntry[], expectedPath: string) {
+//         const containsFile = zipEntries.some((entry) => entry.entryName == expectedPath);
+//         if (!containsFile)
+//             throw { message: `Invalid backup file. The zip file must contain "${expectedPath}"` }
+//     }
+// });
+
+
+let wampSession: any = null;
+{
+    const url = "ws://wamp.my.ava.do:8080/ws";
+    const realm = "dappnode_admin";
+
+    const connection = new autobahn.Connection({ url, realm });
+    connection.onopen = (session: any) => {
+        console.log("CONNECTED to \nurl: " + url + " \nrealm: " + realm);
+        wampSession = session;
+    };
+    connection.open();
+}
+
+const getInstalledClients = async () => {
+    const dappManagerHelper = new DappManagerHelper(server_config.name, wampSession);
+    const packages = await dappManagerHelper.getPackages();
+
+
+    console.log(`packages`,packages)
+
+
+    // const installed_clients = supported_beacon_chain_clients
+    //     .filter(client => (packages.includes(getAvadoPackageName(client, "beaconchain"))
+    //         && packages.includes(getAvadoPackageName(client, "validator")))
+    //     )
+    //     .map(client => ({
+    //         name: client,
+    //         url: `http://${client_url(client)}`,
+    //         validatorAPI: `http://${client_url(client)}:9999/keymanager`
+    //     }))
+    // return installed_clients;
+}
+
 
 server.listen(9999, function () {
     console.log("%s listening at %s", server.name, server.url);

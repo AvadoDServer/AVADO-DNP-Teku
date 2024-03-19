@@ -304,7 +304,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                                                 <td>{withdrawalTag(validator)}</td>
                                                 <td><span className={"tag " + getStatusColor(validator.status)}>{validator.status}</span></td>
                                                 {!readonly && (
-                                                    <td>
+                                                    <td className="has-text-left">
                                                         <button className="button is-text has-text-grey-light" name="delete" onClick={() => askConfirmationRemoveValidator(validator.validator.pubkey)}><FontAwesomeIcon className="icon" icon={faTrash} /></button>
                                                         {canExit(validator) && (
                                                             <ExitValidatorModal validator={validator} api={api} updateValidators={updateValidators} network={settings.network} />
@@ -314,6 +314,12 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
 
                                             </tr>
                                         )}
+                                        <tr>
+                                            <td colSpan={4}>
+                                            <a href="http://teku.my.ava.do:9999/backup" className="button" >Download backup of my staking keys</a>
+
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </>

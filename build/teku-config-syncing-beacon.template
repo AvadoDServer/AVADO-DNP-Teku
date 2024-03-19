@@ -1,0 +1,55 @@
+# Generated file.
+# Do not change this file, manual changes will be overwritten
+# You can overwrite settings via EXTRA_OPTS (advanced)
+
+# network
+network: "${NETWORK}"
+initial-state: "${INITIAL_STATE}"
+
+# p2p
+p2p-enabled: true
+p2p-port: ${P2P_PORT}
+p2p-peer-lower-bound: ${P2P_PEER_LOWER_BOUND}
+p2p-peer-upper-bound: ${P2P_PEER_UPPER_BOUND}
+
+# validators
+#validators-graffiti: "${GRAFFITI}"
+
+# Execution engine
+ee-endpoint: "${EE_ENDPOINT}"
+
+# metrics
+metrics-enabled: false # TODO: beaconchain monitor
+metrics-categories: ["BEACON","LIBP2P","NETWORK"]
+# Options are: JVM, PROCESS, BEACON, DISCOVERY, EVENTBUS, EXECUTOR, LIBP2P, NETWORK, STORAGE, STORAGE_HOT_DB, STORAGE_FINALIZED_DB, REMOTE_VALIDATOR, VALIDATOR, VALIDATOR_PERFORMANCE
+
+# database
+data-path: "${DATA_PATH}"
+data-storage-mode: "prune"
+
+# rest api
+
+rest-api-port: 5051
+rest-api-docs-enabled: true
+rest-api-enabled: true
+rest-api-interface: "0.0.0.0"
+rest-api-host-allowlist: "*"
+rest-api-cors-origins: "*"
+
+# validator api
+# Validator api requires ssl keystore to be defined.
+
+#validator-api-cors-origins: "*"
+#validator-api-docs-enabled: true
+#validator-api-enabled: true
+#validator-api-host-allowlist: "*"
+#validator-api-interface: "0.0.0.0"
+#validator-api-keystore-file: /opt/teku/avado.keystore
+#validator-api-keystore-password-file: /opt/teku/keystorePasswordFile
+#validator-api-port: 5052
+
+# This is set via command line arguments for now to give users more time to update
+# validators-proposer-default-fee-recipient: "${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}"
+
+# logging
+log-include-validator-duties-enabled: true
