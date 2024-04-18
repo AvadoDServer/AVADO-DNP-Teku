@@ -16,7 +16,7 @@ import { DappManagerHelper } from "./shared/DappManagerHelper";
 import FeeRecepientBanner from "./shared/FeeRecepientBanner";
 import ExecutionEngineBanner from "./shared/ExecutionEngineBanner";
 import CheckCheckPointSync from "./shared/CheckCheckPointSync";
-import ZeroSyncBanner from "./shared/ZeroSyncBanner";
+// import ZeroSyncBanner from "./shared/ZeroSyncBanner";
 
 import server_config from "../server_config.json";
 
@@ -34,8 +34,6 @@ const Comp = () => {
 
     const [api, setApi] = React.useState<RestApi | null>();
     const [mode, setMode] = React.useState<string | null>(null);
-
-    const apiUrl = `http://${packageUrl}:9999`;
 
     const capitalizeFirstLetter = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -123,11 +121,17 @@ const Comp = () => {
     }, [wampSession, dappManagerHelper]);
 
     React.useEffect(() => {
+        if (!mode) return;
         if (!api) {
+            let apiSlug = "rest";
+            if (mode === "zerosync"){
+                apiSlug = "zerosync";
+            }
+            const apiUrl = `http://${packageUrl}:9999/${apiSlug}`;
             setApi(new RestApi(apiUrl))
         }
         // eslint-disable-next-line
-    }, [wampSession, dappManagerHelper])
+    }, [wampSession, dappManagerHelper, mode])
 
     const [searchParams] = useSearchParams()
     const isAdminMode = searchParams.get("admin") !== null
