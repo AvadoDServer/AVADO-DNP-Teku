@@ -48,7 +48,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
     const getFinalizedState = async (api: RestApi) => {
         if (!api)
             return;
-        api.get("/rest/eth/v1/beacon/headers/finalized", res => {
+        api.get("/eth/v1/beacon/headers/finalized", res => {
             if (res.status === 200) {
                 setFinalizedState(res.data)
             }

@@ -31,7 +31,7 @@ const ExitValidatorModal = ({ validator, api, updateValidators, network }: Props
             // https://ethereum.github.io/beacon-APIs/#/Beacon/submitPoolVoluntaryExit
             console.log("exit message", JSON.stringify(exit_message))
 
-            api.post(`/rest/eth/v1/beacon/pool/voluntary_exits`, exit_message, (res) => {
+            api.post(`/eth/v1/beacon/pool/voluntary_exits`, exit_message, (res) => {
                 console.log("voluntary_exits", res.data)
                 if (res.status === 200) {
                     alert(`Exit initiated`)

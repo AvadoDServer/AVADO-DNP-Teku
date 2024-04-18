@@ -333,8 +333,8 @@ const getKeyManagerToken = () => {
 
 
 //backup
-const backupFileName = `teku-backup-${server_config.network}-${(new Date()).toDateString()}.zip`;
 server.get("/backup", (req, res, next) => {
+    const backupFileName = `teku-backup-${server_config.network}-${(new Date()).toDateString()}.zip`;
     res.setHeader("Content-Disposition", `attachment; filename="${backupFileName}"`);
     res.setHeader("Content-Type", "application/zip");
 

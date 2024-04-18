@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   teku.avado.dnp.dappnode.eth:
-    image: 'teku.avado.dnp.dappnode.eth:0.0.47'
+    image: 'teku.avado.dnp.dappnode.eth:0.0.48'
     build:
       context: ./build
       args:
@@ -12,5 +12,6 @@ services:
       - JAVA_OPTS=-Xmx8g
       - EXTRA_OPTS=
       - MODE=standalone
+    dns: 172.33.1.2
 volumes:
   data: {}

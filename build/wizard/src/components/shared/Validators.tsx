@@ -130,7 +130,7 @@ const Validators = ({ settings, api, readonly = false }: Props) => {
                     "withdrawable_epoch": "0"
                 }
             };
-            return await api.get(`/rest/eth/v1/beacon/states/head/validators/${pubKey}`, res => {
+            return await api.get(`/eth/v1/beacon/states/head/validators/${pubKey}`, res => {
                 // console.dir(res);
                 if (res.status === 200 && res.data !== "failed") {
                     // console.log(res.data.data)
