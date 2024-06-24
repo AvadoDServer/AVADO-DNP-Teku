@@ -5,7 +5,7 @@ services:
     build:
       context: ./build
       args:
-        TEKU_VERSION: 24.2.0
+        TEKU_VERSION: 24.6.1
     volumes:
       - 'data:/data'
     environment:

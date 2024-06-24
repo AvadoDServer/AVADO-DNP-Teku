@@ -1,10 +1,10 @@
 {
-  "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.49",
+  "name": "teku-gnosis.avado.dnp.dappnode.eth",
+  "version": "0.0.17",
   "upstream": "24.6.1",
-  "title": "Teku",
-  "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
-  "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
+  "title": "Teku-Gnosis",
+  "description": "Teku is a Java implementation of the Gnosis Beacon Chain.",
+  "avatar": "/ipfs/QmZc3AiweTGtDywdoN2oXcgMgTzz58iGaAyBNQtp8msHHq",
   "type": "service",
   "autoupdate": true,
   "image": {
@@ -12,13 +12,12 @@
       "data:/data"
     ],
     "ports": [
-      "9000:9000/udp",
-      "9000:9000"
+      "9006:9006/udp",
+      "9006:9006"
     ],
     "environment": [
       "EXTRA_OPTS=",
-      "JAVA_OPTS=-Xmx8g",
-      "MODE=sta"
+      "JAVA_OPTS=-Xmx8g"
     ],
     "restart": "always"
   },
@@ -27,12 +26,12 @@
   "dependencies": {},
   "ui": {
     "OnboardingWizard": {
-      "url": "http://teku.my.ava.do",
+      "url": "http://teku-gnosis.my.ava.do",
       "external": true
     }
   },
   "links": {
-    "OnboardingWizard": "http://teku.my.ava.do",
-    "HomePage": "https://docs.teku.consensys.net/en/24.2.0/"
+    "OnboardingWizard": "http://teku-gnosis.my.ava.do",
+    "HomePage": "https://docs.teku.consensys.net/en/23.3.0/"
   }
 }
