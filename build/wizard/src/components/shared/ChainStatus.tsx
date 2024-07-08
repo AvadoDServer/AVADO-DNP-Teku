@@ -112,12 +112,12 @@ const Comp = ({ api, prefix, title, network, refreshinterval = 30 }: Props) => {
     const slots_per_epoch = network === "gnosis" ? 16 : 32
 
     return (<>
-        <p className="has-text-right">
+        <div className="has-text-right">
             {error
                 ? (
                     <span className="tag is-danger">{error}<FontAwesomeIcon className="fa-spin" icon={faSpinner} /></span>
                 ) : (syncData && peerCount &&
-                    <><h4 className="is-size-5">{title}</h4>
+                    <><div className="is-size-5">{title}</div>
                         status: {(syncData.is_syncing === false && (peerCount > 0)
                         ) ? (<span className="tag is-success">in sync</span>
                         ) : (<><span className="tag is-warning">syncing</span></>
@@ -134,7 +134,7 @@ const Comp = ({ api, prefix, title, network, refreshinterval = 30 }: Props) => {
                         epoch: {Math.floor(parseFloat(syncData.head_slot) / slots_per_epoch)}, slot {syncData.head_slot}
                     </>
                 )}
-        </p>
+        </div>
 
     </>
 

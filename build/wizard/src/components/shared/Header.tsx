@@ -5,6 +5,7 @@ import { RestApi } from "./RestApi";
 import { logo } from "../Logo"
 import { Network } from "./Types";
 import ChainStatus from "./ChainStatus";
+import TandCModal from "./TandCModal";
 
 interface Props {
     mode: string | null,
@@ -16,7 +17,7 @@ interface Props {
 }
 
 const Comp = ({ mode, api, title, tagline, wikilink, network }: Props) => {
-    
+
 
     return (
         <div>
@@ -48,6 +49,7 @@ const Comp = ({ mode, api, title, tagline, wikilink, network }: Props) => {
                                 prefix="zerosync"
                                 title="AVADO's Zero Sync Beacon Chain"
                                 network={network} />
+                            <TandCModal />
                         </div>
 
                     )}
