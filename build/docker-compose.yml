@@ -1,11 +1,11 @@
 version: '3.4'
 services:
   teku.avado.dnp.dappnode.eth:
-    image: 'teku.avado.dnp.dappnode.eth:0.0.54'
+    image: 'teku.avado.dnp.dappnode.eth:0.0.55'
     build:
       context: ./build
       args:
-        TEKU_VERSION: 24.10.3
+        TEKU_VERSION: 24.12.0
     volumes:
       - 'data:/data'
     environment:
