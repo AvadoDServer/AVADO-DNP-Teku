@@ -1,25 +1,16 @@
 {
   "name": "teku.avado.dnp.dappnode.eth",
-  "version": "0.0.54",
-  "upstream": "24.10.3",
+  "version": "0.0.56",
+  "upstream": "24.12.1",
   "title": "Teku",
   "description": "Teku is a Java implementation of the Ethereum 2.0 Beacon Chain.",
   "avatar": "/ipfs/QmRWDGukXyvk4WbJ9dexqE13vSb1jQeTKKFmLnZVq3PT1X",
   "type": "service",
   "autoupdate": true,
   "image": {
-    "volumes": [
-      "data:/data"
-    ],
-    "ports": [
-      "9000:9000/udp",
-      "9000:9000"
-    ],
-    "environment": [
-      "EXTRA_OPTS=",
-      "JAVA_OPTS=-Xmx8g",
-      "MODE=sta"
-    ],
+    "volumes": ["data:/data"],
+    "ports": ["9000:9000/udp", "9000:9000"],
+    "environment": ["EXTRA_OPTS=", "JAVA_OPTS=-Xmx8g", "MODE=sta"],
     "restart": "always"
   },
   "author": "heeckhau",
