@@ -1,24 +1,16 @@
 {
   "name": "teku-gnosis.avado.dnp.dappnode.eth",
-  "version": "0.0.20",
-  "upstream": "24.12.1",
+  "version": "0.0.22",
+  "upstream": "25.4.1",
   "title": "Teku-Gnosis",
   "description": "Teku is a Java implementation of the Gnosis Beacon Chain.",
   "avatar": "/ipfs/QmZc3AiweTGtDywdoN2oXcgMgTzz58iGaAyBNQtp8msHHq",
   "type": "service",
   "autoupdate": true,
   "image": {
-    "volumes": [
-      "data:/data"
-    ],
-    "ports": [
-      "9006:9006/udp",
-      "9006:9006"
-    ],
-    "environment": [
-      "EXTRA_OPTS=",
-      "JAVA_OPTS=-Xmx8g"
-    ],
+    "volumes": ["data:/data"],
+    "ports": ["9006:9006/udp", "9006:9006"],
+    "environment": ["EXTRA_OPTS=", "JAVA_OPTS=-Xmx8g"],
     "restart": "always"
   },
   "author": "heeckhau",
