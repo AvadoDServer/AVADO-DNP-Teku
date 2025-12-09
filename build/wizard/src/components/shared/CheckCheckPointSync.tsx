@@ -68,7 +68,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
             const checkpoint_sync_endpoints = network === "prater" ?
                 [
                     "goerli.beaconstate.info",
-                    "goerli.beaconstate.ethstaker.cc",
+                    "goerli.sync-mainnet.beaconcha.in",
                 ]
                 : network === "gnosis" ?
                     [
@@ -76,7 +76,7 @@ const CheckCheckPointSync = ({ api, network, packageUrl }: Props) => {
                     ]
                     : [
                         "beaconstate.info",
-                        "beaconstate.ethstaker.cc",
+                        "sync-mainnet.beaconcha.in",
                         "mainnet-checkpoint-sync.attestant.io",
                         // "checkpointz.pietjepuk.net",
                         // "mainnet.checkpoint.sigp.io"
