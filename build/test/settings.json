@@ -3,5 +3,5 @@
     "validators_graffiti": "Avado Teku",
     "p2p_peer_lower_bound": 64,
     "p2p_peer_upper_bound": 74,
-    "initial_state": "https://beaconstate.ethstaker.cc"
+    "initial_state": "https://sync-mainnet.beaconcha.in"
 }
