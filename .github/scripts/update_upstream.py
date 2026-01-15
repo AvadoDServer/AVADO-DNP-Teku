@@ -89,6 +89,9 @@ def update_docker_compose(file_path, new_version, new_upstream):
     
     with open(file_path, 'w') as f:
         f.write('\n'.join(updated_lines))
+        # Preserve trailing newline if original file had one
+        if content.endswith('\n'):
+            f.write('\n')
 
 
 def main():
@@ -122,6 +125,10 @@ def main():
         if os.getenv('GITHUB_OUTPUT'):
             with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
                 f.write(f"updated=false\n")
+        # Also set as environment variables for the workflow
+        if os.getenv('GITHUB_ENV'):
+            with open(os.getenv('GITHUB_ENV'), 'a') as f:
+                f.write(f"updated=false\n")
         sys.exit(0)
     
     print(f"New version available: {latest_teku_version}")
@@ -150,10 +157,10 @@ def main():
     # Also set as environment variables for the workflow
     if os.getenv('GITHUB_ENV'):
         with open(os.getenv('GITHUB_ENV'), 'a') as f:
-            f.write(f"UPDATED=true\n")
-            f.write(f"OLD_VERSION={current_upstream}\n")
-            f.write(f"NEW_VERSION={latest_teku_version}\n")
-            f.write(f"PACKAGE_VERSION={new_package_version}\n")
+            f.write(f"updated=true\n")
+            f.write(f"old_version={current_upstream}\n")
+            f.write(f"new_version={latest_teku_version}\n")
+            f.write(f"package_version={new_package_version}\n")
 
 
 if __name__ == "__main__":
