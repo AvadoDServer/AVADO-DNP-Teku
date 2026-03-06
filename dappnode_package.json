@@ -8,9 +8,18 @@
   "type": "service",
   "autoupdate": true,
   "image": {
-    "volumes": ["data:/data"],
-    "ports": ["9000:9000/udp", "9000:9000"],
-    "environment": ["EXTRA_OPTS=", "JAVA_OPTS=-Xmx8g", "MODE=syncing"],
+    "volumes": [
+      "data:/data"
+    ],
+    "ports": [
+      "9000:9000/udp",
+      "9000:9000"
+    ],
+    "environment": [
+      "EXTRA_OPTS=",
+      "JAVA_OPTS=-Xmx8g",
+      "MODE=syncing"
+    ],
     "restart": "always"
   },
   "author": "heeckhau",
