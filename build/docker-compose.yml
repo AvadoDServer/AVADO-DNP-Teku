@@ -5,7 +5,7 @@ services:
     build:
       context: ./build
       args:
-        TEKU_VERSION: 26.2.0
+        TEKU_VERSION: 26.3.0
     volumes:
       - 'data:/data'
     environment:
@@ -13,4 +13,5 @@ services:
       - EXTRA_OPTS=
 volumes:
   data: {}
+
 
