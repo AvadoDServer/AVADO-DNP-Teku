@@ -75,11 +75,11 @@ def update_docker_compose(file_path, new_version, new_upstream):
     updated_lines = []
     
     for line in lines:
-        # Update image tag
-        if 'image:' in line and 'teku-gnosis.avado.dnp.dappnode.eth:' in line:
+        # Update image tag (supports teku.avado.dnp.dappnode.eth)
+        if 'image:' in line and 'teku.avado.dnp.dappnode.eth:' in line:
             # Preserve indentation
             indent = line[:line.index('image:')]
-            updated_lines.append(f"{indent}image: 'teku-gnosis.avado.dnp.dappnode.eth:{new_version}'")
+            updated_lines.append(f"{indent}image: 'teku.avado.dnp.dappnode.eth:{new_version}'")
         # Update TEKU_VERSION
         elif 'TEKU_VERSION:' in line:
             indent = line[:line.index('TEKU_VERSION:')]
@@ -101,6 +101,7 @@ def main():
     # File paths
     dappnode_package_path = repo_root / "dappnode_package.json"
     docker_compose_path = repo_root / "build" / "docker-compose.yml"
+    root_docker_compose_path = repo_root / "docker-compose.yml"
     
     print("Checking for Teku updates...")
     
@@ -143,6 +144,9 @@ def main():
     
     print("Updating build/docker-compose.yml...")
     update_docker_compose(docker_compose_path, new_package_version, latest_teku_version)
+    
+    print("Updating root docker-compose.yml...")
+    update_docker_compose(root_docker_compose_path, new_package_version, latest_teku_version)
     
     print("Update complete!")
     
