@@ -1,11 +1,11 @@
 version: "3.4"
 services:
   teku-gnosis.avado.dnp.dappnode.eth:
-    image: "teku-gnosis.avado.dnp.dappnode.eth:0.0.26"
+    image: "teku-gnosis.avado.dnp.dappnode.eth:0.0.27"
     build:
       context: ./build
       args:
-        TEKU_VERSION: 26.3.0
+        TEKU_VERSION: 26.4.0
     volumes:
       - "data:/data"
     environment:
