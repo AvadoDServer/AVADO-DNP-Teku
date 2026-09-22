@@ -18,9 +18,12 @@ p2p-peer-upper-bound: ${P2P_PEER_UPPER_BOUND}
 # Execution engine
 ee-endpoint: "${EE_ENDPOINT}"
 
-# metrics
-metrics-enabled: false # TODO: beaconchain monitor
-metrics-categories: ["BEACON","LIBP2P","NETWORK"]
+# metrics (Prometheus, scraped by prometheus.avado.dappnode.eth on the AVADO network only)
+metrics-enabled: true
+metrics-interface: "0.0.0.0"
+metrics-host-allowlist: ["*"]
+metrics-port: 8008
+metrics-categories: ["JVM","PROCESS","BEACON","DISCOVERY","EVENTBUS","EXECUTOR","LIBP2P","NETWORK","STORAGE","VALIDATOR","VALIDATOR_PERFORMANCE"]
 # Options are: JVM, PROCESS, BEACON, DISCOVERY, EVENTBUS, EXECUTOR, LIBP2P, NETWORK, STORAGE, STORAGE_HOT_DB, STORAGE_FINALIZED_DB, REMOTE_VALIDATOR, VALIDATOR, VALIDATOR_PERFORMANCE
 
 # database
