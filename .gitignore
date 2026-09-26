@@ -11,3 +11,6 @@ build/monitor/settings/defaultsettings.json
 # scripts/render.sh and scripts/prove-equivalence.sh output (when pointed inside the repo)
 .render/
 .proof/
+
+# Each network's release record is kept in git (release.yml writes it)
+!package_variants/*/releases.json

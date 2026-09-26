@@ -1,0 +1,56 @@
+name: Gate
+# Every 4 hours and whenever the PR checks finish: merges the bump bot's PR
+# (merge commit) when "avado/checks" is green and DAppNode's real-node test of
+# the same Teku version passed, or 72 h after the Teku release with our checks
+# green, or at once for a required (mandatory) release. Otherwise it waits, or
+# stops and opens an issue for the owner. Details: .github/pipeline/gate.mjs.
+# It never runs code from a pull request: it only reads the GitHub API.
+# Pause: PIPELINE_MODE=off. Decide but never merge: PIPELINE_MODE=shadow.
+on:
+  schedule:
+    - cron: '53 */4 * * *'
+  workflow_run:
+    workflows: ['PR checks']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write # merge
+  pull-requests: write
+  issues: write
+  statuses: write # avado/gate
+  actions: write # starts release.yml after the merge (a GITHUB_TOKEN merge does not)
+
+concurrency:
+  group: gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: vars.PIPELINE_MODE != 'off'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Gate
+        run: node .github/pipeline/gate.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }} # optional: reads the release watcher's URGENT issues
+          PIPELINE_MODE: ${{ vars.PIPELINE_MODE }}
+          PIPELINE_OWNER: ${{ vars.PIPELINE_OWNER }}
+      - name: Tell the owner if this workflow broke
+        if: failure()
+        run: node .github/pipeline/report.mjs failure "Gate"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PIPELINE_OWNER: ${{ vars.PIPELINE_OWNER }}
+      - if: success()
+        run: node .github/pipeline/report.mjs success "Gate"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

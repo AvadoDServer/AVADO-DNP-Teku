@@ -1,0 +1,211 @@
+name: PR checks
+# Our own checks for every pull request, per network, on free GitHub-hosted
+# runners. The result is ONE commit status on the PR head: "avado/checks".
+# The gate (gate.yml) merges the bump bot's PR only when it is green.
+#
+# Per network: render, AVADOSDK build (the files are added to the IPFS node,
+# like ci-build-action did), then on the image loaded back from the uploaded
+# file:
+#   - the exact Teku version is the one in TEKU_VERSION        scripts/ci/check-version.sh
+#   - every option AVADO passes exists in its `teku --help`     scripts/ci/check-flags.sh
+#   - package name, volumes, ports and env keys are unchanged
+#     against the base branch and production; versions go up   scripts/ci/check-identity.sh
+#   - it boots on its real network with its real command line
+#     (checkpoint sync, peers, head moving, no fatal line)      scripts/ci/boot-test.sh
+#   - the equivalence proof against what boxes run today        scripts/prove-equivalence.sh
+# The tested build's record is kept as artifact avado-build-<network>-<tree>;
+# release.yml publishes exactly that build after the merge.
+#
+# No secrets are used. The bump bot starts this workflow through
+# workflow_dispatch (input "pr") when it has no PAT_TOKEN.
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Pull request number to check'
+        required: true
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: true
+
+env:
+  # IPFS API the AVADOSDK adds the build to. Repository variable IPFS_PROVIDER:
+  # empty = AVADO's node (as ci-build-action), "local" = a throwaway kubo on
+  # the runner (for test copies of this repo; such builds cannot be released).
+  IPFS_API: ${{ vars.IPFS_PROVIDER == 'local' && 'http://127.0.0.1:5001' || vars.IPFS_PROVIDER || 'http://80.208.229.228:35001' }}
+  KUBO_IMAGE: ipfs/kubo:v0.25.0@sha256:9d917826eb669276040efb39cf6c68ae7463356a8e216eb13b278de00aa126be
+
+jobs:
+  plan:
+    name: Plan (unit tests, identity, manifests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      networks: ${{ steps.networks.outputs.networks }}
+      sha: ${{ steps.pr.outputs.sha }}
+    steps:
+      - id: pr
+        name: Pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          INPUT_PR: ${{ inputs.pr }}
+        run: |
+          if [ -n "$EVENT_SHA" ]; then
+            sha=$EVENT_SHA base=$EVENT_BASE
+          else
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .head.sha)
+            base=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .base.sha)
+          fi
+          echo "sha=$sha" >>"$GITHUB_OUTPUT"
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "Checking $sha against base $base"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+          fetch-depth: 0 # the proof and the identity check read older commits
+          persist-credentials: false
+      - name: Status avado/checks = pending
+        continue-on-error: true # read-only token on pull requests from forks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/${{ steps.pr.outputs.sha }}" -f state=pending -f context=avado/checks \
+            -f description="Checks running" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Unit tests of the pipeline rules
+        run: node --test ".github/pipeline/test/*.test.mjs"
+      - id: networks
+        name: Networks
+        run: echo "networks=$(ls package_variants | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
+      - name: Identity (names, volumes, ports, env keys, versions)
+        run: |
+          rc=0
+          for net in $(ls package_variants); do
+            echo "::group::$net"
+            scripts/ci/check-identity.sh "$net" "${{ steps.pr.outputs.base }}" "$RUNNER_TEMP/identity/$net" || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
+      - name: Equivalence proof (manifests)
+        run: scripts/prove-equivalence.sh --manifests-only --work "$RUNNER_TEMP/proof"
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checks-plan
+          path: |
+            ${{ runner.temp }}/identity/
+            ${{ runner.temp }}/proof/results.tsv
+          retention-days: 30
+          if-no-files-found: ignore
+
+  variant:
+    name: ${{ matrix.network }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ${{ fromJSON(needs.plan.outputs.networks) }}
+    env:
+      NETWORK: ${{ matrix.network }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          df -h / | tail -1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Throwaway IPFS node (IPFS_PROVIDER=local only)
+        if: vars.IPFS_PROVIDER == 'local'
+        run: |
+          docker run -d --name ipfs -p 127.0.0.1:5001:5001 "$KUBO_IMAGE" >/dev/null
+          for i in $(seq 1 60); do curl -fsS -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1 && exit 0; sleep 1; done
+          docker logs ipfs; exit 1
+      - id: build
+        name: AVADOSDK build (render, build, add to IPFS)
+        run: |
+          record=$(scripts/ci/sdk-build.sh "$NETWORK" "$RUNNER_TEMP/checks/build" "$IPFS_API")
+          cat "$record"
+          echo "image=$(jq -r '.name + ":" + .version' "$record")" >>"$GITHUB_OUTPUT"
+          echo "upstream=$(jq -r .upstream "$record")" >>"$GITHUB_OUTPUT"
+          echo "tree=$(jq -r .tree "$record")" >>"$GITHUB_OUTPUT"
+      - name: Exact Teku version
+        run: scripts/ci/check-version.sh "${{ steps.build.outputs.image }}" "${{ steps.build.outputs.upstream }}"
+      - name: Every option we pass exists in teku --help
+        run: scripts/ci/check-flags.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/flags"
+      - name: Boots on its real network
+        run: scripts/ci/boot-test.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/boot"
+      - name: Equivalence proof (image)
+        run: scripts/prove-equivalence.sh --work "$RUNNER_TEMP/checks/proof" --candidate-image "${{ steps.build.outputs.image }}" "$NETWORK"
+      - name: Keep the tested build's record (release.yml publishes exactly this build)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: avado-build-${{ matrix.network }}-${{ steps.build.outputs.tree }}
+          path: |
+            ${{ runner.temp }}/checks/build/record.json
+            ${{ runner.temp }}/checks/build/releases.json
+            ${{ runner.temp }}/checks/build/manifest.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checks-${{ matrix.network }}
+          path: |
+            ${{ runner.temp }}/checks/build/record.json
+            ${{ runner.temp }}/checks/build/sdk-build.log
+            ${{ runner.temp }}/checks/flags/
+            ${{ runner.temp }}/checks/boot/
+            ${{ runner.temp }}/checks/proof/results.tsv
+            ${{ runner.temp }}/checks/proof/${{ matrix.network }}/diff/
+            ${{ runner.temp }}/checks/proof/${{ matrix.network }}/production/
+            ${{ runner.temp }}/checks/proof/${{ matrix.network }}/candidate/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  result:
+    name: avado/checks
+    needs: [plan, variant]
+    # not on a cancelled run (a newer push replaced it): its "failure" would
+    # overwrite the newer run's "pending" on the same commit
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Status avado/checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PLAN: ${{ needs.plan.result }}
+          VARIANT: ${{ needs.variant.result }}
+        run: |
+          if [ "$PLAN" = success ] && [ "$VARIANT" = success ]; then
+            state=success desc="All checks passed for every network"
+          else
+            state=failure desc="Failed: plan $PLAN, networks $VARIANT (open the run for details)"
+          fi
+          echo "$state: $desc"
+          if [ -n "$SHA" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state="$state" -f context=avado/checks \
+              -f description="$desc" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null ||
+              echo "::warning::could not set the avado/checks status (read-only token on a pull request from a fork)"
+          fi
+          [ "$state" = success ]

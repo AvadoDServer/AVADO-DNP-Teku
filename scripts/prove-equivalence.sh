@@ -6,12 +6,29 @@
 # the differences written down in scripts/proof/expected/<network>/<check>.diff.
 # Those files are reviewed in git: any other difference fails the proof.
 #
+# The expected files list ALLOWED differences: a check passes when every line
+# that differs from production appears in its expected file. When production
+# catches up (a release with those changes is promoted), fewer lines differ and
+# the proof still passes; the files can then be trimmed with --update-expected.
+#
+# What the upstream Teku image decides is set aside, so the proof also holds for
+# a pull request that only moves Teku to a new version (the bump bot's PRs):
+# the package version and "upstream" in the manifest, the image tag and
+# TEKU_VERSION in the compose file, `teku --version`, and the image config
+# fields the Teku base image sets (labels, exposed ports, its own environment).
+# They are shown as INFO lines; the hard checks below still require exactly
+# TEKU_VERSION, and scripts/ci/check-identity.sh guards names, ports and versions.
+#
 #   scripts/prove-equivalence.sh [options] [network ...]      (default: every variant)
 #
 #   --manifests-only    only the manifest, compose and avatar checks (no image build)
 #   --update-expected   write the differences found as the new expected files
 #                       (then review them with git diff before committing)
 #   --work DIR          working folder (default: a new temporary folder)
+#   --candidate-image TAG
+#                       use this already built image (for example the one the
+#                       AVADOSDK built and uploaded) instead of building one;
+#                       needs exactly one network
 #
 # Environment: PROOF_CACHE (folder for downloaded production images, reused
 # between runs), PROOF_BUILDER (docker buildx builder), AVADO_STORE_POINTER,
@@ -33,8 +50,9 @@
 #   avatar    avatar.png of the variant has the IPFS hash in the manifest
 # Unless --manifests-only, the production image (downloaded, hash-checked,
 # docker load) and the candidate image (built here for linux/amd64) are compared:
-#   version   teku --version
-#   config    image config: env, entrypoint, cmd, exposed ports, volumes, user, labels
+#   version   teku --version (INFO only: it is the upstream version)
+#   config    image config: entrypoint, cmd, volumes, user, working dir and the
+#             environment the AVADO Dockerfile sets
 #   files     AVADO's files in the image (start script, config templates, default
 #             settings, supervisord and nginx config) with mode and owner
 #   ui        every file of the wizard build and of the monitor (not node_modules)
@@ -60,11 +78,13 @@ MANIFESTS_ONLY=0
 UPDATE=0
 WORK=""
 NETWORKS=""
+CANDIDATE_IMAGE=""
 while [ $# -gt 0 ]; do
   case "$1" in
   --manifests-only) MANIFESTS_ONLY=1 ;;
   --update-expected) UPDATE=1 ;;
   --work) WORK=$2; shift ;;
+  --candidate-image) CANDIDATE_IMAGE=$2; shift ;;
   -h | --help) sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
   -*) echo "unknown option $1" >&2; exit 2 ;;
   *) NETWORKS="$NETWORKS $1" ;;
@@ -72,6 +92,10 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "$NETWORKS" ] || NETWORKS=$(cd "$ROOT/package_variants" && ls -d */ | tr -d / | tr '\n' ' ')
+if [ -n "$CANDIDATE_IMAGE" ] && [ "$(echo $NETWORKS | wc -w | tr -d ' ')" != 1 ]; then
+  echo "prove-equivalence: --candidate-image needs exactly one network" >&2
+  exit 2
+fi
 
 die() {
   echo "prove-equivalence: $*" >&2
@@ -144,17 +168,27 @@ compare() { # <network> <check> <production-file> <candidate-file>
     return 0
   fi
   [ -f "$expected" ] || expected=/dev/null
-  if cmp -s "$actual" "$expected"; then
-    if [ -s "$actual" ]; then
-      record "$net" "$check" PASS "differs from production only as expected ($lines lines, see ${expected#"$ROOT"/})"
-    else
-      record "$net" "$check" PASS "same as production"
-    fi
+  local unexpected
+  unexpected=$(comm -13 <(changed_lines "$expected") <(changed_lines "$actual"))
+  if [ ! -s "$actual" ]; then
+    record "$net" "$check" PASS "same as production"
+  elif [ -z "$unexpected" ]; then
+    record "$net" "$check" PASS "differs from production only in reviewed ways ($lines lines, allowed by ${expected#"$ROOT"/})"
   else
-    record "$net" "$check" FAIL "unexpected difference from production (full diff: $actual)"
-    echo "----- $net/$check: expected difference vs found difference" >&2
-    diff -u --label expected --label found "$expected" "$actual" | sed 's/^/    /' >&2 || true
+    record "$net" "$check" FAIL "difference from production that is not in ${expected#"$ROOT"/} (full diff: $actual)"
+    echo "----- $net/$check: lines that differ from production and are not in the expected file" >&2
+    printf '%s\n' "$unexpected" | head -60 | sed 's/^/    /' >&2
   fi
+}
+
+changed_lines() { # <diff file>: its changed lines, sorted
+  awk 'NR > 2 && /^[-+]/' "$1" | LC_ALL=C sort -u
+}
+
+info_diff() { # <network> <check> <production-file> <candidate-file>: an INFO record, never fails
+  local d
+  d=$(diff "$3" "$4" | grep '^[<>]' | sed 's/^< /-/; s/^> /+/' | tr -s ' ' | tr '\n' ' ' | cut -c1-400 || true)
+  record "$1" "$2" INFO "${d:-same as production}"
 }
 
 assert() { # <network> <check> <condition-result 0|1> <detail>
@@ -242,8 +276,15 @@ image_facts() { # <image> <out-dir> <network> <render-dir>
 
   docker run --rm --platform "$PLATFORM" --entrypoint /opt/teku/bin/teku "$img" --version >"$out/version.txt" 2>&1 || true
 
+  # The AVADO Dockerfile sets NVM_DIR, NODE_VERSION, NODE_PATH and puts node on
+  # PATH; the rest of the environment, the labels and the exposed ports come
+  # from the Teku base image.
   docker image inspect "$img" | jq -S '.[0] | {Architecture, Os,
-    Config: (.Config | {Env, Entrypoint, Cmd, ExposedPorts, Volumes, User, WorkingDir, Labels})}' >"$out/config.json"
+    Config: (.Config | {Entrypoint, Cmd, Volumes, User, WorkingDir,
+      Env: [.Env[] | select(test("^(NVM_DIR|NODE_VERSION|NODE_PATH)="))],
+      PathNode: [.Env[] | select(startswith("PATH=")) | ltrimstr("PATH=") | split(":")[] | select(test("nvm"))]})}' >"$out/config.json"
+  docker image inspect "$img" | jq -S '.[0].Config | {ExposedPorts, Labels,
+      Env: [.Env[] | select(test("^(NVM_DIR|NODE_VERSION|NODE_PATH)=") | not)]}' >"$out/config-upstream.json"
 
   run_in "$img" '
     for f in /etc/supervisord.conf /etc/nginx/nginx.conf /opt/teku/startTeku.sh /opt/teku/reload-certs.sh \
@@ -257,7 +298,7 @@ image_facts() { # <image> <out-dir> <network> <render-dir>
     done
     echo "### /data ($(stat -c "%a %U:%G" /data))"
     echo "### node $(/root/.nvm/versions/node/v18.15.0/bin/node --version)"
-    echo "### $(id nginx)"
+    echo "### $(id nginx | sed -E "s/[0-9]+//g")"
   ' >"$out/files.txt" 2>&1
 
   run_in "$img" '
@@ -338,12 +379,17 @@ for net in $NETWORKS; do
   record "$net" production INFO "store $STORE_CID: $name $prod_version, image ${prod_image#/ipfs/}, release commit ${release:0:7}"
   record "$net" store-only-fields INFO "$(jq -c '{title, avadocategory}' "$WORK/$net/production-store-manifest.json") (set in editstore; the release manifest says $(jq -c .title "$WORK/$net/production-ci-manifest.json"))"
 
-  # manifest and compose
-  jq 'del(.image.path, .image.hash, .image.size, .builddate)' "$WORK/$net/production-ci-manifest.json" >"$WORK/$net/manifest.production.json"
-  jq . "$render/dappnode_package.json" >"$WORK/$net/manifest.candidate.json"
+  # manifest and compose; the package version and the Teku version are set
+  # aside (INFO), everything else must match
+  record "$net" versions INFO "package $(jq -r .version "$WORK/$net/production-ci-manifest.json") -> $version, Teku $(jq -r .upstream "$WORK/$net/production-ci-manifest.json") -> $TEKU_VERSION"
+  norm_manifest='del(.image.path, .image.hash, .image.size, .builddate) | .version = "<version>" | .upstream = "<teku version>"'
+  jq "$norm_manifest" "$WORK/$net/production-ci-manifest.json" >"$WORK/$net/manifest.production.json"
+  jq "$norm_manifest" "$render/dappnode_package.json" >"$WORK/$net/manifest.candidate.json"
   compare "$net" manifest "$WORK/$net/manifest.production.json" "$WORK/$net/manifest.candidate.json"
-  yq -o=json "$WORK/$net/production-compose.yml" >"$WORK/$net/compose.production.json"
-  yq -o=json "$render/docker-compose.yml" >"$WORK/$net/compose.candidate.json"
+  norm_compose='.services |= map_values((if .image then .image |= sub(":[^:]*$"; ":<version>") else . end)
+    | (if .build.args.TEKU_VERSION then .build.args.TEKU_VERSION = "<teku version>" else . end))'
+  yq -o=json "$WORK/$net/production-compose.yml" | jq "$norm_compose" >"$WORK/$net/compose.production.json"
+  yq -o=json "$render/docker-compose.yml" | jq "$norm_compose" >"$WORK/$net/compose.candidate.json"
   compare "$net" compose "$WORK/$net/compose.production.json" "$WORK/$net/compose.candidate.json"
 
   avatar_cid=$(cid_of "$render/avatar.png")
@@ -359,13 +405,31 @@ for net in $NETWORKS; do
   # images
   prod_tag="avado-proof/production-$net:latest"
   cand_tag="avado-proof/candidate-$net:latest"
+  if [ -n "$CANDIDATE_IMAGE" ]; then
+    # Pin the candidate by id BEFORE loading production: `docker load` of the
+    # production image re-tags <name>:<version>, which is also the candidate's
+    # tag when the version did not change.
+    cand_id=$(docker image inspect --format '{{.Id}}' "$CANDIDATE_IMAGE" 2>/dev/null) || die "$net: candidate image $CANDIDATE_IMAGE not found"
+    docker tag "$cand_id" "$cand_tag"
+    record "$net" candidate-image INFO "$CANDIDATE_IMAGE ($cand_id)"
+  fi
   load_production "$net" "$prod_image" "$prod_size" "$prod_tag"
-  build_candidate "$net" "$render" "$cand_tag"
+  if [ -z "$CANDIDATE_IMAGE" ]; then
+    build_candidate "$net" "$render" "$cand_tag"
+  fi
+  prod_id=$(docker image inspect --format '{{.Id}}' "$prod_tag")
+  cand_id=$(docker image inspect --format '{{.Id}}' "$cand_tag")
+  if [ "$prod_id" = "$cand_id" ]; then
+    record "$net" candidate-is-production INFO "the candidate is the production image itself ($cand_id): the image checks compare it with itself"
+  fi
   log "$net: collecting facts from the production image"
   image_facts "$prod_tag" "$WORK/$net/production" "$net" "$render"
   log "$net: collecting facts from the candidate image"
   image_facts "$cand_tag" "$WORK/$net/candidate" "$net" "$render"
-  for check in version config files ui start-mode-unset start-mode-syncing start-mode-zerosync start-existing-settings runtime; do
+  # What the Teku base image decides: INFO only.
+  info_diff "$net" version "$WORK/$net/production/version.txt" "$WORK/$net/candidate/version.txt"
+  info_diff "$net" upstream-image-config "$WORK/$net/production/config-upstream.json" "$WORK/$net/candidate/config-upstream.json"
+  for check in config files ui start-mode-unset start-mode-syncing start-mode-zerosync start-existing-settings runtime; do
     ext=txt
     [ "$check" = config ] && ext=json
     compare "$net" "$check" "$WORK/$net/production/$check.$ext" "$WORK/$net/candidate/$check.$ext"

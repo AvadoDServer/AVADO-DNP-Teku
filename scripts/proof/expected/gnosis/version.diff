@@ -1,5 +1,0 @@
---- production
-+++ candidate
-@@ -1 +1 @@
--teku/v26.4.0/linux-x86_64/-eclipseadoptium-openjdk64bitservervm-java-21
-+teku/v26.9.0/linux-x86_64/-eclipseadoptium-openjdk64bitservervm-java-25
