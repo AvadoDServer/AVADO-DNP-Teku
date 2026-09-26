@@ -9,10 +9,10 @@ name: Gate
 on:
   schedule:
     - cron: '53 */4 * * *'
-  workflow_run:
+  workflow_run: # PR checks started by a person or PAT_TOKEN
     workflows: ['PR checks']
     types: [completed]
-  workflow_dispatch:
+  workflow_dispatch: # PR checks started by the bump bot without PAT_TOKEN start the gate themselves
 
 permissions:
   contents: write # merge

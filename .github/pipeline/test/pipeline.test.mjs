@@ -58,6 +58,14 @@ test('waits while checks run or the branch is behind', () => {
   assert.equal(decide({ ...base, upToDate: false, dn: { level: 'GOOD', verdict: 'pass' } }).cause, 'behind');
 });
 
+test('checks that stay silent for 6 h after the last push block instead of waiting forever', () => {
+  const headAt = at(0).toISOString();
+  assert.equal(decide({ ...base, checks: 'missing', headAt, now: at(5.9) }).action, 'wait');
+  const d = decide({ ...base, checks: 'pending', headAt, now: at(6) });
+  assert.equal(d.action, 'block');
+  assert.equal(d.cause, 'unclear');
+});
+
 test('anything unclear blocks', () => {
   assert.equal(decide({ ...base, dn: null }).cause, 'unclear');
   assert.equal(decide({ ...base, releasedAt: null, dn: { level: 'GOOD', verdict: 'pass' } }).cause, 'unclear');

@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # look up the PR (workflow_dispatch)
   statuses: write
 
 concurrency:
@@ -189,23 +190,41 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+      actions: write # starts the gate after a run the bump bot started
     steps:
-      - name: Status avado/checks
+      - id: status
+        name: Status avado/checks
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ needs.plan.outputs.sha }}
+          SHA: ${{ needs.plan.outputs.sha || github.event.pull_request.head.sha }}
+          INPUT_PR: ${{ inputs.pr }}
           PLAN: ${{ needs.plan.result }}
           VARIANT: ${{ needs.variant.result }}
         run: |
+          # Even when the plan job failed before it knew the commit, the PR gets a status.
+          [ -n "$SHA" ] || [ -z "$INPUT_PR" ] || SHA=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .head.sha || true)
           if [ "$PLAN" = success ] && [ "$VARIANT" = success ]; then
             state=success desc="All checks passed for every network"
           else
             state=failure desc="Failed: plan $PLAN, networks $VARIANT (open the run for details)"
           fi
           echo "$state: $desc"
+          echo "state=$state" >>"$GITHUB_OUTPUT"
           if [ -n "$SHA" ]; then
             gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state="$state" -f context=avado/checks \
               -f description="$desc" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null ||
               echo "::warning::could not set the avado/checks status (read-only token on a pull request from a fork)"
           fi
-          [ "$state" = success ]
+      - name: Start the gate
+        # A run started with the built-in token (the bump bot without PAT_TOKEN
+        # uses workflow_dispatch) does not trigger gate.yml's workflow_run.
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run gate.yml -R "$GITHUB_REPOSITORY" --ref "${{ github.event.repository.default_branch }}" || echo "::warning::could not start the gate; it runs within 4 hours anyway"
+      - name: Result
+        run: '[ "${{ steps.status.outputs.state }}" = success ]'

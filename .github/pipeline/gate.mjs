@@ -44,7 +44,7 @@ const ALLOWED_BOT_FILES = /^(docker-compose\.yml|package_variants\/[a-z0-9-]+\/d
 // The rules, as a pure function (tested in test/gate.test.mjs).
 //   checks: 'success' | 'failure' | 'error' | 'pending' | 'missing'
 //   dn: { level: 'GOOD' | 'WAIT' | 'BLOCK', verdict } or null when it could not be read
-export function decide({ checks, dn, mandatory, releasedAt, now, upToDate, conflict, errors = [], unexpectedFiles = [], fallbackHours = 72 }) {
+export function decide({ checks, dn, mandatory, releasedAt, now, upToDate, conflict, errors = [], unexpectedFiles = [], fallbackHours = 72, headAt = null, silentHours = 6 }) {
   if (errors.length) return { action: 'block', cause: 'unclear', why: `could not read everything needed: ${errors.join('; ')}` };
   if (unexpectedFiles.length) return { action: 'block', cause: 'unexpected-files', why: `bot commits change files a bump never touches: ${unexpectedFiles.join(', ')}` };
   if (conflict) return { action: 'block', cause: 'conflict', why: 'the PR conflicts with the default branch' };
@@ -56,7 +56,12 @@ export function decide({ checks, dn, mandatory, releasedAt, now, upToDate, confl
       ? { action: 'block', cause: 'dappnode-failed', why: 'Teku failed DAppNode\'s real-node test' }
       : { action: 'block', cause: 'dappnode-unclear', why: 'DAppNode\'s real-node result for this version cannot be read as a pass' };
   }
-  if (checks !== 'success') return { action: 'wait', cause: 'checks', why: checks === 'missing' ? 'our checks have not started yet' : 'our checks are running' };
+  if (checks !== 'success') {
+    // Checks that never report must not make the gate wait silently forever.
+    const waited = headAt ? hoursBetween(headAt, now) : 0;
+    if (waited >= silentHours) return { action: 'block', cause: 'unclear', why: `our checks have not reported a result ${Math.floor(waited)} h after the last push (status: ${checks})` };
+    return { action: 'wait', cause: 'checks', why: checks === 'missing' ? 'our checks have not started yet' : 'our checks are running' };
+  }
   if (!upToDate) return { action: 'wait', cause: 'behind', why: 'the branch is behind the default branch; the bump bot refreshes it' };
   if (dn.level === 'GOOD') return { action: 'merge', cause: 'dappnode-good', why: `our checks are green and DAppNode's real-node test passed (${dn.verdict})` };
   if (mandatory) return { action: 'merge', cause: 'mandatory', why: `our checks are green and Teku marks this release as required (${mandatory.source})` };
@@ -245,6 +250,7 @@ async function main() {
   // Files changed by bot-only PRs must be the bump's files.
   const commits = await gh.get(`repos/${repo}/pulls/${pr.number}/commits?per_page=100`);
   const botOnly = (commits || []).every((c) => c.commit?.author?.email === BOT_EMAIL);
+  const headAt = (commits || []).at(-1)?.commit?.committer?.date || null;
   const files = botOnly ? await gh.get(`repos/${repo}/pulls/${pr.number}/files?per_page=100`) : [];
   const unexpectedFiles = (files || []).map((f) => f.filename).filter((f) => !ALLOWED_BOT_FILES.test(f));
 
@@ -276,6 +282,7 @@ async function main() {
     errors: errors.filter((e) => !e.startsWith('DAppNode')),
     unexpectedFiles,
     fallbackHours,
+    headAt,
   });
 
   say(`PR #${pr.number} (${sha.slice(0, 7)}): Teku ${mainTeku} -> ${target}`);
