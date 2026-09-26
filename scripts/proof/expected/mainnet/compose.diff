@@ -1,0 +1,12 @@
+--- production
++++ candidate
+@@ -6,7 +6,8 @@
+       "build": {
+         "context": "./build",
+         "args": {
+-          "TEKU_VERSION": "26.9.0"
++          "TEKU_VERSION": "26.9.0",
++          "NETWORK": "mainnet"
+         }
+       },
+       "volumes": [

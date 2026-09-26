@@ -2,3 +2,12 @@
 build_*
 releases.json
 testKeys
+
+# Generated per network by build/ui-config.sh (the Dockerfile runs it with NETWORK)
+build/wizard/src/server_config.json
+build/monitor/server_config.json
+build/monitor/settings/defaultsettings.json
+
+# scripts/render.sh and scripts/prove-equivalence.sh output (when pointed inside the repo)
+.render/
+.proof/

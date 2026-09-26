@@ -1,0 +1,28 @@
+#!/bin/bash
+# Stand-in for /opt/teku/bin/teku during the equivalence proof. It prints the
+# command line, the environment and the config files the start script hands
+# to Teku, then exits instead of starting a node.
+echo "=== teku start"
+echo "user=$(id -un) MODE=${MODE-<unset>} JAVA_OPTS=${JAVA_OPTS-<unset>} EXTRA_OPTS=${EXTRA_OPTS-<unset>}"
+i=0
+for a in "$@"; do
+  i=$((i + 1))
+  echo "argv[$i]=$a"
+done
+for a in "$@"; do
+  case "$a" in
+  --config-file=*)
+    f=${a#--config-file=}
+    echo "--- config file $f"
+    cat "$f"
+    echo "--- end of config file"
+    ;;
+  --ee-jwt-secret-file=*)
+    f=${a#--ee-jwt-secret-file=}
+    echo "jwt secret file $f: $(wc -c <"$f" | tr -d ' ') bytes"
+    ;;
+  esac
+done
+echo "--- /data/settings.json (keys sorted)"
+jq -S . /data/settings.json
+echo "=== teku end"

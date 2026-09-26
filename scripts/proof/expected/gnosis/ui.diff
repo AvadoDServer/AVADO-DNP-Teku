@@ -1,0 +1,12 @@
+--- production
++++ candidate
+@@ -38,9 +38,7 @@
+ ac0b8e6d258e1f99ee8ace27e5b74bd2ac7ccecbe63e2c670bbd889e0dfa3fe3  monitor/server_config.json
+ eee65704b35631c420a91b58560e83be28a050dfc51082454b0a9018388fa962  monitor/server_config.ts
+ 1b7876632ab916fd7bd2ac480ec62efbd649b8d15146eb18dc8693e2230df042  monitor/settings/defaultsettings-gnosis.json
+-e00921e38518a55120d7d6c33f0aaf5ef43666fe0bf79acd28ab07214f41235e  monitor/settings/defaultsettings-holesky.json
+ a6b6c9b8000e17c58107b87dfd474ece721b0f917763b17b0de84f3c088be3da  monitor/settings/defaultsettings-mainnet.json
+-12060991e060cef2a3ed2236068c883bb81ef566bbf64a8c1707715be80afd42  monitor/settings/defaultsettings-prater.json
+ 1b7876632ab916fd7bd2ac480ec62efbd649b8d15146eb18dc8693e2230df042  monitor/settings/defaultsettings.json
+ 648e166644f176a17244df63a396e00f04ff74119767b3b00dcfb32c31283911  monitor/tsconfig.json
+ 5fd227d59d72e03a7faf2c94624cbe39800ed0736a6abc2ecf2facb91fef0b6b  monitor/wampsession.ts

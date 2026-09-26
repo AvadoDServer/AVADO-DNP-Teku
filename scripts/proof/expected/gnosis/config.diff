@@ -1,0 +1,26 @@
+--- production
++++ candidate
+@@ -25,19 +25,19 @@
+       "5052/tcp": {},
+       "8008/tcp": {},
+       "9000/tcp": {},
+-      "9000/udp": {}
++      "9000/udp": {},
++      "9001/udp": {}
+     },
+     "Labels": {
+       "org.opencontainers.image.created": "",
+       "org.opencontainers.image.description": "Ethereum Consensus Client",
+       "org.opencontainers.image.licenses": "Apache 2.0",
+-      "org.opencontainers.image.ref.name": "ubuntu",
+-      "org.opencontainers.image.revision": "c5add450714feaf941dc666ab7bb35ad544e56fd",
++      "org.opencontainers.image.revision": "01662d5fe7dae207e417bcd3183064521e569454",
+       "org.opencontainers.image.source": "https://github.com/Consensys/teku.git",
+       "org.opencontainers.image.title": "Teku",
+       "org.opencontainers.image.url": "https://docs.teku.consensys.io/",
+       "org.opencontainers.image.vendor": "Consensys",
+-      "org.opencontainers.image.version": "26.4.0"
++      "org.opencontainers.image.version": "26.9.0"
+     },
+     "User": "root",
+     "Volumes": {

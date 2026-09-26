@@ -1,16 +1,23 @@
 ARG TEKU_VERSION
 FROM node:18.15.0 as builder
 
+# NETWORK (mainnet, gnosis) is set by package_variants/<network>/docker-compose.yml.
+# The wizard and monitor config and the default settings are generated for it
+# here (build/ui-config.sh), so the same sources build every network.
+ARG NETWORK
+COPY ui-config.sh /usr/src/ui-config.sh
+COPY wizard /usr/src/app/wizard
+COPY monitor /usr/src/monitor
+RUN sh /usr/src/ui-config.sh "${NETWORK}" /usr/src/app/wizard /usr/src/monitor
+
 # build wizard
 WORKDIR /usr/src/app/wizard
-COPY wizard .
 RUN yarn
 RUN rm -Rf build && yarn run build
 
 
 # build monitor
 WORKDIR /usr/src/monitor
-COPY monitor .
 RUN yarn
 RUN rm -Rf build && yarn run build
 
@@ -56,7 +63,7 @@ COPY reload-certs.sh /opt/teku/reload-certs.sh
 COPY teku-config.template /opt/teku
 COPY teku-config-syncing-beacon.template /opt/teku
 COPY teku-config-syncing-validator.template /opt/teku
-COPY monitor/settings/defaultsettings.json /opt/teku
+COPY --from=builder /usr/src/monitor/settings/defaultsettings.json /opt/teku/defaultsettings.json
 RUN chmod a+x /opt/teku/startTeku.sh /opt/teku/reload-certs.sh
 COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/

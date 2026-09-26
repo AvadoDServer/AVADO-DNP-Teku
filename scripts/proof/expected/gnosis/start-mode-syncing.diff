@@ -1,0 +1,25 @@
+--- production
++++ candidate
+@@ -1,4 +1,6 @@
+ Starting with default settings
++curl-stub: http://nethermind-gnosis.my.ava.do:8551 -> exit 0
++Execution engine: using nethermind-gnosis.avado.dnp.dappnode.eth (http://nethermind-gnosis.my.ava.do:8551)
+ curl-stub: http://dappmanager.my.ava.do/jwttoken.txt -> exit 0
+ Starting Teku in single process mode
+ === teku start
+@@ -27,9 +29,12 @@
+ # Execution engine
+ ee-endpoint: "http://nethermind-gnosis.my.ava.do:8551"
+ 
+-# metrics
+-metrics-enabled: false # TODO: beaconchain monitor
+-metrics-categories: ["BEACON","LIBP2P","NETWORK"]
++# metrics (Prometheus, scraped by prometheus.avado.dappnode.eth on the AVADO network only)
++metrics-enabled: true
++metrics-interface: "0.0.0.0"
++metrics-host-allowlist: ["*"]
++metrics-port: 8008
++metrics-categories: ["JVM","PROCESS","BEACON","DISCOVERY","EVENTBUS","EXECUTOR","LIBP2P","NETWORK","STORAGE","VALIDATOR","VALIDATOR_PERFORMANCE"]
+ # Options are: JVM, PROCESS, BEACON, DISCOVERY, EVENTBUS, EXECUTOR, LIBP2P, NETWORK, STORAGE, STORAGE_HOT_DB, STORAGE_FINALIZED_DB, REMOTE_VALIDATOR, VALIDATOR, VALIDATOR_PERFORMANCE
+ 
+ # database

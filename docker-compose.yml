@@ -1,10 +1,14 @@
+# Base compose, shared by every network. scripts/render.sh merges it with
+# package_variants/<network>/docker-compose.yml, renames the service to the
+# variant's package name and sets the image to <name>:<version>.
 version: '3.4'
 services:
-  teku.avado.dnp.dappnode.eth:
-    image: 'teku.avado.dnp.dappnode.eth:0.0.75'
+  teku:
     build:
       context: ./build
       args:
+        # The upstream Teku version of every network. This is the only place
+        # it is written: render.sh also copies it into the manifest "upstream".
         TEKU_VERSION: 26.9.0
     volumes:
       - 'data:/data'
