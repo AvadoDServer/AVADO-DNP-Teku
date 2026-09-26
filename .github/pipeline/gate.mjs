@@ -338,7 +338,9 @@ Checked ${fmtUtc(now)} by ${runUrl}`;
       changeNote: `New situation for Teku ${target} (head ${sha.slice(0, 7)}): ${decision.why}. The description above is up to date.`,
     });
     say(`- issue: ${issue.html_url}`);
-  } else {
+  } else if (decision.action === 'merge' || decision.cause === 'dappnode') {
+    // Closed only when the problem is really gone: not while a fix is still
+    // being checked (that would close and reopen it: two extra emails).
     const issue = await findIssue(gh, repo, key);
     if (issue?.state === 'open') {
       await closeIssue(gh, repo, issue, `Resolved: ${decision.why}.`);
