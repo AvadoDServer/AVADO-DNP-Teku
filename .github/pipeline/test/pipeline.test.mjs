@@ -108,8 +108,9 @@ test('versions', () => {
 test('the bump edits only the version fields of the real files', () => {
   const compose = readFileSync(join(ROOT, 'docker-compose.yml'), 'utf8');
   const now = readTekuVersion(compose);
-  const edited = setTekuVersion(compose, '26.99.0');
-  assert.equal(readTekuVersion(edited), '26.99.0');
+  const other = bumpPatch(now); // always differs from what is checked out (also on a bump PR)
+  const edited = setTekuVersion(compose, other);
+  assert.equal(readTekuVersion(edited), other);
   assert.equal(edited.split('\n').filter((l, i) => l !== compose.split('\n')[i]).length, 1);
   assert.equal(setTekuVersion(edited, now), compose);
   for (const net of ['mainnet', 'gnosis']) {
