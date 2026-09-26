@@ -102,7 +102,11 @@ async function testedBuild(gh, net, tree, rendered) {
   if (record.name !== rendered.name || record.version !== rendered.version || record.upstream !== rendered.upstream) {
     return { why: `tested build ${from} is ${record.name} ${record.version} (Teku ${record.upstream})` };
   }
-  if (record.provider !== ipfsApi) return { why: `tested build ${from} was added to ${record.provider}, not ${ipfsApi}`, record, from, local: true };
+  // A build added to a throwaway IPFS node (a test copy with IPFS_PROVIDER=local)
+  // cannot be read back and can never be released.
+  if (record.provider !== ipfsApi || /localhost|127\.0\.0\.1/.test(record.provider)) {
+    return { why: `tested build ${from} was added to ${record.provider}, which cannot be read back here`, record, from, local: true };
+  }
   const manifest = JSON.parse(await ipfs(ipfsApi, `cat?arg=${encodeURIComponent(record.manifestHash)}`));
   if (!isDeepStrictEqual(stripBuild(manifest), rendered)) return { why: `the manifest of tested build ${from} differs from what main renders` };
   if (manifest.image?.hash !== record.imageHash) return { why: `tested build ${from}: image hash differs from its manifest` };
