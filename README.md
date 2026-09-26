@@ -247,5 +247,10 @@ files in the same pull request.
 
 To try the pipeline without touching this repo or the store: push it to a
 private repository, set the variable `IPFS_PROVIDER=local` there (builds go to a
-throwaway IPFS node on the runner) and do not add `RPC_TOKEN` (the release is a
-dry run). Run "Bump Teku" by hand with a `version` to simulate a release.
+throwaway IPFS node on the runner), do not add `RPC_TOKEN` (the release is a
+dry run), and tick Settings → Actions → General → "Allow GitHub Actions to
+create and approve pull requests" (needed without `PAT_TOKEN`). Run "Bump
+Teku" by hand with a `version` to simulate a release; a version without a
+Docker image makes the checks fail, which exercises the issue path. Set
+`PIPELINE_MODE=off` there afterwards. The first copy is
+`flisko/teku-pipeline-dryrun` (private, paused).
