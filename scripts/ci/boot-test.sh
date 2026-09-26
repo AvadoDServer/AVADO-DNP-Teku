@@ -19,7 +19,10 @@
 #   - it started from a checkpoint (its first head is within 10 epochs of the
 #     current slot, not at genesis),
 #   - the head moved forward while watching,
-#   - it had at least BOOT_MIN_PEERS (default 3) peers,
+#   - it had at least BOOT_MIN_PEERS peers (default 3 on mainnet, 2 on gnosis:
+#     a GitHub runner cannot accept inbound connections and Gnosis has few
+#     public peers; the head moving forward is the real proof of working P2P),
+#     counted from the REST API samples and from Teku's own status lines,
 #   - supervisord started Teku once and it never exited, and no fatal line
 #     (unknown option, out of memory, "Teku failed to start", ...) was logged.
 # Logs, samples and the command line Teku ran with are written to <out-dir>.
@@ -30,7 +33,6 @@ RENDER=${2:?usage: boot-test.sh <image> <render-dir> <out-dir>}
 OUT=${3:?usage: boot-test.sh <image> <render-dir> <out-dir>}
 READY_MIN=${BOOT_READY_MINUTES:-10}
 WATCH_MIN=${BOOT_MINUTES:-4}
-MIN_PEERS=${BOOT_MIN_PEERS:-3}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
@@ -43,8 +45,8 @@ log() { echo "boot-test: $(date -u +%H:%M:%S) $*" >&2; }
 
 NETWORK=$(yq '.services[].build.args.NETWORK' "$RENDER/docker-compose.yml")
 case "$NETWORK" in
-mainnet) WANT_CONFIG=mainnet WANT_CHAIN=1 CHAIN_HEX=0x1 ;;
-gnosis) WANT_CONFIG=gnosis WANT_CHAIN=100 CHAIN_HEX=0x64 ;;
+mainnet) WANT_CONFIG=mainnet WANT_CHAIN=1 CHAIN_HEX=0x1 MIN_PEERS=${BOOT_MIN_PEERS:-3} ;;
+gnosis) WANT_CONFIG=gnosis WANT_CHAIN=100 CHAIN_HEX=0x64 MIN_PEERS=${BOOT_MIN_PEERS:-2} ;;
 *) die "no boot-test expectations for network '$NETWORK' (add them here)" ;;
 esac
 DEFAULTS="$RENDER/build/monitor/settings/defaultsettings-$NETWORK.json"
@@ -185,7 +187,11 @@ if [ -n "$first_head" ] && [ -n "$last_head" ] && [ $((last_head - first_head)) 
 else
   check FAIL head-moves "head slot did not move forward (${first_head:-?} -> ${last_head:-?})"
 fi
-if [ "$max_peers" -ge "$MIN_PEERS" ]; then check PASS peers "up to $max_peers peers"; else check FAIL peers "at most $max_peers peers (need $MIN_PEERS)"; fi
+# Teku logs its peer count every few seconds ("Connected peers: N" while
+# syncing, "Peers: N" in sync); the REST samples above are every 20 s.
+log_peers=$(sed 's/\x1b\[[0-9;]*m//g' "$OUT/container.log" | grep -oE '(Connected peers|Peers): [0-9]+' | grep -oE '[0-9]+$' | sort -n | tail -1)
+[ -n "$log_peers" ] && [ "$log_peers" -gt "$max_peers" ] && max_peers=$log_peers
+if [ "$max_peers" -ge "$MIN_PEERS" ]; then check PASS peers "up to $max_peers peers (need $MIN_PEERS)"; else check FAIL peers "at most $max_peers peers (need $MIN_PEERS)"; fi
 
 spawned=$(grep -c "spawned: 'teku'" "$OUT/container.log" || true)
 exited=$(grep -E "exited: teku |gave up: teku" "$OUT/container.log" | grep -v 'exit status 143' || true)
