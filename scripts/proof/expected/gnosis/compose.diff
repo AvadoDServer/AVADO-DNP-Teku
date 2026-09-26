@@ -1,16 +1,11 @@
 --- production
 +++ candidate
-@@ -2,11 +2,12 @@
-   "version": "3.4",
-   "services": {
-     "teku-gnosis.avado.dnp.dappnode.eth": {
--      "image": "teku-gnosis.avado.dnp.dappnode.eth:0.0.27",
-+      "image": "teku-gnosis.avado.dnp.dappnode.eth:0.0.29",
+@@ -6,7 +6,8 @@
        "build": {
          "context": "./build",
          "args": {
--          "TEKU_VERSION": "26.4.0"
-+          "TEKU_VERSION": "26.9.0",
+-          "TEKU_VERSION": "<teku version>"
++          "TEKU_VERSION": "<teku version>",
 +          "NETWORK": "gnosis"
          }
        },

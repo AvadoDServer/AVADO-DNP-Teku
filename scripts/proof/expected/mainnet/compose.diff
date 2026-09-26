@@ -4,8 +4,8 @@
        "build": {
          "context": "./build",
          "args": {
--          "TEKU_VERSION": "26.9.0"
-+          "TEKU_VERSION": "26.9.0",
+-          "TEKU_VERSION": "<teku version>"
++          "TEKU_VERSION": "<teku version>",
 +          "NETWORK": "mainnet"
          }
        },
