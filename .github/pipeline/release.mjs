@@ -94,8 +94,11 @@ async function testedBuild(gh, net, tree, rendered) {
   sh('gh', ['run', 'download', String(a.workflow_run.id), '-R', repo, '-n', name, '-D', dir], { env: { ...process.env, GH_TOKEN: token } });
   const record = JSON.parse(readFileSync(join(dir, 'record.json'), 'utf8'));
   const from = `${env('GITHUB_SERVER_URL', 'https://github.com')}/${repo}/actions/runs/${a.workflow_run.id}`;
-  const headTree = (() => { try { return git(root, ['rev-parse', `${a.workflow_run.head_sha}^{tree}`]); } catch { return null; } })();
-  if (record.tree !== tree || headTree !== tree) return { why: `tested build ${from} is for another tree` };
+  // The commit the checks built (the PR head) must be in this repo and have
+  // exactly this tree. (A run started by workflow_dispatch reports the default
+  // branch as its head_sha, so the record's commit is what counts.)
+  const builtTree = (() => { try { return git(root, ['rev-parse', `${record.commit}^{tree}`]); } catch { return null; } })();
+  if (record.tree !== tree || builtTree !== tree) return { why: `tested build ${from} is for another tree (${record.commit?.slice(0, 7)})` };
   if (record.name !== rendered.name || record.version !== rendered.version || record.upstream !== rendered.upstream) {
     return { why: `tested build ${from} is ${record.name} ${record.version} (Teku ${record.upstream})` };
   }
