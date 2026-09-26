@@ -80,19 +80,32 @@ async function checksState(gh, repo, sha) {
   return latest ? { state: latest.state, url: latest.target_url, description: latest.description } : { state: 'missing' };
 }
 
+// The useful part of a failed job's log: the lines that say what failed, and
+// the last lines before the first error (setup and cleanup noise dropped).
+export function logExcerpt(log) {
+  const lines = String(log || '')
+    .split('\n')
+    .map((l) => l.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z ?/, '').replace(/\x1b\[[0-9;]*m/g, '').replace(/\r$/, ''));
+  const firstError = lines.findIndex((l) => l.startsWith('##[error]'));
+  const upto = firstError === -1 ? lines : lines.slice(0, firstError + 1);
+  const noise = /^(##\[(group|endgroup)\]|shell: |env:$|\s+[A-Z_]+: |\[command\]|Post job cleanup|Cleaning up orphan)/;
+  const useful = upto.filter((l) => l.trim() && !noise.test(l));
+  const key = useful.filter((l) => /(^|\s)FAIL\b|FAIL:|MISSING|^##\[error\]|^-{5} |^ {4}[-+]|\bError: |rc=[1-9]/.test(l)).slice(0, 30);
+  const tail = useful.slice(-25).filter((l) => !key.includes(l));
+  return [...key, ...(tail.length ? ['...', ...tail] : [])].join('\n').slice(0, 6000);
+}
+
 async function failedJobs(gh, repo, runUrl) {
   const runId = /\/runs\/(\d+)/.exec(runUrl || '')?.[1];
   if (!runId) return { runId: null, jobs: [] };
   const data = await gh.get(`repos/${repo}/actions/runs/${runId}/jobs?per_page=100`);
   const jobs = [];
-  for (const j of (data?.jobs || []).filter((x) => x.conclusion === 'failure')) {
+  // "avado/checks" only sums up the others.
+  for (const j of (data?.jobs || []).filter((x) => x.conclusion === 'failure' && x.name !== CHECKS_CONTEXT)) {
     const step = (j.steps || []).find((s) => s.conclusion === 'failure')?.name || null;
     let excerpt = '';
     try {
-      const log = await gh.redirectedText(`repos/${repo}/actions/jobs/${j.id}/logs`);
-      const lines = log.split('\n').map((l) => l.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z /, ''));
-      const key = lines.filter((l) => /(^|\s)(FAIL|##\[error\])|FAIL:|MISSING|unexpected|Error:/i.test(l)).slice(0, 25);
-      excerpt = [...key, '...', ...lines.filter((l) => l.trim()).slice(-25)].join('\n').slice(0, 6000);
+      excerpt = logExcerpt(await gh.redirectedText(`repos/${repo}/actions/jobs/${j.id}/logs`));
     } catch (err) {
       excerpt = `(log not readable: ${err.message})`;
     }

@@ -157,8 +157,10 @@ Actions → the workflow → **Enable workflow**.
 - `PAT_TOKEN` (repository secret, as before): the bump robot pushes and opens
   its PR with it, so the checks start by themselves (GitHub does not start
   workflows for changes made with the built-in token). Without it the robot
-  starts the checks through `workflow_dispatch`, which also works. The gate
-  also uses it, if present, to read the release watcher's URGENT issues.
+  starts the checks through `workflow_dispatch`, which also works; the PR then
+  also shows a "PR checks" run marked "action required" that can be ignored.
+  The gate also uses it, if present, to read the release watcher's URGENT
+  issues.
 
 ### Update Teku by hand
 

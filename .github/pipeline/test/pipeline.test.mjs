@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { decide } from '../gate.mjs';
+import { decide, logExcerpt } from '../gate.mjs';
 import { reportVerdict, summarize } from '../lib/dappnode.js';
 import { checkMandatory } from '../lib/mandatory.js';
 import {
@@ -121,4 +121,25 @@ test('the bump edits only the version fields of the real files', () => {
     assert.equal(out.split('\n').filter((l, i) => l !== text.split('\n')[i]).length, 1);
   }
   assert.throws(() => readTekuVersion('services:\n  a:\n    build:\n      args:\n        TEKU_VERSION: 1.0.0\n        TEKU_VERSION: 2.0.0\n'));
+});
+
+test('the issue shows the failing lines of a job log, not setup or cleanup noise', () => {
+  const log = [
+    '2026-09-26T22:10:19.1Z ##[group]Run node --test',
+    '2026-09-26T22:10:19.2Z ok 4 - never merges when our checks failed',
+    '2026-09-26T22:10:19.3Z # fail 0',
+    '2026-09-26T22:10:19.4Z   FAIL    compose                  difference from production',
+    '2026-09-26T22:10:19.5Z ----- mainnet/compose: lines that differ from production and are not in the expected file',
+    '2026-09-26T22:10:19.6Z     +          "NETWORK": "mainnet"',
+    '2026-09-26T22:10:19.7Z \x1b[36;1mshell: /usr/bin/bash -e {0}\x1b[0m',
+    '2026-09-26T22:10:19.8Z ##[error]Process completed with exit code 1.',
+    '2026-09-26T22:10:19.9Z Post job cleanup.',
+    '2026-09-26T22:10:20.0Z [command]/usr/bin/git version',
+  ].join('\n');
+  const x = logExcerpt(log);
+  assert.match(x, /FAIL {4}compose/);
+  assert.match(x, /"NETWORK": "mainnet"/);
+  assert.match(x, /##\[error\]/);
+  assert.ok(x.indexOf('FAIL    compose') < x.indexOf('ok 4'), 'failure lines come first, then the context before the error');
+  assert.doesNotMatch(x, /Post job|\[command\]|\x1b|shell: /);
 });
