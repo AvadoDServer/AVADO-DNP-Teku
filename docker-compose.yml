@@ -10,6 +10,10 @@ services:
         # The upstream Teku version of every network. This is the only place
         # it is written: render.sh also copies it into the manifest "upstream".
         TEKU_VERSION: 26.9.0
+        # Docker Hub digest of consensys/teku:<TEKU_VERSION>. The image is built
+        # FROM version@digest, so a moved tag cannot change a package. The bump
+        # bot writes both lines together.
+        TEKU_DIGEST: sha256:6bfef491dc2714b8c4ed4af2c05decb78b2058d77dad50a3fb2d3df167b5fde6
     volumes:
       - 'data:/data'
     environment:

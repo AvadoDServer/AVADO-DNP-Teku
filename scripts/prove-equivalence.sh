@@ -13,9 +13,10 @@
 #
 # What the upstream Teku image decides is set aside, so the proof also holds for
 # a pull request that only moves Teku to a new version (the bump bot's PRs):
-# the package version and "upstream" in the manifest, the image tag and
-# TEKU_VERSION in the compose file, `teku --version`, and the image config
-# fields the Teku base image sets (labels, exposed ports, its own environment).
+# the package version and "upstream" in the manifest, the image tag,
+# TEKU_VERSION and TEKU_DIGEST in the compose file, `teku --version`, and the
+# image config fields the Teku base image sets (labels, exposed ports, its own
+# environment).
 # They are shown as INFO lines; the hard checks below still require exactly
 # TEKU_VERSION, and scripts/ci/check-identity.sh guards names, ports and versions.
 #
@@ -387,7 +388,8 @@ for net in $NETWORKS; do
   jq "$norm_manifest" "$render/dappnode_package.json" >"$WORK/$net/manifest.candidate.json"
   compare "$net" manifest "$WORK/$net/manifest.production.json" "$WORK/$net/manifest.candidate.json"
   norm_compose='.services |= map_values((if .image then .image |= sub(":[^:]*$"; ":<version>") else . end)
-    | (if .build.args.TEKU_VERSION then .build.args.TEKU_VERSION = "<teku version>" else . end))'
+    | (if .build.args.TEKU_VERSION then .build.args.TEKU_VERSION = "<teku version>" else . end)
+    | (if .build.args.TEKU_DIGEST then .build.args.TEKU_DIGEST = "<teku digest>" else . end))'
   yq -o=json "$WORK/$net/production-compose.yml" | jq "$norm_compose" >"$WORK/$net/compose.production.json"
   yq -o=json "$render/docker-compose.yml" | jq "$norm_compose" >"$WORK/$net/compose.candidate.json"
   compare "$net" compose "$WORK/$net/compose.production.json" "$WORK/$net/compose.candidate.json"

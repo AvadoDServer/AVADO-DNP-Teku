@@ -89,12 +89,15 @@ SERVICE=$(yq '.services | keys | .[0]' "$BASE_COMPOSE")
 TEKU_VERSION=$(yq '.services[].build.args.TEKU_VERSION' "$BASE_COMPOSE")
 echo "$TEKU_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' ||
   die "TEKU_VERSION in the base docker-compose.yml must be a version like 26.9.0 (got '$TEKU_VERSION')"
+TEKU_DIGEST=$(yq '.services[].build.args.TEKU_DIGEST' "$BASE_COMPOSE")
+echo "$TEKU_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$' ||
+  die "TEKU_DIGEST in the base docker-compose.yml must be the sha256 digest of consensys/teku:$TEKU_VERSION (got '$TEKU_DIGEST')"
 
 [ "$(yq '.services | keys | join(" ")' "$VARIANT_COMPOSE")" = "$SERVICE" ] ||
   die "package_variants/$NETWORK/docker-compose.yml must have exactly the service '$SERVICE' of the base compose"
 [ "$(yq '.services[].build.args.NETWORK' "$VARIANT_COMPOSE")" = "$NETWORK" ] ||
   die "package_variants/$NETWORK/docker-compose.yml must set build.args.NETWORK: $NETWORK"
-for key in '.services[].build.args.TEKU_VERSION' '.services[].image' '.services[].build.context'; do
+for key in '.services[].build.args.TEKU_VERSION' '.services[].build.args.TEKU_DIGEST' '.services[].image' '.services[].build.context'; do
   [ "$(yq "$key" "$VARIANT_COMPOSE")" = null ] ||
     die "package_variants/$NETWORK/docker-compose.yml must not set $key (it comes from the base compose)"
 done
