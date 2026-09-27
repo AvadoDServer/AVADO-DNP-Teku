@@ -3,11 +3,12 @@
 // the three workflows agree on it.
 //
 // Layout (see README): the upstream Teku version is written once, as
-// TEKU_VERSION in the base docker-compose.yml; every network has its own
+// TEKU_VERSION (plus its Docker Hub digest TEKU_DIGEST) in the base
+// docker-compose.yml; every network has its own
 // package_variants/<network>/dappnode_package.json with its package name and
-// version.
+// version. A network the owner holds back has a file package_variants/<network>/hold.
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -15,6 +16,11 @@ export const BOT_NAME = 'github-actions[bot]';
 export const BOT_EMAIL = '41898282+github-actions[bot]@users.noreply.github.com';
 export const BOT_BRANCH = 'avado-bot/bump';
 export const BUMP_MARKER = '<!-- avado-bot:bump -->';
+// The bump PR's marker names the Teku version it offers, so a PR the owner
+// closed is remembered as "skip this version" (bump.mjs).
+export const bumpMarker = (target) => (target ? `<!-- avado-bot:bump target=${target} -->` : BUMP_MARKER);
+export const markerTarget = (body) => /<!-- avado-bot:bump target=(\d+\.\d+\.\d+) -->/.exec(body || '')?.[1] || null;
+export const PR_CHECKS_PATH = '.github/workflows/pr-checks.yml';
 export const UPSTREAM_REPO = 'Consensys/teku';
 export const UPSTREAM_IMAGE = 'consensys/teku';
 export const DAPPNODE = { repo: 'dappnode/DAppNodePackage-teku-generic', bump_name: 'teku', kind: 'cl' };
@@ -73,6 +79,27 @@ export function setTekuVersion(composeText, version) {
   return out;
 }
 
+// TEKU_DIGEST: the Docker Hub digest of consensys/teku:<TEKU_VERSION>. The
+// Dockerfile builds FROM consensys/teku:<version>@<digest>, so a tag that is
+// moved or re-pushed later cannot change what a package contains.
+const DIGEST_LINE = /^(\s*TEKU_DIGEST:\s*)["']?([^\s"'#]+)["']?(\s*(#.*)?)$/m;
+export const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+
+export function readTekuDigest(composeText) {
+  const all = [...String(composeText).matchAll(new RegExp(DIGEST_LINE.source, 'gm'))];
+  if (all.length !== 1) throw new Error(`expected exactly one TEKU_DIGEST line in docker-compose.yml, found ${all.length}`);
+  if (!DIGEST_RE.test(all[0][2])) throw new Error(`TEKU_DIGEST is not a sha256 digest: ${all[0][2]}`);
+  return all[0][2];
+}
+
+export function setTekuDigest(composeText, digest) {
+  if (!DIGEST_RE.test(digest)) throw new Error(`not a sha256 digest: ${digest}`);
+  readTekuDigest(composeText);
+  const out = composeText.replace(DIGEST_LINE, (_, pre, _old, post) => `${pre}${digest}${post || ''}`);
+  if (readTekuDigest(out) !== digest) throw new Error('could not set TEKU_DIGEST');
+  return out;
+}
+
 // Replaces only the top-level "version" line, so the file keeps its formatting.
 export function setManifestVersion(text, version) {
   const before = JSON.parse(text);
@@ -100,6 +127,63 @@ export function readVariant(root, network) {
   return { network, name: m.name, version: m.version, path };
 }
 
+// The networks at a git ref (for example origin/main), without checking it out.
+export function variantsAt(root, ref) {
+  let names;
+  try {
+    names = git(root, ['ls-tree', '--name-only', `${ref}:package_variants`]).split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+  return names.filter((n) => {
+    try { git(root, ['cat-file', '-e', `${ref}:package_variants/${n}/dappnode_package.json`]); return true; } catch { return false; }
+  }).sort();
+}
+
+// A network the owner holds back: package_variants/<network>/hold exists. Its
+// first line is the reason. A held network is not raised by the bump bot, not
+// built or tested by the PR checks, not counted by the gate and not published
+// by the release; boxes keep the version they have. Removing the file (a PR the
+// owner reviews and merges) ends the hold. Returns the reason, or null.
+export const HOLD_FILE = 'hold';
+const firstLine = (text) => String(text).split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#')) || 'held (no reason given)';
+export function holdReason(root, network, ref = null) {
+  if (ref) {
+    try { return firstLine(git(root, ['show', `${ref}:package_variants/${network}/${HOLD_FILE}`])); } catch { return null; }
+  }
+  const p = join(root, 'package_variants', network, HOLD_FILE);
+  return existsSync(p) ? firstLine(readFileSync(p, 'utf8')) : null;
+}
+
+// The content id of a commit (scripts/ci/content-id.sh): a hash of every
+// tracked file except the package_variants/<network>/releases.json records.
+// The PR checks name the build they tested after it; release.mjs looks it up.
+export function contentId(root, rev = 'HEAD') {
+  return execFileSync(join(root, 'scripts/ci/content-id.sh'), [rev], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+// Retries a read (or an idempotent call) that failed for a reason that may go
+// away: network errors, timeouts, HTTP 5xx and 429. Anything else fails at once.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export function isTransient(err) {
+  const s = err?.status;
+  return s === undefined || s === null || s >= 500 || s === 429 || s === 408;
+}
+export async function retry(what, fn, { tries = 3, delayMs = 5000, transient = isTransient } = {}) {
+  let last;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      if (attempt === tries || !transient(err)) break;
+      console.log(`::warning::${what} failed (attempt ${attempt} of ${tries}): ${String(err.message).split('\n')[0]}; trying again`);
+      await sleep(delayMs * attempt);
+    }
+  }
+  throw last;
+}
+
 // --- git -------------------------------------------------------------------------
 
 export function git(root, args, opts = {}) {
@@ -124,8 +208,24 @@ export function fetchBranch(root, token, branch) {
   git(root, ['fetch', '-q', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], { env: gitAuthEnv(token) });
 }
 
-export function pushHead(root, token, branch, { force = false } = {}) {
-  execFileSync('git', ['-C', root, 'push', '-q', ...(force ? ['--force'] : []), 'origin', `HEAD:refs/heads/${branch}`], { stdio: 'inherit', env: gitAuthEnv(token) });
+// force: true overwrites the branch; lease (a sha, or '' for "must not exist")
+// overwrites it only if it is still where this run saw it.
+export function pushHead(root, token, branch, { force = false, lease = undefined } = {}) {
+  const how = lease !== undefined ? [`--force-with-lease=refs/heads/${branch}:${lease}`] : force ? ['--force'] : [];
+  execFileSync('git', ['-C', root, 'push', '-q', ...how, 'origin', `HEAD:refs/heads/${branch}`], { stdio: 'inherit', env: gitAuthEnv(token) });
+}
+
+// The sha a branch has on the remote now ('' when it does not exist).
+export function remoteSha(root, token, branch) {
+  const out = execFileSync('git', ['-C', root, 'ls-remote', 'origin', `refs/heads/${branch}`], { encoding: 'utf8', env: gitAuthEnv(token) });
+  return out.split(/\s+/)[0] || '';
+}
+
+// Makes a commit (for example a tested PR head) available locally.
+export function ensureCommit(root, token, sha) {
+  try { git(root, ['cat-file', '-e', `${sha}^{commit}`]); return; } catch { /* fetch it */ }
+  git(root, ['fetch', '-q', 'origin', sha], { env: gitAuthEnv(token) });
+  git(root, ['cat-file', '-e', `${sha}^{commit}`]);
 }
 
 // Versions the CI released for a package name: commits "Release <name> <version>"
@@ -173,3 +273,12 @@ export function fmtUtc(d) {
 // GitHub Actions log helpers.
 export const notice = (msg) => console.log(`::notice::${String(msg).replace(/\n/g, '%0A')}`);
 export const warning = (msg) => console.log(`::warning::${String(msg).replace(/\n/g, '%0A')}`);
+
+// A failing script writes what went wrong here; report.mjs puts it into the
+// owner's "[pipeline broken]" issue, so the email says what to do.
+export function failureFile() {
+  return env('PIPELINE_FAILURE_FILE', join(env('RUNNER_TEMP', '/tmp'), 'pipeline-failure.md'));
+}
+export function recordFailure(text) {
+  try { writeFileSync(failureFile(), `${String(text).trim()}\n`); } catch { /* the log still has it */ }
+}
