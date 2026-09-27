@@ -1,6 +1,6 @@
 --- production
 +++ candidate
-@@ -1,10 +1,13 @@
+@@ -1,11 +1,14 @@
  Starting with default settings
 +curl-stub: http://nethermind-gnosis.my.ava.do:8551 -> exit 0
 +Execution engine: using nethermind-gnosis.avado.dnp.dappnode.eth (http://nethermind-gnosis.my.ava.do:8551)
@@ -10,11 +10,13 @@
  user=teku MODE=<unset> JAVA_OPTS=-Xmx8g EXTRA_OPTS=
  argv[1]=--ee-jwt-secret-file=/data/data-gnosis/jwttoken
  argv[2]=--config-file=/data/config.yml
+-command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/config.yml]
 +argv[3]=--Xp2p-quic-enabled=false
++command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/config.yml] [--Xp2p-quic-enabled=false]
  jwt secret file /data/data-gnosis/jwttoken: 66 bytes
  --- config file /data/config.yml
  # Generated file.
-@@ -27,9 +30,12 @@
+@@ -28,9 +31,12 @@
  # Execution engine
  ee-endpoint: "http://nethermind-gnosis.my.ava.do:8551"
  
