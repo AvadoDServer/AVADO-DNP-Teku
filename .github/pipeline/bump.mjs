@@ -74,12 +74,12 @@ async function patWorks() {
 }
 
 async function reportPat(gh, ok) {
-  if (!pat || dryRun) return;
+  if (dryRun) return;
   const key = 'pat-token-rejected';
   try {
-    if (ok) {
+    if (ok || !pat) {
       const issue = await findIssue(gh, repo, key);
-      if (issue?.state === 'open') await closeIssue(gh, repo, issue, 'PAT_TOKEN works again.');
+      if (issue?.state === 'open') await closeIssue(gh, repo, issue, pat ? 'PAT_TOKEN works again.' : 'PAT_TOKEN is not set any more; the bot works without it (it starts the checks itself).');
       return;
     }
     await upsertIssue(gh, repo, {
@@ -113,9 +113,9 @@ ${mandatoryText}
 ${table}${heldRows ? `\n${heldRows}` : ''}
 
 ### What happens next (nothing to do unless you get an email)
-1. **Checks** (\`avado/checks\`): every network is built with the AVADOSDK, the exact Teku version and every option we pass are checked, names/volumes/ports/settings are compared with main and production, the package boots on its real network for a few minutes, and the equivalence proof compares it with what boxes run today.${checksNote || ''}
+1. **Checks** (\`avado/checks\`): every network that is not held is built with the AVADOSDK, the exact Teku version and every option we pass are checked, names/volumes/ports/settings are compared with main and production, the package boots on its real network for a few minutes, the equivalence proof compares it with what boxes run today, and a box upgrades in place from the production version.${checksNote || ''}
 2. **Gate** (\`avado/gate\`, every 4 hours and after the checks): merges this PR when the checks are green **and** DAppNode's real-node test of Teku ${target} passed, or when 72 hours have passed since the Teku release and our checks are green. If DAppNode's test failed, our checks failed, or anything is unclear, it does **not** merge and opens an issue assigned to the owner with a ready-to-paste Claude Code prompt.
-3. **Release**: after the merge, every network whose version went up is published to the **staging** store. Production stays a manual click in editstore.
+3. **Release**: after the merge, every network whose version went up is published to the **staging** store, from exactly the build the checks tested. Production stays a manual click in editstore.
 
 ${held.length ? `Held networks are not changed, built or released; boxes keep what they have (see their \`package_variants/<network>/hold\` file).\n\n` : ''}Pushing a fix to \`${BOT_BRANCH}\` is fine: the bot keeps your commits (a fix that touches \`.github/\`, \`scripts/\` or a variant's other files is left for the owner to merge). **Closing this PR without merging skips Teku ${target}**: the bot waits for a newer Teku release (reopen the PR to undo). To pause the bot, set the repository variable \`PIPELINE_MODE\` to \`off\` (see README).
 `;
