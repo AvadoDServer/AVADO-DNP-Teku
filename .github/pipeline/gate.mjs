@@ -109,9 +109,13 @@ export function ownerMergeFiles(files, botOnly) {
   return botOnly ? [] : files.filter((f) => OWNER_MERGE_FILES.test(f));
 }
 
-// Are all failed jobs of a checks run failed on outside steps?
+// Did every failed job of a checks run fail only on outside steps? (A job lost
+// without a failed step, for example a runner that went away, counts as outside.)
 export function retryable(jobs) {
-  return jobs.length > 0 && jobs.every((j) => !j.step || RETRYABLE_STEPS.test(j.step));
+  return jobs.length > 0 && jobs.every((j) => {
+    const steps = j.steps || (j.step ? [j.step] : []);
+    return steps.every((s) => RETRYABLE_STEPS.test(s));
+  });
 }
 
 // --- reading --------------------------------------------------------------------
@@ -162,7 +166,8 @@ async function failedJobs(gh, repo, runId, { logs = true } = {}) {
   const jobs = [];
   // "avado/checks" only sums up the others.
   for (const j of (data?.jobs || []).filter((x) => x.conclusion === 'failure' && x.name !== CHECKS_CONTEXT)) {
-    const step = (j.steps || []).find((s) => s.conclusion === 'failure')?.name || null;
+    const steps = (j.steps || []).filter((s) => s.conclusion === 'failure').map((s) => s.name);
+    const step = steps.join('", "') || null;
     let excerpt = '';
     if (logs) {
       try {
@@ -171,7 +176,7 @@ async function failedJobs(gh, repo, runId, { logs = true } = {}) {
         excerpt = `(log not readable: ${err.message})`;
       }
     }
-    jobs.push({ name: j.name, url: j.html_url, step, excerpt });
+    jobs.push({ name: j.name, url: j.html_url, step, steps, excerpt });
   }
   return { runId, jobs };
 }
@@ -418,7 +423,7 @@ async function main() {
     if (checks.run.run_attempt === 1 && retryable(steps.jobs)) {
       try {
         await gh.post(`repos/${repo}/actions/runs/${checks.runId}/rerun-failed-jobs`, {});
-        rerun = steps.jobs.map((j) => `${j.name}: ${j.step || 'no step'}`).join('; ');
+        rerun = steps.jobs.map((j) => `${j.name}: ${j.steps.join(', ') || 'no step'}`).join('; ');
       } catch (err) {
         console.log(`::warning::could not re-run the failed checks (${err.message})`);
       }

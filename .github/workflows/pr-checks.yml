@@ -193,10 +193,13 @@ jobs:
           echo "upstream=$(jq -r .upstream "$record")" >>"$GITHUB_OUTPUT"
           echo "content=$(jq -r .contentId "$record")" >>"$GITHUB_OUTPUT"
       - name: Exact Teku version
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }} # every check runs, so one run shows every problem
         run: scripts/ci/check-version.sh "${{ steps.build.outputs.image }}" "${{ steps.build.outputs.upstream }}"
       - name: Every option we pass exists in teku --help
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }} # every check runs, so one run shows every problem
         run: scripts/ci/check-flags.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/flags"
       - name: Boots on its real network
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }} # every check runs, so one run shows every problem
         run: |
           # Exit code 2: only checkpoint sync, peers or the head moving failed
           # (public network, not our package): one more try on a fresh volume.
@@ -210,8 +213,10 @@ jobs:
           fi
           exit "$rc"
       - name: Equivalence proof (image)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }} # every check runs, so one run shows every problem
         run: scripts/prove-equivalence.sh --work "$RUNNER_TEMP/checks/proof" --candidate-image "${{ steps.build.outputs.image }}" "$NETWORK"
       - name: Upgrades a box in place (production image, then this build on the same volume)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }} # every check runs, so one run shows every problem
         run: |
           # The proof above loaded the production image and pinned this build by id.
           rc=0
@@ -226,6 +231,7 @@ jobs:
           fi
           exit "$rc"
       - name: Keep the tested build's record (release.yml publishes exactly this build)
+        if: success() # only when every check above passed
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: avado-build-${{ matrix.network }}-${{ steps.build.outputs.content }}

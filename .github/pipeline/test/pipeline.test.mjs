@@ -175,6 +175,8 @@ test('checks that failed on an outside step run once more, without an issue', ()
   assert.ok(retryable([{ name: 'mainnet', step: null }]), 'a job lost without a failed step (runner) is retried');
   assert.ok(!retryable([...outside, { name: 'mainnet', step: 'Every option we pass exists in teku --help' }]));
   assert.ok(!retryable([{ name: 'Plan (unit tests, identity, manifests)', step: 'Unit tests of the pipeline rules' }]));
+  assert.ok(retryable([{ name: 'gnosis', steps: ['Boots on its real network', 'Upgrades a box in place (production image, then this build on the same volume)'] }]));
+  assert.ok(!retryable([{ name: 'gnosis', steps: ['Boots on its real network', 'Every option we pass exists in teku --help'] }]), 'every failed step counts, not only the first');
   assert.ok(!retryable([]));
   const d = decide({ ...base, checks: 'failure', rerun: 'gnosis: Boots on its real network' });
   assert.equal(d.action, 'wait');
