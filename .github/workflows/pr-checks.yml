@@ -7,19 +7,22 @@ name: PR checks
 # like ci-build-action did), then on the image loaded back from the uploaded
 # file:
 #   - the exact Teku version is the one in TEKU_VERSION        scripts/ci/check-version.sh
-#   - every option AVADO passes exists in its `teku --help`
-#     (hidden --X options: Teku is started with them)           scripts/ci/check-flags.sh
+#   - every option AVADO passes exists in its `teku --help`     scripts/ci/check-flags.sh
 #   - package name, volumes, ports and env keys are unchanged
 #     against the base branch and production; versions go up   scripts/ci/check-identity.sh
 #   - it boots on its real network with its real command line
 #     (checkpoint sync, peers, head moving, no fatal line,
 #     every UDP port it listens on and every port it
 #     advertises is published)                                  scripts/ci/boot-test.sh
-#   - the equivalence proof against what boxes run today        scripts/prove-equivalence.sh
+#   - the equivalence proof against what boxes run today, and
+#     Teku accepts the hidden --X options this network's start
+#     script passes (Teku is started with each)                 scripts/prove-equivalence.sh
 #   - a box upgrades in place: the production image runs on a
-#     volume with a test validator key, then this build starts
-#     on the same volume and keeps database, settings, the key
-#     and its slashing protection                               scripts/ci/upgrade-test.sh
+#     volume with a new random test validator key, then this
+#     build starts on the same volume and keeps database,
+#     settings, the key and its slashing protection (then, as
+#     information: does the production image still open the
+#     database this build wrote?)                               scripts/ci/upgrade-test.sh
 # The tested build's record is kept as artifact
 # avado-build-<network>-<content id> (scripts/ci/content-id.sh); release.yml
 # publishes exactly that build after the merge, and nothing else.

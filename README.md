@@ -72,11 +72,13 @@ the robot only prepares and comments; it never merges (see "Modes").
    is not held, on free GitHub machines:
    - the Teku image digest is still what Docker Hub serves for that version;
    - the package is built with the AVADOSDK exactly as before (files added to
-     AVADO's IPFS node), and the image is loaded back from the uploaded file;
+     AVADO's IPFS node, about 0.43 GB per network and run; as with
+     ci-build-action, nothing removes the builds that are never released), and
+     the image is loaded back from the uploaded file;
    - the Teku inside is exactly the new version;
    - every Teku option we pass (start script and config files) still exists in
      that Teku's `--help` (hidden `--X...` options, which `--help` never lists,
-     by starting Teku with them: it refuses an unknown option or value);
+     are checked by the equivalence proof, per network);
    - the package name, volumes, host ports and settings names are the same as
      on `main` and in production, and the version goes up;
    - the package **boots on its real network** for a few minutes with its real
@@ -85,16 +87,24 @@ the robot only prepares and comments; it never merges (see "Modes").
      manifest, and every libp2p port it advertises to peers (TCP, QUIC) is one
      the manifest publishes (peers must reach it);
    - the **equivalence proof**: everything AVADO adds (start script, config,
-     wizard, monitor, what Teku is started with) is the same as what boxes run
-     today, apart from the reviewed differences in `scripts/proof/expected/`;
+     wizard, monitor, what Teku is started with, argument by argument and in
+     order) is the same as what boxes run today, apart from the reviewed
+     differences in `scripts/proof/expected/`; and Teku accepts every hidden
+     `--X...` option the start script passes to that network (it is started
+     with each one: it refuses an unknown option or value), so an option only
+     Gnosis uses never blocks mainnet;
    - the **upgrade in place**: the production image runs on a data volume and
-     follows the chain, a throwaway validator key (the public EIP-2335 test
-     key, confirmed on the node to be no validator) is imported into it with a
-     slashing protection record, it is stopped, and the new build starts on the
-     same volume the way a box auto-updates; it must keep Teku's database (no
-     fresh start, no database error), keep `/data/settings.json`, still list
-     the validator key, keep the slashing protection record (read back with
-     the new Teku's own export), and follow the chain.
+     follows the chain, a throwaway validator key (new and random for every
+     run, so there is no fixed key anyone could deposit to; the node also
+     confirms it is no validator) is imported into it with a slashing
+     protection record, it is stopped, and the new build starts on the same
+     volume the way a box auto-updates; it must keep Teku's database (no fresh
+     start, no database error), keep `/data/settings.json`, still list the
+     validator key, keep the slashing protection record (read back with the
+     new Teku's own export), and follow the chain. Then, for information only,
+     the production image starts once more on that volume ("going back" in the
+     log): it tells you whether the older Teku can still open the newer
+     database or would need a resync (see "Gnosis").
    A check that fails only because of the public network (checkpoint, peers)
    is tried once more on the spot.
 3. **Gate** (every 4 hours and after every check run, `gate.yml`, status
@@ -110,7 +120,9 @@ the robot only prepares and comments; it never merges (see "Modes").
    - the Teku release notes (or the release watcher) say the upgrade is
      **required for every network the PR releases**: then it does not wait the
      72 hours. Required for one network only (a sentence that names Gnosis, for
-     example): it waits as usual, and the PR comment says so.
+     example): it waits as usual, the PR comment says so, and once our checks
+     are green you get an issue ("[your call] ...", below) so you can merge by
+     hand if it cannot wait.
 
    It does **not** merge when our checks fail, when DAppNode's test shows the
    client failing, when anything is unclear, or when a person pushed changes to
@@ -195,8 +207,9 @@ reason, in a PR you merge yourself) so mainnet keeps shipping.
 **QUIC is off for Gnosis** (decided at the catch-up, 2026-09-27). Teku turns
 QUIC on by default since 26.7.0 and listens and advertises it on 9001/udp. For
 Gnosis `build/startTeku.sh` passes `--Xp2p-quic-enabled=false` (a hidden Teku
-option; the options check starts Teku with it, so a Teku that drops or renames
-it fails the checks), because:
+option; the equivalence proof starts the gnosis build's Teku with it, so a Teku
+that drops or renames it fails gnosis's checks; mainnet never passes it, so
+with gnosis held mainnet keeps shipping), because:
 - it keeps what Gnosis boxes do today: Teku 26.4.0 (production 0.0.27) has no
   QUIC at all, and the package publishes only 9006 tcp/udp;
 - on a box that also runs mainnet Teku, host port 9001/udp belongs to the
@@ -215,6 +228,29 @@ network can drift. Revisit only if a Teku release or the spec drops TCP; the
 alternative then is a Gnosis-owned QUIC port (`--p2p-quic-port=<port>` plus
 `<port>:<port>/udp` in `package_variants/gnosis/dappnode_package.json`, a
 deliberate identity change).
+
+**Before you promote a Gnosis version to production.** Nobody runs Gnosis on a
+real node before staging: DAppNode's test (the gate's second opinion) runs
+Teku on Hoodi, and our checks run Gnosis with a stand-in execution client that
+always answers "syncing" and a database a few minutes old. So, for the
+catch-up to 0.0.29 and whenever a Teku update changes something for Gnosis,
+test it on the test box first:
+1. On the test box (on the staging store), have `teku-gnosis` on the
+   production version with `nethermind-gnosis`, synced and following the head.
+2. Update `teku-gnosis` to the staging version from the DAPPMANAGER.
+3. Check that its head keeps moving with the box's Nethermind, the validator
+   keys are still listed, and a test key attests (if one is loaded).
+4. Then promote it in editstore.
+
+There is no quick way back once boxes have it, which is why the box test
+comes first: the DAPPMANAGER auto-updates only to a HIGHER version, so
+promoting the previous version again in editstore stops further updates but
+does not move boxes back. A way back for boxes that already updated is a new,
+higher version built with the older Teku, and because every network shares
+`TEKU_VERSION`, that is separate work, not a setting. Whether the older Teku
+can still open the newer database (for such a version, or for a user who
+reinstalls the old one) is the upgrade test's "going back" line: PR checks
+run, artifact `checks-gnosis`, file `upgrade/result.tsv`.
 
 ### What the emails mean
 
@@ -239,6 +275,12 @@ github.com/settings/notifications.
   ..."**: someone (or Claude Code) pushed changes to the checks, the proof or
   the pipeline onto the robot's PR. Read them, and merge the PR yourself if
   they are right.
+- **"[your call] Teku <version>: required for gnosis only ..."**: nothing is
+  broken. Teku marks the release as required for one network only, our checks
+  are green, and the gate waits for DAppNode's test (at most 72 hours after the
+  Teku release). If that is soon enough (the prompt asks Claude Code to find
+  the fork date), do nothing: the gate merges and the issue closes by itself.
+  If not, merge the PR yourself with "Create a merge commit".
 - **"[pipeline broken] <workflow> workflow failed"**: the robot itself broke
   (GitHub, Docker Hub, AVADO's IPFS node or store did not answer, or a bug), or
   the release found no tested build. Nothing reaches any box. The issue shows
@@ -269,10 +311,12 @@ Actions → the workflow → **Enable workflow**.
   or expired, the robot starts the checks itself through `workflow_dispatch`
   (the PR then also shows a "PR checks" run marked "action required" that can
   be ignored) and emails you once to renew it.
-- `WATCHER_READ_TOKEN` (optional): lets the gate read the release watcher's
-  URGENT issues. A fine-grained token for `AvadoDServer/avado-release-control`
-  with Issues: read only. Without it the gate uses the Teku release notes, and
-  the PR comment says "release watcher: not read".
+- `WATCHER_READ_TOKEN` (optional, recommended now that Gnosis ships): lets the
+  gate read the release watcher's URGENT issues, including its fork-schedule
+  check for `teku-gnosis`. A fine-grained token for
+  `AvadoDServer/avado-release-control` with Issues: read only. Without it the
+  gate uses the Teku release notes' wording only, and the PR comment says
+  "release watcher: not read".
 
 ### Update Teku by hand
 
