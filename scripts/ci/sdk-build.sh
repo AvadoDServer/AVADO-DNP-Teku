@@ -11,7 +11,7 @@
 #
 # Writes <out-dir>/record.json (what was built and where it was added):
 #   network, name, version, upstream, manifestHash, imageHash, imageSize,
-#   imageId, provider, tree, commit, builtAt
+#   imageId, provider, tree, contentId (scripts/ci/content-id.sh), commit, builtAt
 # plus <out-dir>/releases.json (the AVADOSDK release record) and
 # <out-dir>/manifest.json (the manifest that was added), and leaves the image
 # <name>:<version> in the local docker daemon.
@@ -92,9 +92,10 @@ jq -n \
   --arg manifestHash "$manifest_hash" --arg imageHash "$image_hash" --argjson imageSize "$image_size" \
   --arg imageId "$image_id" --arg provider "$PROVIDER" \
   --arg tree "$(git -C "$ROOT" rev-parse 'HEAD^{tree}')" --arg commit "$(git -C "$ROOT" rev-parse HEAD)" \
+  --arg contentId "$("$ROOT/scripts/ci/content-id.sh" HEAD)" \
   --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg sdk "$AVADOSDK_COMMIT" \
   '{network: $network, name: $name, version: $version, upstream: $upstream, manifestHash: $manifestHash,
     imageHash: $imageHash, imageSize: $imageSize, imageId: $imageId, provider: $provider,
-    tree: $tree, commit: $commit, builtAt: $builtAt, avadosdk: $sdk}' >"$OUT/record.json"
+    tree: $tree, contentId: $contentId, commit: $commit, builtAt: $builtAt, avadosdk: $sdk}' >"$OUT/record.json"
 log "built $name $version: manifest $manifest_hash, image $image_hash ($image_size bytes), image id $image_id"
 echo "$OUT/record.json"

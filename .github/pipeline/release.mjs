@@ -1,29 +1,35 @@
 #!/usr/bin/env node
 // Release (release.yml, on every push to the default branch and when the gate
 // starts it): publishes to the STAGING store every network whose version is not
-// published yet. Replaces AvadoDServer/ci-release-action for this repo.
+// published yet, and ONLY the exact build our PR checks tested. Replaces
+// AvadoDServer/ci-release-action for this repo.
 //
-// For each package_variants/<network> whose version has no release yet (no
-// "Release <name> <version>" commit and no entry in its releases.json):
-//   1. take the build the PR checks tested for exactly this tree (artifact
-//      avado-build-<network>-<tree> from a run in this repo, its manifest read
-//      back from AVADO's IPFS node and compared with the render of main), or,
-//      if there is none, build it now with the pinned AVADOSDK (and check the
-//      Teku version and options),
-//   2. record the manifest hash in package_variants/<network>/releases.json
-//      (the AVADOSDK / ci-release-action format),
-//   3. store.setPackageHash on adminrpc.ava.do, then commit
+// For each package_variants/<network> that is not held (no hold file) and whose
+// version has no release yet (no "Release <name> <version>" commit and no entry
+// in its releases.json):
+//   1. find the build the PR checks tested for exactly these files: artifact
+//      avado-build-<network>-<content id> (scripts/ci/content-id.sh: every file
+//      except the releases.json records, so a merge commit, a squash and a
+//      re-run after a partial release all find it), made by a PR-checks run of
+//      this repo for the commit it names; its manifest is read back from AVADO's
+//      IPFS node and must equal what the default branch renders, and its image
+//      must be on the node. There is NO fallback build: a network without a
+//      tested build is not published and the run fails, so the owner gets an
+//      issue that says how to get one ("PR checks" with pr = main, then Release).
+//   2. store.setPackageHash on adminrpc.ava.do, then record the hash in
+//      package_variants/<network>/releases.json (the AVADOSDK format) and commit
 //      "Release <name> <version>" + "Manifest hash: <hash>" and push,
-// then ONE store.releaseStore on bo.ava.do (the staging store is rebuilt).
-// Same calls and the same secret (RPC_TOKEN) as ci-release-action. Versions
-// only go up. Nothing changed: nothing is published.
+// then ONE store.releaseStore on bo.ava.do: the server only queues the staging
+// rebuild and does not say whether it worked. Same calls and the same secret
+// (RPC_TOKEN) as ci-release-action. Versions only go up. Nothing new: nothing is
+// published (with RELEASE_STORE=true the staging rebuild is requested again).
 //
-// DRY RUN when RPC_TOKEN is empty or DRY_RUN=true: everything up to the
-// store calls is done or shown, nothing is committed, pushed or published.
+// DRY RUN when RPC_TOKEN is empty or DRY_RUN=true: everything up to the store
+// calls is done or shown, nothing is committed, pushed or published.
 //
 // Environment: GITHUB_REPOSITORY, GITHUB_TOKEN (contents write, actions read),
-// RPC_TOKEN, DRY_RUN, IPFS_API (the IPFS API the builds were added to; default
-// AVADO's node), ADMIN_RPC_URL, STORE_RPC_URL.
+// RPC_TOKEN, DRY_RUN, RELEASE_STORE, IPFS_API (the IPFS API the tested builds
+// were added to; default AVADO's node), ADMIN_RPC_URL, STORE_RPC_URL.
 
 import { readFileSync, writeFileSync, existsSync, mkdtempSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -32,8 +38,8 @@ import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { makeClient } from './lib/gh.js';
 import {
-  BOT_NAME, BOT_EMAIL, compareVersions, maxVersion, variants, git, fetchBranch, pushHead, releasedVersions,
-  readProductionVersions, env, notice, warning,
+  BOT_NAME, BOT_EMAIL, PR_CHECKS_PATH, compareVersions, maxVersion, variants, git, fetchBranch, pushHead, releasedVersions,
+  readProductionVersions, holdReason, contentId, ensureCommit, retry, env, notice, warning, recordFailure,
 } from './lib/common.js';
 
 export const AVADO_IPFS_API = 'http://80.208.229.228:35001';
@@ -42,10 +48,12 @@ const repo = env('GITHUB_REPOSITORY');
 const token = env('GITHUB_TOKEN');
 const rpcToken = env('RPC_TOKEN');
 const dryRun = !rpcToken || env('DRY_RUN') === 'true';
+const storeAgain = env('RELEASE_STORE') === 'true';
 const ipfsApi = env('IPFS_API', AVADO_IPFS_API);
 const adminRpc = env('ADMIN_RPC_URL', 'https://adminrpc.ava.do');
 const storeRpc = env('STORE_RPC_URL', 'https://bo.ava.do/rpc');
-const runUrl = `${env('GITHUB_SERVER_URL', 'https://github.com')}/${repo}/actions/runs/${env('GITHUB_RUN_ID', '0')}`;
+const server = env('GITHUB_SERVER_URL', 'https://github.com');
+const runLink = (id) => `${server}/${repo}/actions/runs/${id}`;
 const out = [];
 const say = (s) => { console.log(s); out.push(s); };
 
@@ -56,11 +64,12 @@ const stripBuild = (m) => {
   delete c.builddate;
   return c;
 };
+const isLocal = (url) => /localhost|127\.0\.0\.1/.test(url || '');
 
 async function ipfs(api, path) {
   const res = await fetch(`${api}/api/v0/${path}`, { method: 'POST', signal: AbortSignal.timeout(120000) });
   const text = await res.text();
-  if (!res.ok) throw new Error(`IPFS ${path.split('?')[0]}: HTTP ${res.status} ${text.slice(0, 160)}`);
+  if (!res.ok) throw Object.assign(new Error(`IPFS ${path.split('?')[0]}: HTTP ${res.status} ${text.slice(0, 160)}`), { status: res.status });
   return text;
 }
 
@@ -81,53 +90,71 @@ async function rpc(url, headers, method, params, { strict }) {
   return body?.result;
 }
 
-// The build the PR checks made and tested for exactly this tree.
-async function testedBuild(gh, net, tree, rendered) {
-  const name = `avado-build-${net}-${tree}`;
-  const list = await gh.get(`repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=30`);
-  const candidates = (list?.artifacts || [])
-    .filter((a) => !a.expired && a.workflow_run && a.workflow_run.head_repository_id === a.workflow_run.repository_id)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  if (!candidates.length) return { why: `no tested build ${name} (from a run in this repo) was found` };
-  const a = candidates[0];
-  const dir = mkdtempSync(join(tmpdir(), `${name}-`));
-  sh('gh', ['run', 'download', String(a.workflow_run.id), '-R', repo, '-n', name, '-D', dir], { env: { ...process.env, GH_TOKEN: token } });
+// One artifact: is it a build our PR checks made and tested for these files?
+// Returns { record, from } (local: true when it was added to a throwaway IPFS
+// node) or { reject: why }. Throws when something could not be READ (after
+// retries), so a network hiccup never turns into "use another build".
+async function checkCandidate(gh, a, net, cid, rendered) {
+  const from = runLink(a.workflow_run.id);
+  const run = await retry('reading the PR-checks run', () => gh.get(`repos/${repo}/actions/runs/${a.workflow_run.id}`));
+  if (run.path !== PR_CHECKS_PATH) return { reject: `${from} is not a PR-checks run (${run.path})` };
+  if (!run.head_repository || run.head_repository.id !== run.repository?.id) return { reject: `${from} ran for a fork` };
+  if (!['pull_request', 'workflow_dispatch'].includes(run.event)) return { reject: `${from} was started by ${run.event}` };
+
+  const dir = mkdtempSync(join(tmpdir(), `avado-build-${net}-`));
+  await retry('downloading the tested build record', async () => {
+    sh('gh', ['run', 'download', String(a.workflow_run.id), '-R', repo, '-n', a.name, '-D', dir], { env: { ...process.env, GH_TOKEN: token } });
+  });
   const record = JSON.parse(readFileSync(join(dir, 'record.json'), 'utf8'));
-  const from = `${env('GITHUB_SERVER_URL', 'https://github.com')}/${repo}/actions/runs/${a.workflow_run.id}`;
-  // The commit the checks built (the PR head) must be in this repo and have
-  // exactly this tree. (A run started by workflow_dispatch reports the default
-  // branch as its head_sha, so the record's commit is what counts.)
-  const builtTree = (() => { try { return git(root, ['rev-parse', `${record.commit}^{tree}`]); } catch { return null; } })();
-  if (record.tree !== tree || builtTree !== tree) return { why: `tested build ${from} is for another tree (${record.commit?.slice(0, 7)})` };
-  if (record.name !== rendered.name || record.version !== rendered.version || record.upstream !== rendered.upstream) {
-    return { why: `tested build ${from} is ${record.name} ${record.version} (Teku ${record.upstream})` };
+  if (!/^[0-9a-f]{40}$/.test(record.commit || '')) return { reject: `${from}: the record names no commit` };
+  // A pull_request run checks the PR head; a run started by hand (the bump bot
+  // without PAT_TOKEN, or "PR checks" with pr = main) checks the commit it names,
+  // and pr-checks.yml refuses to start one for a fork.
+  if (run.event === 'pull_request' && run.head_sha !== record.commit) return { reject: `${from} checked ${run.head_sha.slice(0, 7)}, not ${record.commit.slice(0, 7)}` };
+  await retry('fetching the tested commit', async () => ensureCommit(root, token, record.commit));
+  const builtId = contentId(root, record.commit);
+  if (record.contentId !== cid || builtId !== cid) return { reject: `${from} tested other files (commit ${record.commit.slice(0, 7)})` };
+  if (record.network !== net || record.name !== rendered.name || record.version !== rendered.version || record.upstream !== rendered.upstream) {
+    return { reject: `${from} is ${record.name} ${record.version} (Teku ${record.upstream})` };
   }
   // A build added to a throwaway IPFS node (a test copy with IPFS_PROVIDER=local)
-  // cannot be read back and can never be released.
-  if (record.provider !== ipfsApi || /localhost|127\.0\.0\.1/.test(record.provider)) {
-    return { why: `tested build ${from} was added to ${record.provider}, which cannot be read back here`, record, from, local: true };
+  // cannot be read back, and boxes could never download it.
+  if (record.provider !== ipfsApi || isLocal(record.provider)) {
+    return { record, from, local: true, why: `the tested build ${from} was added to ${record.provider}, which cannot be read back or downloaded by boxes` };
   }
-  const manifest = JSON.parse(await ipfs(ipfsApi, `cat?arg=${encodeURIComponent(record.manifestHash)}`));
-  if (!isDeepStrictEqual(stripBuild(manifest), rendered)) return { why: `the manifest of tested build ${from} differs from what main renders` };
-  if (manifest.image?.hash !== record.imageHash) return { why: `tested build ${from}: image hash differs from its manifest` };
-  try {
-    await ipfs(ipfsApi, `pin/ls?arg=${encodeURIComponent(record.imageHash)}&type=recursive`);
-  } catch (err) {
-    await ipfs(ipfsApi, `block/stat?arg=${encodeURIComponent(record.imageHash.replace('/ipfs/', ''))}`).catch(() => {
-      throw new Error(`the image of tested build ${from} is not on ${ipfsApi} (${err.message})`);
-    });
-  }
+  const manifest = JSON.parse(await retry('reading the tested manifest from IPFS', () => ipfs(ipfsApi, `cat?arg=${encodeURIComponent(record.manifestHash)}`)));
+  if (!isDeepStrictEqual(stripBuild(manifest), rendered)) return { reject: `the manifest of ${from} differs from what the default branch renders` };
+  if (manifest.image?.hash !== record.imageHash) return { reject: `${from}: the image hash differs from its manifest` };
+  const cidOnly = record.imageHash.replace('/ipfs/', '');
+  await retry('checking the tested image on IPFS', async () => {
+    try {
+      await ipfs(ipfsApi, `pin/ls?arg=${encodeURIComponent(cidOnly)}&type=recursive`);
+    } catch {
+      await ipfs(ipfsApi, `block/stat?arg=${encodeURIComponent(cidOnly)}`);
+    }
+  });
   return { record, from };
 }
 
-function freshBuild(net) {
-  const dir = mkdtempSync(join(tmpdir(), `release-${net}-`));
-  sh(join(root, 'scripts/ci/sdk-build.sh'), [net, dir, ipfsApi], { stdio: ['ignore', 'pipe', 'inherit'] });
-  const record = JSON.parse(readFileSync(join(dir, 'record.json'), 'utf8'));
-  // The same fast checks as the PR checks, so an untested build is at least the right Teku with valid options.
-  sh(join(root, 'scripts/ci/check-version.sh'), [`${record.name}:${record.version}`, record.upstream], { stdio: 'inherit' });
-  sh(join(root, 'scripts/ci/check-flags.sh'), [`${record.name}:${record.version}`, join(dir, 'flags')], { stdio: 'inherit' });
-  return record;
+// The build the PR checks tested for exactly these files. Oldest first, so a
+// re-run after a partial release picks the same build (the same hash).
+async function testedBuild(gh, net, cid, rendered) {
+  const name = `avado-build-${net}-${cid}`;
+  const list = await retry('listing the tested builds', () => gh.get(`repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`));
+  const candidates = (list?.artifacts || [])
+    .filter((a) => !a.expired && a.workflow_run && a.workflow_run.head_repository_id === a.workflow_run.repository_id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  if (!candidates.length) return { missing: `no tested build ${name} was found (the PR checks of this repo never tested exactly these files, or the build is older than 90 days)` };
+  const rejects = [];
+  let local = null;
+  for (const a of candidates) {
+    const r = await checkCandidate(gh, a, net, cid, rendered);
+    if (r.record && !r.local) return r;
+    if (r.local) { local = local || r; continue; }
+    rejects.push(r.reject);
+  }
+  if (local) return local;
+  return { missing: `no usable tested build: ${rejects.join('; ')}` };
 }
 
 function pushWithRetry(base) {
@@ -144,14 +171,23 @@ function pushWithRetry(base) {
   }
 }
 
+async function releaseStore(names) {
+  if (dryRun) {
+    say(`DRY RUN: would call store.releaseStore once on ${storeRpc} (staging store rebuilt${names.length ? ` with ${names.join(', ')}` : ''})`);
+    return;
+  }
+  await rpc(storeRpc, { admintoken: rpcToken }, 'store.releaseStore', null, { strict: false });
+  say(`store.releaseStore: the staging rebuild is queued${names.length ? ` with ${names.join(', ')}` : ''}. The server does not report whether the rebuild worked: check the package on the test box. Production stays the owner's click in editstore.`);
+}
+
 async function main() {
   if (!repo || !token) throw new Error('GITHUB_REPOSITORY and GITHUB_TOKEN are required');
   const gh = makeClient({ token });
   const base = (await gh.get(`repos/${repo}`)).default_branch;
   fetchBranch(root, token, base);
   git(root, ['checkout', '-q', '--detach', `origin/${base}`]);
-  const tree = git(root, ['rev-parse', 'HEAD^{tree}']);
-  say(`${dryRun ? 'DRY RUN' + (rpcToken ? ' (DRY_RUN=true)' : ' (no RPC_TOKEN)') + ': nothing is committed or published. ' : ''}${base} at ${git(root, ['rev-parse', '--short', 'HEAD'])}, tree ${tree.slice(0, 12)}, IPFS ${ipfsApi}`);
+  const cid = contentId(root, 'HEAD');
+  say(`${dryRun ? 'DRY RUN' + (rpcToken ? ' (DRY_RUN=true)' : ' (no RPC_TOKEN)') + ': nothing is committed or published. ' : ''}${base} at ${git(root, ['rev-parse', '--short', 'HEAD'])}, content id ${cid.slice(0, 12)}, IPFS ${ipfsApi}`);
 
   let prod = null;
   try { prod = await readProductionVersions({ http: gh.http }); } catch (err) { warning(`production store unreadable (${err.message}); the version guard uses git history only`); }
@@ -162,6 +198,11 @@ async function main() {
     const renderedDir = sh(join(root, 'scripts/render.sh'), [net, dir]);
     const rendered = JSON.parse(readFileSync(join(renderedDir, 'dappnode_package.json'), 'utf8'));
     const { name, version } = rendered;
+    const hold = holdReason(root, net);
+    if (hold) {
+      say(`- ${net}: HELD, not published (${hold}). Boxes keep ${prod?.versions.get(name) ? `production ${prod.versions.get(name)}` : 'what they have'}.`);
+      continue;
+    }
     const relFile = join(root, 'package_variants', net, 'releases.json');
     const record = existsSync(relFile) ? JSON.parse(readFileSync(relFile, 'utf8')) : {};
     const released = releasedVersions(root, name);
@@ -178,37 +219,37 @@ async function main() {
   }
   if (!todo.length) {
     say('Nothing to publish: no network has a new version.');
+    if (storeAgain) await releaseStore([]);
     return;
   }
 
-  const done = [];
+  // Find every tested build BEFORE publishing anything: a read error stops the
+  // run here, with nothing published.
+  const ready = [];
+  const missing = [];
   for (const t of todo) {
-    let build = await testedBuild(gh, t.net, tree, t.rendered).catch((err) => ({ why: err.message }));
-    let rec;
-    let source;
-    if (build.record && !build.local) {
-      rec = build.record;
-      source = `the build the PR checks tested (${build.from})`;
-    } else if (build.local && dryRun) {
-      rec = build.record;
-      source = `the tested build ${build.from} (DRY RUN: it was added to a test IPFS node, ${build.record.provider}, so it could not be read back)`;
-    } else {
-      warning(`${t.net}: ${build.why}; building it now`);
-      rec = freshBuild(t.net);
-      source = `a new build made by this run (${runUrl}); ${build.why}`;
-    }
-    const hash = rec.manifestHash.replace(/^\/ipfs\//, '');
-    t.record[t.version] = { hash: `/ipfs/${hash}`, type: 'manifest', uploadedTo: { [rec.provider]: new Date(rec.builtAt).toUTCString() } };
-    writeFileSync(t.relFile, JSON.stringify(t.record, null, 2));
-    const message = `Release ${t.name} ${t.version}\n\nManifest hash: ${hash}\n\nTeku ${t.rendered.upstream}. Published from ${source}.`;
-    say(`- ${t.name} ${t.version}: manifest ${hash}, image ${rec.imageHash}, from ${source}`);
+    const b = await testedBuild(gh, t.net, cid, t.rendered);
+    if (b.record && (!b.local || dryRun)) ready.push({ ...t, rec: b.record, from: b.from, local: !!b.local });
+    else missing.push({ ...t, why: b.missing || b.why });
+  }
 
+  const done = [];
+  for (const t of ready) {
+    const hash = t.rec.manifestHash.replace(/^\/ipfs\//, '');
+    const source = t.local
+      ? `the tested build ${t.from} (DRY RUN: it was added to a test IPFS node, ${t.rec.provider}, so it could not be read back)`
+      : `the build the PR checks tested (${t.from}, commit ${t.rec.commit.slice(0, 7)})`;
+    t.record[t.version] = { hash: `/ipfs/${hash}`, type: 'manifest', uploadedTo: { [t.rec.provider]: new Date(t.rec.builtAt).toUTCString() } };
+    const message = `Release ${t.name} ${t.version}\n\nManifest hash: ${hash}\n\nTeku ${t.rendered.upstream}. Published from ${source}.`;
+    say(`- ${t.name} ${t.version}: manifest ${hash}, image ${t.rec.imageHash}, from ${source}`);
     if (dryRun) {
       say(`  DRY RUN: would call store.setPackageHash({name: "${t.name}", ipfsHash: "${hash}"}) on ${adminRpc}, then commit "Release ${t.name} ${t.version}" with package_variants/${t.net}/releases.json and push to ${base}`);
       say(`  DRY RUN: package_variants/${t.net}/releases.json would become: ${JSON.stringify(t.record)}`);
+      done.push(t);
       continue;
     }
-    if (/localhost|127\.0\.0\.1/.test(rec.provider)) throw new Error(`refusing to publish a build that was added to a test IPFS node (${rec.provider}); boxes could not download it`);
+    if (isLocal(t.rec.provider)) throw new Error(`refusing to publish a build that was added to a test IPFS node (${t.rec.provider}); boxes could not download it`);
+    writeFileSync(t.relFile, JSON.stringify(t.record, null, 2));
     await rpc(adminRpc, { Authorization: rpcToken }, 'store.setPackageHash', { name: t.name, ipfsHash: hash }, { strict: true });
     say(`  store.setPackageHash ${t.name} -> ${hash}: ok`);
     git(root, ['add', '-f', `package_variants/${t.net}/releases.json`]);
@@ -218,14 +259,16 @@ async function main() {
     done.push(t);
   }
 
-  if (dryRun) {
-    say(`DRY RUN: would call store.releaseStore once on ${storeRpc} (staging store rebuilt with ${todo.map((t) => `${t.name} ${t.version}`).join(', ')})`);
-    return;
-  }
   if (done.length) {
-    await rpc(storeRpc, { admintoken: rpcToken }, 'store.releaseStore', null, { strict: false });
-    say(`store.releaseStore: ok. Staging now gets ${done.map((t) => `${t.name} ${t.version}`).join(', ')}. Production stays the owner's click in editstore.`);
-    notice(`Published to staging: ${done.map((t) => `${t.name} ${t.version}`).join(', ')}`);
+    await releaseStore(done.map((t) => `${t.name} ${t.version}`));
+    if (!dryRun) notice(`Published to staging: ${done.map((t) => `${t.name} ${t.version}`).join(', ')}`);
+  }
+
+  if (missing.length) {
+    const list = missing.map((m) => `${m.name} ${m.version}: ${m.why}`).join('\n- ');
+    throw new Error(`NOT published (nothing untested is ever published):
+- ${list}
+${done.length ? `Published: ${done.map((t) => `${t.name} ${t.version}`).join(', ')}.\n` : ''}To publish it: in GitHub, Actions -> "PR checks" -> Run workflow, with pr = ${base} (it builds and tests the default branch exactly as it is). When it is green, Actions -> "Release" -> Run workflow. If the checks fail, fix the cause in a pull request instead.`);
   }
 }
 
@@ -233,6 +276,7 @@ main()
   .catch((err) => {
     console.log(`::error::${err.stack || err.message}`);
     out.push(`**Release failed:** ${err.message}`);
+    recordFailure(err.message);
     process.exitCode = 1;
   })
   .finally(() => {
