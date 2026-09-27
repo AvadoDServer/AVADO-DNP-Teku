@@ -48,6 +48,8 @@
 #             builddate) are left out. Store-only edits (title, category) are
 #             printed as information.
 #   compose   the rendered docker-compose.yml vs the one at that release commit
+#             (for a release made in the package_variants layout: the variant
+#             rendered from that commit with that commit's scripts/render.sh)
 #   avatar    avatar.png of the variant has the IPFS hash in the manifest
 # Unless --manifests-only, the production image (downloaded, hash-checked,
 # docker load) and the candidate image (built here for linux/amd64) are compared:
@@ -373,7 +375,22 @@ for net in $NETWORKS; do
   ci_manifest=$(git -C "$ROOT" log -1 --format=%B "$release" | sed -n 's/^Manifest hash: *//p' | head -1)
   [ -n "$ci_manifest" ] || die "commit $release has no \"Manifest hash:\" line"
   fetch_cid "$ci_manifest" "$WORK/$net/production-ci-manifest.json"
-  git -C "$ROOT" show "$release:docker-compose.yml" >"$WORK/$net/production-compose.yml"
+  if git -C "$ROOT" cat-file -e "$release:package_variants/$net/docker-compose.yml" 2>/dev/null; then
+    # Released by this pipeline (package_variants layout): the root compose is
+    # only the base; what was released is the variant rendered from that commit
+    # by that commit's own render.sh (it needs a git checkout of that tree).
+    src="$WORK/$net/release-src"
+    rm -rf "$src"
+    mkdir -p "$src"
+    git -C "$ROOT" archive "$release" | tar -C "$src" -xf -
+    git -C "$src" init -q && git -C "$src" add -A &&
+      git -C "$src" -c user.name=proof -c user.email=proof@localhost commit -qm "release ${release:0:7}"
+    released=$("$src/scripts/render.sh" "$net" "$WORK/$net/release-render") || die "$net: cannot render release commit ${release:0:7}"
+    cp "$released/docker-compose.yml" "$WORK/$net/production-compose.yml"
+    record "$net" production-compose INFO "rendered from release commit ${release:0:7} (package_variants layout)"
+  else
+    git -C "$ROOT" show "$release:docker-compose.yml" >"$WORK/$net/production-compose.yml"
+  fi
 
   [ "$(jq -r .image.hash "$WORK/$net/production-ci-manifest.json")" = "$prod_image" ] ||
     die "$name: the production store serves another build than release commit $release"
