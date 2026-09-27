@@ -101,9 +101,11 @@ async function checkCandidate(gh, a, net, cid, rendered) {
   if (!run.head_repository || run.head_repository.id !== run.repository?.id) return { reject: `${from} ran for a fork` };
   if (!['pull_request', 'workflow_dispatch'].includes(run.event)) return { reject: `${from} was started by ${run.event}` };
 
-  const dir = mkdtempSync(join(tmpdir(), `avado-build-${net}-`));
-  await retry('downloading the tested build record', async () => {
-    sh('gh', ['run', 'download', String(a.workflow_run.id), '-R', repo, '-n', a.name, '-D', dir], { env: { ...process.env, GH_TOKEN: token } });
+  // A fresh folder for every attempt: a half-finished download must not get in the way.
+  const dir = await retry('downloading the tested build record', async () => {
+    const d = mkdtempSync(join(tmpdir(), `avado-build-${net}-`));
+    sh('gh', ['run', 'download', String(a.workflow_run.id), '-R', repo, '-n', a.name, '-D', d], { env: { ...process.env, GH_TOKEN: token } });
+    return d;
   });
   const record = JSON.parse(readFileSync(join(dir, 'record.json'), 'utf8'));
   if (!/^[0-9a-f]{40}$/.test(record.commit || '')) return { reject: `${from}: the record names no commit` };
@@ -268,7 +270,7 @@ async function main() {
     const list = missing.map((m) => `${m.name} ${m.version}: ${m.why}`).join('\n- ');
     throw new Error(`NOT published (nothing untested is ever published):
 - ${list}
-${done.length ? `Published: ${done.map((t) => `${t.name} ${t.version}`).join(', ')}.\n` : ''}To publish it: in GitHub, Actions -> "PR checks" -> Run workflow, with pr = ${base} (it builds and tests the default branch exactly as it is). When it is green, Actions -> "Release" -> Run workflow. If the checks fail, fix the cause in a pull request instead.`);
+${done.length ? `${dryRun ? 'Would be published (dry run)' : 'Published'}: ${done.map((t) => `${t.name} ${t.version}`).join(', ')}.\n` : ''}To publish it: in GitHub, Actions -> "PR checks" -> Run workflow, with pr = ${base} (it builds and tests the default branch exactly as it is). When it is green, Actions -> "Release" -> Run workflow. If the checks fail, fix the cause in a pull request instead.`);
   }
 }
 
