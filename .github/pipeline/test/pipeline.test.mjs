@@ -202,10 +202,16 @@ test('the bump PR marker names its Teku version (closing the PR skips that versi
   assert.equal(markerTarget('no marker'), null);
 });
 
-test('holds: gnosis is held in this repo, with a reason on its first line', () => {
-  const reason = holdReason(ROOT, 'gnosis');
-  assert.ok(reason && /catch-up/.test(reason), reason);
-  assert.equal(holdReason(ROOT, 'mainnet'), null);
+test('holds: the first line that is not a comment is the reason; no file means not held', () => {
+  // A temporary folder, so the test does not depend on which networks are held now.
+  const dir = mkdtempSync(join(tmpdir(), 'hold-'));
+  mkdirSync(join(dir, 'package_variants/gnosis'), { recursive: true });
+  mkdirSync(join(dir, 'package_variants/mainnet'), { recursive: true });
+  writeFileSync(join(dir, 'package_variants/gnosis/hold'), '\n# why\nwaits for the catch-up\n# more\n');
+  writeFileSync(join(dir, 'package_variants/mainnet/hold'), '# only comments\n');
+  assert.equal(holdReason(dir, 'gnosis'), 'waits for the catch-up');
+  assert.equal(holdReason(dir, 'mainnet'), 'held (no reason given)');
+  assert.equal(holdReason(dir, 'hoodi'), null);
 });
 
 test('the content id ignores release records only', () => {
