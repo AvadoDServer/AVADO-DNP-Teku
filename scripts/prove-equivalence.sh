@@ -65,7 +65,9 @@
 #   runtime   the whole container under supervisord: the monitor's /network,
 #             /name and /defaultsettings, and the wizard page served by nginx
 # and hard checks on the candidate alone: Teku is exactly TEKU_VERSION, the UIs
-# and default settings name the variant's network, the UI builds are present.
+# and default settings name the variant's network, the UI builds are present,
+# and in every start profile the beacon node runs with QUIC off or on a UDP
+# port the manifest publishes (candidate-quic).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -478,6 +480,44 @@ CHECK
     if grep -q "^network: \"$net\"$" "$c/start-mode-$mode.txt" && grep -q '^=== teku start$' "$c/start-mode-$mode.txt"; then r=0; else r=1; fi
     assert "$net" "candidate-start-$mode" $r "MODE=$mode: the start script starts Teku with network $net"
   done
+  # QUIC (Teku 26.7.0 and later, on by default): every beacon node the start
+  # script starts, in every MODE and for a box with existing settings, runs with
+  # QUIC off or on a UDP port the manifest publishes. The boot test checks the
+  # running node (default MODE only); this covers every start profile.
+  docker run --rm --platform "$PLATFORM" --entrypoint /opt/teku/bin/teku "$cand_tag" --help >"$c/help.txt" 2>&1 || true
+  quic_default=$(awk '/^ +--p2p-quic-port=/ { f = 1; next } f && /Default:/ { print $2; exit } f && /^ +-/ { exit }' "$c/help.txt")
+  if [ -z "$quic_default" ]; then
+    record "$net" candidate-quic INFO "this Teku has no QUIC (no --p2p-quic-port in its --help)"
+  else
+    published_udp=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | last | sub("/udp$"; "")' "$render/dappnode_package.json" | tr '\n' ' ')
+    quic_seen="" quic_bad=""
+    for f in "$c"/start-mode-unset.txt "$c"/start-mode-syncing.txt "$c"/start-mode-zerosync.txt "$c"/start-existing-settings.txt; do
+      p=$(basename "$f" .txt)
+      p=${p#start-}
+      while read -r state; do
+        quic_seen="$quic_seen $p:$state"
+        case "$state" in
+        off) ;;
+        *) echo " $published_udp " | grep -q " ${state#port=} " || quic_bad="$quic_bad $p:$state" ;;
+        esac
+      done < <(awk -v def="$quic_default" '
+        /^=== teku start$/ { inb = 1; vc = 0; off = 0; port = def; next }
+        !inb { next }
+        /^argv\[1\]=validator-client$/ { vc = 1 }
+        /^argv\[[0-9]+\]=--Xp2p-quic-enabled=false$/ { off = 1 }
+        /^argv\[[0-9]+\]=--Xp2p-quic-enabled(=true)?$/ { off = 0 }
+        /^argv\[[0-9]+\]=--p2p-quic-port=[0-9]+$/ { v = $0; sub(/.*=/, "", v); port = v }
+        /^p2p-quic-port: *[0-9]+/ { v = $0; sub(/^p2p-quic-port: */, "", v); port = v + 0 }
+        /^=== teku end$/ { if (!vc) print (off ? "off" : "port=" port); inb = 0 }' "$f")
+    done
+    if [ -z "$quic_seen" ]; then
+      record "$net" candidate-quic FAIL "no beacon node start found in the start profiles"
+    elif [ -z "$quic_bad" ]; then
+      record "$net" candidate-quic PASS "QUIC per start profile:$quic_seen (manifest publishes UDP ${published_udp% })"
+    else
+      record "$net" candidate-quic FAIL "QUIC listens on a UDP port the manifest does not publish:$quic_bad (publishes UDP ${published_udp% }); turn QUIC off or publish the port (README)"
+    fi
+  fi
 done
 
 # ---------------------------------------------------------------------------

@@ -1,13 +1,20 @@
 --- production
 +++ candidate
-@@ -1,4 +1,6 @@
+@@ -1,10 +1,13 @@
  Starting with default settings
 +curl-stub: http://nethermind-gnosis.my.ava.do:8551 -> exit 0
 +Execution engine: using nethermind-gnosis.avado.dnp.dappnode.eth (http://nethermind-gnosis.my.ava.do:8551)
  curl-stub: http://dappmanager.my.ava.do/jwttoken.txt -> exit 0
  Starting Teku in single process mode
  === teku start
-@@ -27,9 +29,12 @@
+ user=teku MODE=<unset> JAVA_OPTS=-Xmx8g EXTRA_OPTS=
+ argv[1]=--ee-jwt-secret-file=/data/data-gnosis/jwttoken
+ argv[2]=--config-file=/data/config.yml
++argv[3]=--Xp2p-quic-enabled=false
+ jwt secret file /data/data-gnosis/jwttoken: 66 bytes
+ --- config file /data/config.yml
+ # Generated file.
+@@ -27,9 +30,12 @@
  # Execution engine
  ee-endpoint: "http://nethermind-gnosis.my.ava.do:8551"
  
