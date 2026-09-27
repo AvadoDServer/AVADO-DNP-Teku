@@ -486,8 +486,10 @@ CHECK
   # running node (default MODE only); this covers every start profile.
   docker run --rm --platform "$PLATFORM" --entrypoint /opt/teku/bin/teku "$cand_tag" --help >"$c/help.txt" 2>&1 || true
   quic_default=$(awk '/^ +--p2p-quic-port=/ { f = 1; next } f && /Default:/ { print $2; exit } f && /^ +-/ { exit }' "$c/help.txt")
-  if [ -z "$quic_default" ]; then
+  if ! grep -qE '^ +--p2p-quic-port=' "$c/help.txt"; then
     record "$net" candidate-quic INFO "this Teku has no QUIC (no --p2p-quic-port in its --help)"
+  elif [ -z "$quic_default" ]; then
+    record "$net" candidate-quic FAIL "could not read the default of --p2p-quic-port from teku --help ($c/help.txt); update this check"
   else
     published_udp=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | last | sub("/udp$"; "")' "$render/dappnode_package.json" | tr '\n' ' ')
     quic_seen="" quic_bad=""
