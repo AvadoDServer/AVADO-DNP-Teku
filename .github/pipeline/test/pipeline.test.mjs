@@ -1,14 +1,17 @@
 // Unit tests for the pipeline rules: node --test ".github/pipeline/test/*.test.mjs"
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, copyFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { decide, logExcerpt } from '../gate.mjs';
+import { decide, logExcerpt, combineMandatory, ownerMergeFiles, retryable } from '../gate.mjs';
 import { reportVerdict, summarize } from '../lib/dappnode.js';
 import { checkMandatory } from '../lib/mandatory.js';
 import {
   compareVersions, bumpPatch, maxVersion, stableReleases, readTekuVersion, setTekuVersion, setManifestVersion,
+  readTekuDigest, setTekuDigest, bumpMarker, markerTarget, holdReason, contentId,
 } from '../lib/common.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -113,6 +116,15 @@ test('the bump edits only the version fields of the real files', () => {
   assert.equal(readTekuVersion(edited), other);
   assert.equal(edited.split('\n').filter((l, i) => l !== compose.split('\n')[i]).length, 1);
   assert.equal(setTekuVersion(edited, now), compose);
+  // The digest line is the only other line the bump writes.
+  const digest = readTekuDigest(compose);
+  const otherDigest = `sha256:${'a'.repeat(64)}` === digest ? `sha256:${'b'.repeat(64)}` : `sha256:${'a'.repeat(64)}`;
+  const both = setTekuDigest(edited, otherDigest);
+  assert.equal(readTekuDigest(both), otherDigest);
+  assert.equal(both.split('\n').filter((l, i) => l !== compose.split('\n')[i]).length, 2);
+  assert.equal(setTekuDigest(setTekuVersion(both, now), digest), compose);
+  assert.throws(() => setTekuDigest(compose, 'sha256:1234'));
+  assert.throws(() => readTekuDigest(compose.replace(/TEKU_DIGEST:.*/, 'TEKU_DIGEST: latest')));
   for (const net of ['mainnet', 'gnosis']) {
     const text = readFileSync(join(ROOT, 'package_variants', net, 'dappnode_package.json'), 'utf8');
     const v = JSON.parse(text).version;
@@ -142,4 +154,73 @@ test('the issue shows the failing lines of a job log, not setup or cleanup noise
   assert.match(x, /##\[error\]/);
   assert.ok(x.indexOf('FAIL    compose') < x.indexOf('ok 4'), 'failure lines come first, then the context before the error');
   assert.doesNotMatch(x, /Post job|\[command\]|\x1b|shell: /);
+});
+
+test('a person changing the checks or the pipeline on the bot branch leaves the merge to the owner', () => {
+  const files = ['docker-compose.yml', 'package_variants/mainnet/dappnode_package.json', 'build/startTeku.sh'];
+  assert.deepEqual(ownerMergeFiles(files, false), [], 'a start-script fix may still merge by itself');
+  for (const f of ['scripts/ci/check-flags.sh', 'scripts/proof/expected/mainnet/start-mode-unset.diff', '.github/pipeline/release.mjs',
+    '.github/workflows/release.yml', 'package_variants/gnosis/hold', 'package_variants/mainnet/releases.json', 'scripts/render.sh']) {
+    assert.deepEqual(ownerMergeFiles([...files, f], false), [f], f);
+  }
+  assert.deepEqual(ownerMergeFiles(['scripts/ci/check-flags.sh'], true), [], 'bot-only PRs are guarded by the unexpected-files rule');
+  const d = decide({ ...base, dn: { level: 'GOOD', verdict: 'pass' }, ownerFiles: ['scripts/ci/check-flags.sh'] });
+  assert.equal(d.action, 'block');
+  assert.equal(d.cause, 'owner-merge');
+});
+
+test('checks that failed on an outside step run once more, without an issue', () => {
+  const outside = [{ name: 'gnosis', step: 'Boots on its real network' }, { name: 'mainnet', step: 'AVADOSDK build (render, build, add to IPFS)' }];
+  assert.ok(retryable(outside));
+  assert.ok(retryable([{ name: 'mainnet', step: null }]), 'a job lost without a failed step (runner) is retried');
+  assert.ok(!retryable([...outside, { name: 'mainnet', step: 'Every option we pass exists in teku --help' }]));
+  assert.ok(!retryable([{ name: 'Plan (unit tests, identity, manifests)', step: 'Unit tests of the pipeline rules' }]));
+  assert.ok(!retryable([]));
+  const d = decide({ ...base, checks: 'failure', rerun: 'gnosis: Boots on its real network' });
+  assert.equal(d.action, 'wait');
+  assert.equal(d.cause, 'rerun');
+});
+
+test('a release required for one network only does not skip the DAppNode wait for the others', () => {
+  const hit = { tag: '26.4.0', source: 'release notes of 26.4.0: "required update for Gnosis nodes"' };
+  const one = combineMandatory(['gnosis', 'mainnet'], { gnosis: hit });
+  assert.equal(one.mandatory, null);
+  assert.deepEqual(one.partial.map((p) => p.network), ['gnosis']);
+  assert.equal(decide({ ...base, mandatory: one.mandatory }).action, 'wait');
+  const all = combineMandatory(['gnosis', 'mainnet'], { gnosis: hit, mainnet: { ...hit, source: 'x' } });
+  assert.ok(all.mandatory);
+  assert.equal(decide({ ...base, mandatory: all.mandatory }).cause, 'mandatory');
+  assert.ok(combineMandatory(['mainnet'], { mainnet: hit }).mandatory, 'gnosis held: mainnet alone decides');
+  assert.equal(combineMandatory([], {}).mandatory, null);
+});
+
+test('the bump PR marker names its Teku version (closing the PR skips that version)', () => {
+  assert.equal(markerTarget(`${bumpMarker('26.10.0')}\n## Teku 26.10.0`), '26.10.0');
+  assert.equal(markerTarget(`${bumpMarker(null)}\n## TEST`), null, 'a [TEST] PR never skips a real version');
+  assert.equal(markerTarget('no marker'), null);
+});
+
+test('holds: gnosis is held in this repo, with a reason on its first line', () => {
+  const reason = holdReason(ROOT, 'gnosis');
+  assert.ok(reason && /catch-up/.test(reason), reason);
+  assert.equal(holdReason(ROOT, 'mainnet'), null);
+});
+
+test('the content id ignores release records only', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'content-id-'));
+  const g = (...a) => execFileSync('git', ['-C', dir, ...a], { encoding: 'utf8' }).trim();
+  g('init', '-q');
+  mkdirSync(join(dir, 'scripts/ci'), { recursive: true });
+  mkdirSync(join(dir, 'package_variants/mainnet'), { recursive: true });
+  copyFileSync(join(ROOT, 'scripts/ci/content-id.sh'), join(dir, 'scripts/ci/content-id.sh'));
+  writeFileSync(join(dir, 'package_variants/mainnet/dappnode_package.json'), '{"version":"0.0.76"}\n');
+  const commit = (msg) => { g('add', '-A'); g('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', msg); return g('rev-parse', 'HEAD'); };
+  const a = commit('a');
+  writeFileSync(join(dir, 'package_variants/mainnet/releases.json'), '{"0.0.76":{"hash":"/ipfs/Qm"}}\n');
+  const b = commit('Release teku 0.0.76');
+  writeFileSync(join(dir, 'package_variants/mainnet/dappnode_package.json'), '{"version":"0.0.77"}\n');
+  const c = commit('c');
+  assert.equal(contentId(dir, a), contentId(dir, b), 'a Release commit does not change the content id');
+  assert.notEqual(contentId(dir, b), contentId(dir, c));
+  assert.match(contentId(dir, a), /^[0-9a-f]{40}$/);
 });
