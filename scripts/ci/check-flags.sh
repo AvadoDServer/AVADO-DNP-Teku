@@ -16,6 +16,13 @@
 # checked against both help texts together: the validator client accepts
 # beacon-node keys in its file (checked with Teku 26.9.0) and refuses only
 # unknown ones. Options users add through EXTRA_OPTS cannot be checked here.
+#
+# Teku's hidden options (--X..., for example --Xp2p-quic-enabled=false for
+# Gnosis) are never listed by --help. Each one is checked by starting Teku with
+# the option exactly as the start script writes it and an unknown network:
+# Teku reads every option first and stops with "Unknown option" (the option is
+# gone) or "Invalid value for option" (the value is no longer accepted); only
+# when both are fine does it get as far as the network, which it cannot load.
 set -euo pipefail
 
 IMAGE=${1:?usage: check-flags.sh <image> [out-dir]}
@@ -52,6 +59,12 @@ awk '
     if ($0 !~ /\\[ \t]*$/) {
       n = split(buf, words, /[ \t"=}{:+$]+/)
       for (i = 1; i <= n; i++) if (words[i] ~ /^--[a-z0-9][a-z0-9-]*$/) print cmd "\t" words[i] "\tstartTeku.sh:" start
+      # hidden options, with the value as written (checked by probe_hidden)
+      s = buf
+      while (match(s, /--X[A-Za-z0-9][A-Za-z0-9-]*(=[^ \t"}]*)?/)) {
+        print cmd "\t" substr(s, RSTART, RLENGTH) "\tstartTeku.sh:" start
+        s = substr(s, RSTART + RLENGTH)
+      }
       inblk = 0
     }
   }
@@ -64,16 +77,45 @@ for t in "$OUT"/files/teku-config*.template; do
 done
 [ -s "$OUT/used.tsv" ] || { echo "FAIL: found no Teku option in the start script or templates" >&2; exit 1; }
 
-missing=0
+# probe_hidden <beacon|validator-client> <--Xname[=value]>: prints ok, MISSING,
+# INVALID or UNCLEAR. A value that comes from a variable is not known here, so
+# only the name is checked then ("Missing required parameter" means it exists).
+probe_hidden() {
+  local tok=$2 name=${2%%=*} out f
+  local -a sub=()
+  [ "$1" = validator-client ] && sub=(validator-client)
+  case "$tok" in *'$'*) tok=$name ;; esac
+  f="$OUT/probe${name}.txt"
+  out=$(run --entrypoint /opt/teku/bin/teku "$IMAGE" ${sub[@]+"${sub[@]}"} "$tok" --network=avado-option-probe </dev/null 2>&1 || true)
+  printf '%s\n' "teku ${sub[*]+${sub[*]} }$tok --network=avado-option-probe" "$out" >"$f"
+  if grep -qF "Unknown option: '$name" <<<"$out"; then
+    echo MISSING
+  elif grep -qF "Invalid value for option '$name'" <<<"$out"; then
+    echo INVALID
+  elif [ "$tok" = "$name" ] && grep -qF "Missing required parameter for option '$name'" <<<"$out"; then
+    echo ok
+  elif grep -qF 'avado-option-probe' <<<"$out"; then
+    echo ok
+  else
+    echo UNCLEAR
+  fi
+}
+
 printf '%-17s %-52s %-8s %s\n' "CHECKED AGAINST" OPTION RESULT "USED IN"
 sort -u "$OUT/used.tsv" | while IFS=$'\t' read -r cmd opt where; do
-  if grep -qxF -- "$opt" "$OUT/options-$cmd.txt"; then r=ok; else r=MISSING; fi
+  case "$opt" in
+  --X*)
+    r=$(probe_hidden "$cmd" "$opt")
+    cmd="hidden:$cmd"
+    ;;
+  *) if grep -qxF -- "$opt" "$OUT/options-$cmd.txt"; then r=ok; else r=MISSING; fi ;;
+  esac
   printf '%-17s %-52s %-8s %s\n' "$cmd" "$opt" "$r" "$where"
 done | tee "$OUT/result.txt"
-missing=$(grep -c ' MISSING ' "$OUT/result.txt" || true)
+bad=$(awk '$3 != "ok"' "$OUT/result.txt" | wc -l | tr -d ' ')
 total=$(wc -l <"$OUT/result.txt" | tr -d ' ')
-if [ "$missing" != 0 ]; then
-  echo "FAIL: $missing of $total options AVADO passes to Teku do not exist in this Teku version (see MISSING above; help texts in $OUT)" >&2
+if [ "$bad" != 0 ]; then
+  echo "FAIL: $bad of $total options AVADO passes to Teku do not exist in this Teku version or no longer take the value we pass (see MISSING, INVALID or UNCLEAR above; help texts and probe*.txt in $OUT)" >&2
   exit 1
 fi
-echo "PASS: all $total options AVADO passes to Teku exist in this Teku version"
+echo "PASS: all $total options AVADO passes to Teku exist in this Teku version (hidden --X options checked by starting Teku with them)"
