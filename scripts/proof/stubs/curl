@@ -1,0 +1,32 @@
+#!/bin/bash
+# Stand-in for curl during the equivalence proof. The JWT download succeeds
+# with a fixed token. An execution-engine URL (port 8551) answers when its host
+# is listed in STUB_EE_UP ("all" means every host). Everything else fails the
+# way an unreachable host does (exit code 7).
+out=""
+url=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --output | -o) out=$2; shift 2 ;;
+  --max-time | -m) shift 2 ;;
+  -*) shift ;;
+  *) url=$1; shift ;;
+  esac
+done
+rc=7
+case "$url" in
+*/jwttoken.txt)
+  [ -n "$out" ] && printf '0x%064d' 0 >"$out"
+  rc=0
+  ;;
+*:8551*)
+  host=${url#*://}
+  host=${host%%[:/]*}
+  case " ${STUB_EE_UP:-all} " in
+  *" all "* | *" $host "*) rc=0 ;;
+  esac
+  ;;
+esac
+# stderr only: the start script runs `until $(curl ...)`, which executes stdout
+echo "curl-stub: $url -> exit $rc" >&2
+exit $rc

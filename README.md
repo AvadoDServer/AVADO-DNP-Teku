@@ -1,30 +1,341 @@
 # AVADO Teku
 
-Teku ETH2 beacon chain & validator on AVADO
+Teku beacon chain and validator for AVADO. One repo builds one package per network:
 
-## Development
+| Network | Package (unchanged name) | Variant folder |
+|---|---|---|
+| Ethereum mainnet | `teku.avado.dnp.dappnode.eth` | `package_variants/mainnet/` |
+| Gnosis | `teku-gnosis.avado.dnp.dappnode.eth` | `package_variants/gnosis/` (held, see "Holds") |
 
-Install the AVADO SDK:
-```
-npm i -g https://github.com/AvadoDServer/AVADOSDK.git`
-```
+**Hoodi is deferred.** A Hoodi variant is added once AVADO has a Hoodi execution
+client (Teku needs one to follow the chain). It will be a new package name with
+host ports that no other AVADO package uses.
 
-## Testing locally
+The layout follows DAppNode's generic packages (for example
+`dappnode/DAppNodePackage-teku-generic`): one base package plus a folder per
+network. `main` is never switched between networks (the old `setNetwork.sh` is gone).
 
-Modify the Dockerfile in the `build` folder and test it locally using `docker-compose build` and `docker-compose up` until it works as expected.
-
-## Building and testing
-
-`avadosdk build` will build the package and upload to your AVADO box's IPFS server.
-
-## update flow & tagging your repo
-
-This is a suggested flow to upgrade your package when you want to release a new version:
+## Layout
 
 ```
-avadosdk increase patch
-avadosdk build --provider http://80.208.229.228:5001
-git add dappnode_package.json docker-compose.yml releases.json
-git commit -m"new release"
-git push
+dappnode_package.json          base manifest: only what every network shares
+                               (autoupdate, volume data:/data, restart, author, license)
+docker-compose.yml             base compose; TEKU_VERSION is the upstream Teku version
+                               of every network (the only place it is written) and
+                               TEKU_DIGEST its Docker Hub digest
+package_variants/<network>/
+  dappnode_package.json        name, version, title, description, avatar hash, type,
+                               ports, environment, ui, links
+  docker-compose.yml           build arg NETWORK
+  avatar.png                   the package's avatar
+  hold                         only while the owner holds this network back (see "Holds")
+  releases.json                the release record (written by release.yml)
+build/                         one Dockerfile and one set of scripts for every network
+  ui-config.sh                 writes the wizard and monitor config and the default
+                               settings for NETWORK (the Dockerfile runs it)
+  monitor/settings/defaultsettings-<network>.json
+scripts/render.sh              base + variant -> a folder the AVADOSDK can build
+scripts/prove-equivalence.sh   proves the rendered packages equal production
+scripts/ci/                    the checks (identity, digest, version, options, boot test,
+                               upgrade test, AVADOSDK build, content id)
+.github/workflows/             pr-checks, bump, gate, release (see "How releases work now")
+.github/pipeline/              the bump, gate and release logic (Node, no dependencies)
 ```
+
+Keys that identify a package on the boxes (name, version, ports, environment,
+title, links...) are only allowed in the variant folders; `render.sh` refuses a
+base manifest that sets one. The manifest's `upstream` is not written anywhere:
+`render.sh` copies it from `TEKU_VERSION`.
+
+The Dockerfile builds `FROM consensys/teku:<TEKU_VERSION>@<TEKU_DIGEST>`, the node
+builder image by digest, the nvm installer by commit and sha256, and the wizard
+and monitor with `yarn install --frozen-lockfile`, so a moved tag or a changed
+dependency cannot slip into a package.
+
+## How releases work now
+
+In plain words: **a robot prepares every Teku update, our own checks test it,
+DAppNode's real node is the second opinion, and a tested update goes to the
+staging store by itself. Customers only get it when you publish it to
+production in editstore, as before.** Until you set `PIPELINE_MODE` to `on`,
+the robot only prepares and comments; it never merges (see "Modes").
+
+1. **Bump** (every 4 hours, `bump.yml`). When Teku publishes a new stable
+   release and its Docker image exists, the robot opens ONE pull request on
+   branch `avado-bot/bump` that moves every network that is not held to it:
+   `TEKU_VERSION` and `TEKU_DIGEST` in `docker-compose.yml`, and the `version`
+   of each `package_variants/<network>/dappnode_package.json` one step up. If
+   an even newer Teku appears while the PR is open, the same PR is updated.
+   If you close the PR without merging, that Teku version is skipped and the
+   robot waits for the next release (reopen the PR to undo).
+2. **Checks** (`pr-checks.yml`, status `avado/checks`), for every network that
+   is not held, on free GitHub machines:
+   - the Teku image digest is still what Docker Hub serves for that version;
+   - the package is built with the AVADOSDK exactly as before (files added to
+     AVADO's IPFS node), and the image is loaded back from the uploaded file;
+   - the Teku inside is exactly the new version;
+   - every Teku option we pass (start script and config files) still exists in
+     that Teku's `--help`;
+   - the package name, volumes, host ports and settings names are the same as
+     on `main` and in production, and the version goes up;
+   - the package **boots on its real network** for a few minutes with its real
+     command line: it loads a recent checkpoint, finds peers, follows the chain,
+     logs no fatal error, and every UDP port it listens on is published by the
+     manifest (peers must reach it);
+   - the **equivalence proof**: everything AVADO adds (start script, config,
+     wizard, monitor, what Teku is started with) is the same as what boxes run
+     today, apart from the reviewed differences in `scripts/proof/expected/`;
+   - the **upgrade in place**: the production image runs on a data volume and
+     follows the chain, is stopped, and the new build starts on the same volume
+     the way a box auto-updates; it must keep Teku's database (no fresh start,
+     no database error), keep `/data/settings.json`, and follow the chain.
+   A check that fails only because of the public network (checkpoint, peers)
+   is tried once more on the spot.
+3. **Gate** (every 4 hours and after every check run, `gate.yml`, status
+   `avado/gate`). It merges the PR (a merge commit) only when our checks are
+   green, the branch contains `main`, **and**:
+   - DAppNode's real-node test of the same Teku version passed (their pull
+     request `tropibot/bump-teku-<version>` in
+     `dappnode/DAppNodePackage-teku-generic`, read strictly: a report that says
+     PASSED and shows the version, their test validator attesting, or their
+     published release); or
+   - DAppNode has given no usable answer and **72 hours** have passed since the
+     Teku release; or
+   - the Teku release notes (or the release watcher) say the upgrade is
+     **required for every network the PR releases**: then it does not wait the
+     72 hours. Required for one network only (a sentence that names Gnosis, for
+     example): it waits as usual, and the PR comment says so.
+
+   It does **not** merge when our checks fail, when DAppNode's test shows the
+   client failing, when anything is unclear, or when a person pushed changes to
+   the checks, the proof or the pipeline onto the robot's branch (those are
+   yours to review and merge). Then it opens an issue for you (see "What the
+   emails mean"). Checks that failed on an outside step (the build, the boot or
+   upgrade test, the proof) are first run once more, without an email. The gate
+   writes its reasoning in a comment on the PR, updated on every run. It also
+   starts the release when a version on `main` never got a release run.
+4. **Release** (`release.yml`, after the merge). Every network whose version is
+   new and that is not held is published to the **staging** store: **only the
+   exact build the checks tested for these files** (found by a content id that
+   ignores release records; a merge commit, a squash and a re-run all find it),
+   its hash recorded in `package_variants/<network>/releases.json` and in a
+   commit `Release <name> <version>` (the format the release watcher and
+   editstore know), then `store.setPackageHash` for each package and one
+   `store.releaseStore`, with the `RPC_TOKEN` secret, as the old
+   `ci-release-action` did. It never builds anything itself. A network without
+   a tested build is not published, and you get an issue that says what to do
+   (below). A network whose version did not change is not published. Without
+   `RPC_TOKEN` it only shows what it would do.
+5. **Production**: unchanged. You publish it in editstore when you are happy
+   with staging.
+
+Human pull requests get the same checks. **Open them from a branch in this
+repo** (not a fork) and merge them yourself with **"Create a merge commit"**
+when the branch is up to date with `main`: the release then publishes every
+network whose version you raised, from the build the checks tested. Pull
+requests from forks are checked on a throwaway IPFS node and their builds are
+never released; after merging one, run the checks for `main` (below).
+
+**"Release: NOT published ... no tested build"**: `main` has files the checks
+never tested (a merge while the branch was behind `main`, a fork PR, a direct
+push). Actions → **PR checks** → Run workflow with `pr` = `main`; when it is
+green, Actions → **Release** → Run workflow.
+
+### Modes
+
+Settings → Secrets and variables → Actions → **Variables** → repository
+variable `PIPELINE_MODE`:
+
+| Value | Effect |
+|---|---|
+| (not set) or `shadow` | The robot bumps and the checks run; the gate says what it *would* do (status and PR comment) but never merges. This is the default. |
+| `on` | Normal: bump, check, gate, merge, release to staging |
+| `off` | The bump robot and the gate do nothing. Checks still run on pull requests, and a merge you make yourself is still released to staging |
+
+A merge you make yourself is released to staging in every mode.
+
+Other variables: `PIPELINE_OWNER` (who gets the issues, default `flisko`),
+`IPFS_PROVIDER` (leave empty; `local` is only for a test copy of this repo, its
+builds can never be released).
+
+### Holds
+
+A network can stay behind the others: a file `package_variants/<network>/hold`
+whose first line says why. A held network is not bumped, built, tested,
+counted by the gate or released; boxes keep the version they have. You end a
+hold by removing the file in a pull request you merge yourself; its checks then
+build and test that network, and the merge publishes it to staging. A hold is
+also the way to ship a required release for one network when another network
+fails its checks.
+
+**Gnosis is held** at production `teku-gnosis` 0.0.27 (Teku 26.4.0): the shared
+Teku version is newer, so its next release jumps several Teku versions at once.
+Before removing `package_variants/gnosis/hold`:
+1. decide QUIC for Gnosis (Teku listens for QUIC on 9001/udp by default, but
+   `teku-gnosis` publishes only 9006, and on a box with mainnet Teku 9001/udp is
+   taken): turn it off for gnosis in `build/startTeku.sh`, or give Gnosis its own
+   published port (a deliberate identity change). The boot test fails until one
+   of the two is done;
+2. test the upgrade in place on the test box: production `teku-gnosis` 0.0.27,
+   synced, then the new build over it;
+3. remove the file (with the QUIC change) in a pull request and merge it.
+
+### What the emails mean
+
+GitHub emails the person an issue is assigned to (`PIPELINE_OWNER`). Keep
+**Email** ticked for "Participating, @mentions and custom" in
+github.com/settings/notifications.
+
+- **"[needs fix] Teku <version>: our checks failed ..."**: the new Teku broke
+  something (for example an option we use was renamed), and the automatic
+  re-run did not help. Nothing was merged or released. The issue has the
+  failing check, its log lines, and a **ready-to-paste Claude Code prompt**:
+  run `gh pr checkout <n>`, start `claude`, paste the prompt, review, push. The
+  checks run again and the gate merges when they are green. The issue closes by
+  itself.
+- **"[needs fix] Teku <version>: ... failed DAppNode's real-node test"** or
+  **"... DAppNode's result is unclear"**: DAppNode saw a problem with this
+  version. Nothing was merged. It clears by itself if DAppNode later passes it
+  or a newer Teku replaces it. The prompt asks Claude Code to explain whether
+  it is Teku's fault or DAppNode's test setup. If you decide it is safe, merge
+  the PR yourself with "Create a merge commit"; to skip the version, close it.
+- **"[needs fix] Teku <version>: a person changed the checks or the pipeline
+  ..."**: someone (or Claude Code) pushed changes to the checks, the proof or
+  the pipeline onto the robot's PR. Read them, and merge the PR yourself if
+  they are right.
+- **"[pipeline broken] <workflow> workflow failed"**: the robot itself broke
+  (GitHub, Docker Hub, AVADO's IPFS node or store did not answer, or a bug), or
+  the release found no tested build. Nothing reaches any box. The issue shows
+  the error, the run link and a prompt; it closes by itself after the next
+  successful run.
+- **"[pipeline] PAT_TOKEN was rejected: renew it"**: the personal token expired.
+  The robot keeps working without it; renew it when convenient (see "Secrets").
+- A comment on one of these issues means the situation changed (a new failure,
+  or it came back). A problem that stays the same does not send more emails.
+
+Also watch for: the release watcher (`AvadoDServer/avado-release-control`)
+emails "URGENT: pipeline workflows stopped" when `bump.yml` or `gate.yml` is
+disabled or keeps failing. GitHub switches off scheduled workflows in a public
+repo after 60 days without commits ("disabled_inactivity"); the fix is
+Actions → the workflow → **Enable workflow**.
+
+### Secrets
+
+- `RPC_TOKEN` (organisation secret, as before): used only by `release.yml` for
+  `store.setPackageHash` and `store.releaseStore`. The release job runs no build
+  and no third-party code next to it.
+- `PAT_TOKEN` (repository secret, as before, optional): the bump robot pushes
+  and opens its PR with it, so the checks start by themselves (GitHub does not
+  start workflows for changes made with the built-in token). Use a
+  **fine-grained** token: resource owner AvadoDServer, only this repository,
+  Contents and Pull requests read and write, with an expiry date. Not a classic
+  `repo` token: it would open every AvadoDServer repository. When it is missing
+  or expired, the robot starts the checks itself through `workflow_dispatch`
+  (the PR then also shows a "PR checks" run marked "action required" that can
+  be ignored) and emails you once to renew it.
+- `WATCHER_READ_TOKEN` (optional): lets the gate read the release watcher's
+  URGENT issues. A fine-grained token for `AvadoDServer/avado-release-control`
+  with Issues: read only. Without it the gate uses the Teku release notes, and
+  the PR comment says "release watcher: not read".
+
+### Update Teku by hand
+
+Change `TEKU_VERSION` and `TEKU_DIGEST` (Docker Hub: the tag's digest) in
+`docker-compose.yml` and raise `version` in every
+`package_variants/<network>/dappnode_package.json` that is not held, open a
+pull request from a branch in this repo, merge it when `avado/checks` is green.
+(Or run the Bump Teku workflow by hand.)
+
+## Checks
+
+The scripts the checks run also work on your Mac (Docker needed; an Apple
+Silicon Mac runs the amd64 image slowly, the boot and upgrade tests are best
+left to CI):
+
+```bash
+scripts/ci/check-identity.sh mainnet origin/main       # names, volumes, ports, env keys, versions
+scripts/ci/check-digest.sh                              # TEKU_DIGEST is what Docker Hub serves
+dir=$(scripts/render.sh mainnet) && (cd "$dir" && docker compose build)
+scripts/ci/check-version.sh teku.avado.dnp.dappnode.eth:0.0.75 26.9.0
+scripts/ci/check-flags.sh teku.avado.dnp.dappnode.eth:0.0.75
+scripts/ci/boot-test.sh teku.avado.dnp.dappnode.eth:0.0.75 "$dir" /tmp/boot
+scripts/prove-equivalence.sh --manifests-only
+scripts/ci/upgrade-test.sh avado-proof/production-mainnet:latest avado-proof/candidate-mainnet:latest "$dir" /tmp/upgrade   # after a full proof
+node --test ".github/pipeline/test/*.test.mjs"          # the gate's rules (Node 22)
+```
+
+`scripts/ci/sdk-build.sh <network> <out> <ipfs api>` is the AVADOSDK build the
+checks use (AVADOSDK pinned at commit 23d6757). `scripts/ci/content-id.sh`
+prints the content id the tested build is named after.
+
+The boot test starts the image with the manifest's environment, ports and a
+fresh volume, plus a stand-in for the box: `dappmanager.my.ava.do` (JWT and
+certificate) and an execution client that answers "still syncing", so Teku
+follows the chain optimistically as on a new box. It proves checkpoint sync,
+peers and a clean start, not block execution (no real execution client fits
+on a GitHub machine). The upgrade test uses the same stand-in.
+
+## Build a package
+
+```bash
+dir=$(scripts/render.sh mainnet)       # or gnosis; prints the rendered folder
+cd "$dir" && avadosdk build --provider <ipfs api>
+```
+
+The rendered folder is a normal single-network package (manifest, compose, avatar,
+`build/`), so the AVADOSDK builds it unchanged. `render.sh` needs `git`, `jq` and
+`yq` v4 (github.com/mikefarah/yq).
+
+To try the image without the SDK (the two values are in `docker-compose.yml`):
+
+```bash
+docker build --platform linux/amd64 --build-arg TEKU_VERSION=26.9.0 \
+  --build-arg TEKU_DIGEST=sha256:6bfef491dc2714b8c4ed4af2c05decb78b2058d77dad50a3fb2d3df167b5fde6 \
+  --build-arg NETWORK=mainnet build/
+```
+
+For UI development, write the per-network UI files first (they are generated,
+not committed): `build/ui-config.sh mainnet`.
+
+## Equivalence proof
+
+```bash
+scripts/prove-equivalence.sh                   # every network, builds both images
+scripts/prove-equivalence.sh --manifests-only  # manifests, compose and avatar only
+scripts/prove-equivalence.sh gnosis            # one network
+scripts/prove-equivalence.sh --candidate-image teku.avado.dnp.dappnode.eth:0.0.76 mainnet   # an image already built
+```
+
+It reads the live production store (`bo.ava.do/value/store`, every IPFS file
+checked against its hash) and compares, per network: the rendered manifest and
+compose with the production release (for a release this pipeline made, the
+variant rendered from that release commit), the avatar, and the production
+image with the new one (image config, AVADO's files, the wizard and monitor
+builds, what the start script hands to Teku for each `MODE` and for a box with
+existing settings, and the running container's monitor and wizard).
+
+What the Teku base image decides is set aside, so the proof also holds for a
+Teku bump: the package version and `upstream`, the image tag, `TEKU_VERSION`
+and `TEKU_DIGEST`, `teku --version`, and the image labels, exposed ports and
+Java environment of the Teku image. They are printed as INFO lines. Separate
+checks make sure the Teku version is exact, the options exist and the identity
+is unchanged.
+
+`scripts/proof/expected/<network>/*.diff` lists the **allowed** differences
+from production, reviewed in git: a check passes when every differing line is
+in its file. When production catches up, fewer lines differ and the proof still
+passes. When you change something AVADO adds (start script, config, UI), run
+`--update-expected` for the affected networks and review the changed `.diff`
+files in the same pull request (the gate leaves such a PR to you).
+
+## Test copy (dry run)
+
+To try the pipeline without touching this repo or the store: push it to a
+private repository, set the variable `IPFS_PROVIDER=local` there (builds go to a
+throwaway IPFS node on the runner), do not add `RPC_TOKEN` (the release is a
+dry run), set `PIPELINE_MODE=on` if the gate should merge, and tick Settings →
+Actions → General → "Allow GitHub Actions to create and approve pull requests"
+(needed without `PAT_TOKEN`). Run "Bump Teku" by hand with a `version` to
+simulate a release; a version without a Docker image makes the checks fail,
+which exercises the issue path. Set `PIPELINE_MODE=off` there afterwards. The
+first copy is `flisko/teku-pipeline-dryrun` (private, paused).

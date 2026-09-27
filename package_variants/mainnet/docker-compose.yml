@@ -1,0 +1,7 @@
+# The mainnet variant. NETWORK selects the per-network UI config and default
+# settings when the image is built (build/Dockerfile, build/ui-config.sh).
+services:
+  teku:
+    build:
+      args:
+        NETWORK: mainnet

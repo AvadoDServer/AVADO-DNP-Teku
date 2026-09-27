@@ -1,21 +1,32 @@
 ARG TEKU_VERSION
-FROM node:18.15.0 as builder
+ARG TEKU_DIGEST
+# node 18.15.0, pinned by its Docker Hub digest
+FROM node:18.15.0@sha256:354047346f641fbf9efadac145dd3f328d1ae164680c6a73ffd2a523d605d95f as builder
 
-# build wizard
+# NETWORK (mainnet, gnosis) is set by package_variants/<network>/docker-compose.yml.
+# The wizard and monitor config and the default settings are generated for it
+# here (build/ui-config.sh), so the same sources build every network.
+ARG NETWORK
+COPY ui-config.sh /usr/src/ui-config.sh
+COPY wizard /usr/src/app/wizard
+COPY monitor /usr/src/monitor
+RUN sh /usr/src/ui-config.sh "${NETWORK}" /usr/src/app/wizard /usr/src/monitor
+
+# build wizard (only what the committed yarn.lock lists)
 WORKDIR /usr/src/app/wizard
-COPY wizard .
-RUN yarn
+RUN yarn install --frozen-lockfile
 RUN rm -Rf build && yarn run build
 
 
-# build monitor
+# build monitor (only what the committed yarn.lock lists)
 WORKDIR /usr/src/monitor
-COPY monitor .
-RUN yarn
+RUN yarn install --frozen-lockfile
 RUN rm -Rf build && yarn run build
 
 # https://github.com/ConsenSys/teku/blob/master/docker/jdk17/Dockerfile
-FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}
+# TEKU_VERSION and TEKU_DIGEST come from docker-compose.yml: the tag names the
+# version, the digest fixes the exact image.
+FROM --platform=linux/amd64 consensys/teku:${TEKU_VERSION}@${TEKU_DIGEST}
 
 USER root
 RUN apt-get -y update && apt-get -y upgrade && apt-get -y install \
@@ -36,7 +47,10 @@ RUN useradd -s /bin/false nginx
 ENV NVM_DIR /root/.nvm
 ENV NODE_VERSION v18.15.0
 
-RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
+# nvm v0.39.1's install script, fetched by commit and checked by its sha256
+RUN curl -fsSL -o /tmp/nvm-install.sh https://raw.githubusercontent.com/nvm-sh/nvm/9600617c52d0d2e48493424c529ac6c945d2775b/install.sh \
+    && echo "fabc489b39a5e9c999c7cab4d281cdbbcbad10ec2f8b9a7f7144ad701b6bfdc7  /tmp/nvm-install.sh" | sha256sum -c - \
+    && bash /tmp/nvm-install.sh && rm /tmp/nvm-install.sh \
     && . $NVM_DIR/nvm.sh \
     && nvm install $NODE_VERSION \
     && nvm alias default $NODE_VERSION \
@@ -56,7 +70,7 @@ COPY reload-certs.sh /opt/teku/reload-certs.sh
 COPY teku-config.template /opt/teku
 COPY teku-config-syncing-beacon.template /opt/teku
 COPY teku-config-syncing-validator.template /opt/teku
-COPY monitor/settings/defaultsettings.json /opt/teku
+COPY --from=builder /usr/src/monitor/settings/defaultsettings.json /opt/teku/defaultsettings.json
 RUN chmod a+x /opt/teku/startTeku.sh /opt/teku/reload-certs.sh
 COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/
