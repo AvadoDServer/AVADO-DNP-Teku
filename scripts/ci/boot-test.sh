@@ -158,6 +158,7 @@ fi
 # generated config and the settings file.
 docker exec "$TEKU" sh -c 'for p in $(pgrep java); do tr "\0" " " </proc/$p/cmdline; echo; done' >"$OUT/cmdline.txt" 2>&1
 docker exec "$TEKU" sh -c 'cat /proc/net/udp /proc/net/udp6 2>/dev/null' >"$OUT/udp.txt" 2>&1
+ephemeral=$(docker exec "$TEKU" cat /proc/sys/net/ipv4/ip_local_port_range 2>/dev/null | tr -s ' \t' ' ')
 docker exec "$TEKU" sh -c 'cat /data/config.yml; echo "--- /data/settings.json"; cat /data/settings.json' >"$OUT/config.txt" 2>&1
 monitor_network=$(docker exec "$TEKU" curl -s -m 5 http://localhost:9999/network 2>/dev/null)
 stopped_clean=unknown
@@ -218,12 +219,17 @@ else
   check PASS fatal-lines "no fatal line in the log"
 fi
 # UDP ports Teku listens on (state 07 in /proc/net/udp*, not loopback) against
-# the container ports the manifest publishes as udp.
-listen_udp=""
+# the container ports the manifest publishes as udp. Sockets on the kernel's
+# ephemeral ports are outgoing QUIC dials, not ports peers must reach.
+eph_lo=${ephemeral%% *} eph_hi=${ephemeral##* }
+case "$eph_lo$eph_hi" in *[!0-9]* | '') eph_lo=32768 eph_hi=60999 ;; esac
+listen_udp="" dials=0
 while read -r _ local _ st _; do
   [ "$st" = 07 ] || continue
   case "${local%:*}" in 0100007F | 00000000000000000000000001000000 | 0000000000000000FFFF00000100007F) continue ;; esac
-  listen_udp="$listen_udp $((16#${local##*:}))"
+  port=$((16#${local##*:}))
+  if [ "$port" -ge "$eph_lo" ] && [ "$port" -le "$eph_hi" ]; then dials=$((dials + 1)); continue; fi
+  listen_udp="$listen_udp $port"
 done < <(grep -E '^[[:space:]]*[0-9]+:' "$OUT/udp.txt" 2>/dev/null)
 listen_udp=$(echo $listen_udp | tr ' ' '\n' | sort -un | tr '\n' ' ' | sed 's/ $//')
 published_udp=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | last | sub("/udp$"; "")' "$RENDER/dappnode_package.json" | sort -un | tr '\n' ' ' | sed 's/ $//')
@@ -234,7 +240,7 @@ done
 if [ -z "$listen_udp" ]; then
   check FAIL udp-ports "Teku listens on no UDP port (discovery must listen); see udp.txt"
 elif [ -z "$unpublished" ]; then
-  check PASS udp-ports "Teku listens on UDP $listen_udp; the manifest publishes $published_udp"
+  check PASS udp-ports "Teku listens on UDP $listen_udp; the manifest publishes $published_udp ($dials outgoing sockets on ephemeral ports $eph_lo-$eph_hi not counted)"
 else
   check FAIL udp-ports "Teku listens on UDP$unpublished, which the manifest does not publish (it publishes: ${published_udp:-none}); peers cannot reach it. QUIC? Turn it off or give it a published port (README)"
 fi
