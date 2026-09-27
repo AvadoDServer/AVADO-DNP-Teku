@@ -11,19 +11,27 @@ name: PR checks
 #   - package name, volumes, ports and env keys are unchanged
 #     against the base branch and production; versions go up   scripts/ci/check-identity.sh
 #   - it boots on its real network with its real command line
-#     (checkpoint sync, peers, head moving, no fatal line)      scripts/ci/boot-test.sh
+#     (checkpoint sync, peers, head moving, no fatal line,
+#     every UDP port it listens on is published)                scripts/ci/boot-test.sh
 #   - the equivalence proof against what boxes run today        scripts/prove-equivalence.sh
-# The tested build's record is kept as artifact avado-build-<network>-<tree>;
-# release.yml publishes exactly that build after the merge.
+#   - a box upgrades in place: the production image runs on a
+#     volume, then this build starts on the same volume         scripts/ci/upgrade-test.sh
+# The tested build's record is kept as artifact
+# avado-build-<network>-<content id> (scripts/ci/content-id.sh); release.yml
+# publishes exactly that build after the merge, and nothing else.
+# Held networks (package_variants/<network>/hold) are not built or tested.
 #
-# No secrets are used. The bump bot starts this workflow through
-# workflow_dispatch (input "pr") when it has no PAT_TOKEN.
+# No secrets are used. Started by hand (workflow_dispatch), input "pr" is a PR
+# number of THIS repo (the bump bot uses this when it has no PAT_TOKEN), or
+# "main" to check the default branch as it is (when Release says there is no
+# tested build). PRs from forks are only checked by their own pull_request run,
+# whose builds go to a throwaway IPFS node and can never be released.
 on:
   pull_request:
   workflow_dispatch:
     inputs:
       pr:
-        description: 'Pull request number to check'
+        description: 'Pull request number of this repo to check, or "main" to check the default branch as it is'
         required: true
 
 permissions:
@@ -39,7 +47,9 @@ env:
   # IPFS API the AVADOSDK adds the build to. Repository variable IPFS_PROVIDER:
   # empty = AVADO's node (as ci-build-action), "local" = a throwaway kubo on
   # the runner (for test copies of this repo; such builds cannot be released).
-  IPFS_API: ${{ vars.IPFS_PROVIDER == 'local' && 'http://127.0.0.1:5001' || vars.IPFS_PROVIDER || 'http://80.208.229.228:35001' }}
+  # Pull requests from forks always use the throwaway node: release.yml never
+  # uses their builds, so nothing is added to AVADO's node for them.
+  IPFS_API: ${{ (vars.IPFS_PROVIDER == 'local' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && 'http://127.0.0.1:5001' || vars.IPFS_PROVIDER || 'http://80.208.229.228:35001' }}
   KUBO_IMAGE: ipfs/kubo:v0.25.0@sha256:9d917826eb669276040efb39cf6c68ae7463356a8e216eb13b278de00aa126be
 
 jobs:
@@ -49,6 +59,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       networks: ${{ steps.networks.outputs.networks }}
+      held: ${{ steps.networks.outputs.held }}
       sha: ${{ steps.pr.outputs.sha }}
     steps:
       - id: pr
@@ -58,12 +69,26 @@ jobs:
           EVENT_SHA: ${{ github.event.pull_request.head.sha }}
           EVENT_BASE: ${{ github.event.pull_request.base.sha }}
           INPUT_PR: ${{ inputs.pr }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           if [ -n "$EVENT_SHA" ]; then
             sha=$EVENT_SHA base=$EVENT_BASE
+          elif [ "$INPUT_PR" = main ] || [ "$INPUT_PR" = "$DEFAULT_BRANCH" ]; then
+            # The default branch as it is: compared with its previous commit.
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$DEFAULT_BRANCH" --jq .sha)
+            base=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha" --jq '.parents[0].sha')
           else
-            sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .head.sha)
-            base=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .base.sha)
+            case "$INPUT_PR" in '' | *[!0-9]*) echo "::error::input pr must be a pull request number or \"main\" (got '$INPUT_PR')"; exit 1 ;; esac
+            pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR")
+            head_repo=$(echo "$pr" | jq -r '.head.repo.full_name // empty')
+            if [ "$head_repo" != "$GITHUB_REPOSITORY" ]; then
+              # A run started here has this repo's permissions; code from a fork
+              # must never run with them (its own pull_request run checks it).
+              echo "::error::PR #$INPUT_PR comes from ${head_repo:-a deleted fork}, not from $GITHUB_REPOSITORY. PRs from forks are checked only by their own pull_request run; push the branch to this repo to check it here."
+              exit 1
+            fi
+            sha=$(echo "$pr" | jq -r .head.sha)
+            base=$(echo "$pr" | jq -r .base.sha)
           fi
           echo "sha=$sha" >>"$GITHUB_OUTPUT"
           echo "base=$base" >>"$GITHUB_OUTPUT"
@@ -86,8 +111,24 @@ jobs:
       - name: Unit tests of the pipeline rules
         run: node --test ".github/pipeline/test/*.test.mjs"
       - id: networks
-        name: Networks
-        run: echo "networks=$(ls package_variants | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
+        name: Networks (held ones are left out)
+        run: |
+          nets="" held=""
+          for d in package_variants/*/; do
+            n=$(basename "$d")
+            [ -f "$d/dappnode_package.json" ] || continue
+            if [ -f "$d/hold" ]; then
+              held="$held $n"
+              echo "::notice::$n is HELD, not built or tested: $(sed -n '/^[[:space:]]*#/d; /[^[:space:]]/{p;q;}' "$d/hold")"
+            else
+              nets="$nets $n"
+            fi
+          done
+          echo "networks=$(printf '%s\n' $nets | jq -R . | jq -sc 'map(select(. != ""))')" >>"$GITHUB_OUTPUT"
+          echo "held=$(echo $held)" >>"$GITHUB_OUTPUT"
+          echo "Networks checked:${nets:- none}. Held:${held:- none}."
+      - name: Teku image digest (Docker Hub)
+        run: scripts/ci/check-digest.sh
       - name: Identity (names, volumes, ports, env keys, versions)
         run: |
           rc=0
@@ -112,8 +153,12 @@ jobs:
   variant:
     name: ${{ matrix.network }}
     needs: plan
+    if: needs.plan.outputs.networks != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 150
+    # This job runs the pull request's own scripts: it gets no write access.
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -133,8 +178,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-      - name: Throwaway IPFS node (IPFS_PROVIDER=local only)
-        if: vars.IPFS_PROVIDER == 'local'
+      - name: Throwaway IPFS node (test copies and pull requests from forks)
+        if: env.IPFS_API == 'http://127.0.0.1:5001'
         run: |
           docker run -d --name ipfs -p 127.0.0.1:5001:5001 "$KUBO_IMAGE" >/dev/null
           for i in $(seq 1 60); do curl -fsS -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1 && exit 0; sleep 1; done
@@ -146,19 +191,44 @@ jobs:
           cat "$record"
           echo "image=$(jq -r '.name + ":" + .version' "$record")" >>"$GITHUB_OUTPUT"
           echo "upstream=$(jq -r .upstream "$record")" >>"$GITHUB_OUTPUT"
-          echo "tree=$(jq -r .tree "$record")" >>"$GITHUB_OUTPUT"
+          echo "content=$(jq -r .contentId "$record")" >>"$GITHUB_OUTPUT"
       - name: Exact Teku version
         run: scripts/ci/check-version.sh "${{ steps.build.outputs.image }}" "${{ steps.build.outputs.upstream }}"
       - name: Every option we pass exists in teku --help
         run: scripts/ci/check-flags.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/flags"
       - name: Boots on its real network
-        run: scripts/ci/boot-test.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/boot"
+        run: |
+          # Exit code 2: only checkpoint sync, peers or the head moving failed
+          # (public network, not our package): one more try on a fresh volume.
+          rc=0
+          scripts/ci/boot-test.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/boot" || rc=$?
+          if [ "$rc" = 2 ]; then
+            echo "::warning::$NETWORK: only network-dependent boot checks failed; trying once more on a fresh volume"
+            mv "$RUNNER_TEMP/checks/boot" "$RUNNER_TEMP/checks/boot-try1"
+            rc=0
+            scripts/ci/boot-test.sh "${{ steps.build.outputs.image }}" "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/boot" || rc=$?
+          fi
+          exit "$rc"
       - name: Equivalence proof (image)
         run: scripts/prove-equivalence.sh --work "$RUNNER_TEMP/checks/proof" --candidate-image "${{ steps.build.outputs.image }}" "$NETWORK"
+      - name: Upgrades a box in place (production image, then this build on the same volume)
+        run: |
+          # The proof above loaded the production image and pinned this build by id.
+          rc=0
+          scripts/ci/upgrade-test.sh "avado-proof/production-$NETWORK:latest" "avado-proof/candidate-$NETWORK:latest" \
+            "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/upgrade" || rc=$?
+          if [ "$rc" = 2 ]; then
+            echo "::warning::$NETWORK: the upgrade test failed only on network-dependent checks; trying once more"
+            mv "$RUNNER_TEMP/checks/upgrade" "$RUNNER_TEMP/checks/upgrade-try1"
+            rc=0
+            scripts/ci/upgrade-test.sh "avado-proof/production-$NETWORK:latest" "avado-proof/candidate-$NETWORK:latest" \
+              "$RUNNER_TEMP/checks/build/render" "$RUNNER_TEMP/checks/upgrade" || rc=$?
+          fi
+          exit "$rc"
       - name: Keep the tested build's record (release.yml publishes exactly this build)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: avado-build-${{ matrix.network }}-${{ steps.build.outputs.tree }}
+          name: avado-build-${{ matrix.network }}-${{ steps.build.outputs.content }}
           path: |
             ${{ runner.temp }}/checks/build/record.json
             ${{ runner.temp }}/checks/build/releases.json
@@ -175,6 +245,9 @@ jobs:
             ${{ runner.temp }}/checks/build/sdk-build.log
             ${{ runner.temp }}/checks/flags/
             ${{ runner.temp }}/checks/boot/
+            ${{ runner.temp }}/checks/boot-try1/
+            ${{ runner.temp }}/checks/upgrade/
+            ${{ runner.temp }}/checks/upgrade-try1/
             ${{ runner.temp }}/checks/proof/results.tsv
             ${{ runner.temp }}/checks/proof/${{ matrix.network }}/diff/
             ${{ runner.temp }}/checks/proof/${{ matrix.network }}/production/
@@ -204,11 +277,15 @@ jobs:
           INPUT_PR: ${{ inputs.pr }}
           PLAN: ${{ needs.plan.result }}
           VARIANT: ${{ needs.variant.result }}
+          NETWORKS: ${{ needs.plan.outputs.networks }}
+          HELD: ${{ needs.plan.outputs.held }}
         run: |
           # Even when the plan job failed before it knew the commit, the PR gets a status.
-          [ -n "$SHA" ] || [ -z "$INPUT_PR" ] || SHA=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .head.sha || true)
+          case "$INPUT_PR" in '' | *[!0-9]*) ;; *) [ -n "$SHA" ] || SHA=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$INPUT_PR" --jq .head.sha || true) ;; esac
+          # No network to build (every one is held): the variant job is skipped.
+          [ "$NETWORKS" = '[]' ] && [ "$VARIANT" = skipped ] && VARIANT=success
           if [ "$PLAN" = success ] && [ "$VARIANT" = success ]; then
-            state=success desc="All checks passed for every network"
+            state=success desc="All checks passed for every network${HELD:+ (held, not checked: $HELD)}"
           else
             state=failure desc="Failed: plan $PLAN, networks $VARIANT (open the run for details)"
           fi

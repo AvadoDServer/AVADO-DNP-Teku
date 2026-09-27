@@ -12,6 +12,8 @@
 #   - the manifest the production store serves for that name (if readable).
 # Version rules: the version never goes down, and it must go up when anything
 # that ends up in the package changed (build/, the compose files, the manifests).
+# A held network (package_variants/<network>/hold) is not released, so its
+# version may stay while the shared files change.
 set -euo pipefail
 
 NETWORK=${1:?usage: check-identity.sh <network> <base-ref> [out-dir]}
@@ -55,7 +57,16 @@ head_dir=$("$ROOT/scripts/render.sh" "$NETWORK" "$OUT/head")
 H="$head_dir/dappnode_package.json"
 name=$(jq -r .name "$H")
 version=$(jq -r .version "$H")
-echo "$name $version ($NETWORK) against $BASE"
+held=""
+if [ -f "$ROOT/package_variants/$NETWORK/hold" ]; then
+  held=$(sed -n '/^[[:space:]]*#/d; /[^[:space:]]/{p;q;}' "$ROOT/package_variants/$NETWORK/hold")
+  [ -n "$held" ] || held="held (no reason given)"
+fi
+echo "$name $version ($NETWORK) against $BASE${held:+ (HELD: $held)}"
+[ -z "$held" ] || check INFO hold "HELD (not built, tested or released until package_variants/$NETWORK/hold is removed): $held"
+# Released by the CI already? ("Release <name> <version>" commits, as release.mjs reads them)
+released=no
+git -C "$ROOT" log HEAD --author='github-actions' -F --grep="Release $name $version" --format=%s | grep -qxF "Release $name $version" && released=yes
 
 # --- base -------------------------------------------------------------------------
 B="" BC=""
@@ -106,8 +117,12 @@ if [ -n "$B" ]; then
     head -5 | tr '\n' ' ' || true)
   if [ "$cmp" = -1 ]; then
     check FAIL version "$version is lower than $base_version on $BASE (versions only go up)"
+  elif [ "$cmp" = 0 ] && [ -n "$manifest_changed" ] && [ -n "$held" ]; then
+    check PASS version "still $version while held (the manifest changed: $manifest_changed); nothing is released until the hold ends"
   elif [ "$cmp" = 0 ] && [ -n "$manifest_changed" ]; then
     check FAIL version "still $version although the manifest changed ($manifest_changed); boxes only update to a higher version"
+  elif [ "$cmp" = 0 ] && [ "$released" = no ] && [ -z "$held" ]; then
+    check PASS version "$version, manifest unchanged, but $version is not released yet: the release publishes it after the merge"
   elif [ "$cmp" = 0 ]; then
     check PASS version "$version, manifest unchanged: nothing will be released"
     [ -z "$build_changed" ] || check INFO build-files "changed without a new version ($build_changed): they reach boxes with the next version; the equivalence proof shows what differs from production"

@@ -24,8 +24,14 @@
 #     public peers; the head moving forward is the real proof of working P2P),
 #     counted from the REST API samples and from Teku's own status lines,
 #   - supervisord started Teku once and it never exited, and no fatal line
-#     (unknown option, out of memory, "Teku failed to start", ...) was logged.
+#     (unknown option, out of memory, "Teku failed to start", ...) was logged,
+#   - every UDP port Teku listens on (discovery, QUIC) is published by the
+#     manifest, so peers can reach it (for example QUIC, on by default since
+#     Teku 26.7.0 on 9001/udp).
 # Logs, samples and the command line Teku ran with are written to <out-dir>.
+# Exit code 0: pass. 1: a check failed. 2: only checks that depend on the
+# public network failed (checkpoint sync, peers, head moving), so the workflow
+# tries once more on a fresh volume before it reports a failure.
 set -uo pipefail
 
 IMAGE=${1:?usage: boot-test.sh <image> <render-dir> <out-dir>}
@@ -151,6 +157,7 @@ fi
 # What Teku really runs with: the command line of every Java process, the
 # generated config and the settings file.
 docker exec "$TEKU" sh -c 'for p in $(pgrep java); do tr "\0" " " </proc/$p/cmdline; echo; done' >"$OUT/cmdline.txt" 2>&1
+docker exec "$TEKU" sh -c 'cat /proc/net/udp /proc/net/udp6 2>/dev/null' >"$OUT/udp.txt" 2>&1
 docker exec "$TEKU" sh -c 'cat /data/config.yml; echo "--- /data/settings.json"; cat /data/settings.json' >"$OUT/config.txt" 2>&1
 monitor_network=$(docker exec "$TEKU" curl -s -m 5 http://localhost:9999/network 2>/dev/null)
 stopped_clean=unknown
@@ -163,11 +170,15 @@ docker logs "$MOCK" >"$OUT/box-standin.log" 2>&1
 
 # --- verdict ------------------------------------------------------------------------
 fails=0
+outside_only=1
 : >"$OUT/result.tsv"
 check() { # <PASS|FAIL|INFO> <name> <detail>
   printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$OUT/result.tsv"
   printf '  %-5s %-16s %s\n' "$1" "$2" "$3"
-  [ "$1" = FAIL ] && fails=$((fails + 1))
+  if [ "$1" = FAIL ]; then
+    fails=$((fails + 1))
+    case "$2" in checkpoint-sync | head-moves | peers) ;; *) outside_only=0 ;; esac
+  fi
   return 0
 }
 
@@ -206,6 +217,27 @@ if grep -Eq "$FATAL" "$OUT/container.log"; then
 else
   check PASS fatal-lines "no fatal line in the log"
 fi
+# UDP ports Teku listens on (state 07 in /proc/net/udp*, not loopback) against
+# the container ports the manifest publishes as udp.
+listen_udp=""
+while read -r _ local _ st _; do
+  [ "$st" = 07 ] || continue
+  case "${local%:*}" in 0100007F | 00000000000000000000000001000000 | 0000000000000000FFFF00000100007F) continue ;; esac
+  listen_udp="$listen_udp $((16#${local##*:}))"
+done < <(grep -E '^[[:space:]]*[0-9]+:' "$OUT/udp.txt" 2>/dev/null)
+listen_udp=$(echo $listen_udp | tr ' ' '\n' | sort -un | tr '\n' ' ' | sed 's/ $//')
+published_udp=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | last | sub("/udp$"; "")' "$RENDER/dappnode_package.json" | sort -un | tr '\n' ' ' | sed 's/ $//')
+unpublished=""
+for p in $listen_udp; do
+  echo " $published_udp " | grep -q " $p " || unpublished="$unpublished $p"
+done
+if [ -z "$listen_udp" ]; then
+  check FAIL udp-ports "Teku listens on no UDP port (discovery must listen); see udp.txt"
+elif [ -z "$unpublished" ]; then
+  check PASS udp-ports "Teku listens on UDP $listen_udp; the manifest publishes $published_udp"
+else
+  check FAIL udp-ports "Teku listens on UDP$unpublished, which the manifest does not publish (it publishes: ${published_udp:-none}); peers cannot reach it. QUIC? Turn it off or give it a published port (README)"
+fi
 errors=$(grep -cE '\| ERROR|ERROR  *\|' "$OUT/container.log" || true)
 check INFO error-lines "$errors ERROR line(s) in the log (see container.log)"
 check INFO cmdline "$(head -1 "$OUT/cmdline.txt" | sed -E 's/.* tech\.pegasys\.teku\.Teku //' | cut -c1-300)"
@@ -218,5 +250,6 @@ else
   echo "FAIL: $fails boot check(s) failed for $NETWORK (logs: $OUT/container.log)" >&2
   echo "----- last 40 log lines" >&2
   tail -40 "$OUT/container.log" >&2
+  [ "$outside_only" = 1 ] && exit 2
   exit 1
 fi
