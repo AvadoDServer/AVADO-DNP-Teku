@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154 # production_* and candidate_* are set by phase() through printf -v
+# shellcheck disable=SC2154 # production_*, candidate_* and downgrade_* are set by phase() through printf -v
 # Upgrade in place, the way a box auto-updates: the production image (what boxes
 # run today) starts on a fresh data volume, checkpoint-syncs and follows the
 # chain for a few minutes, and is stopped; then the candidate image starts on
@@ -18,13 +18,18 @@
 #   - answers on its REST API and its head moves forward,
 #   - kept /data/settings.json byte for byte,
 #   - still has the validator key production held, and its slashing protection:
-#     a throwaway key (scripts/ci/upgrade-test-keystore.json, the EIP-2335 test
-#     vector: its secret is public, and the node itself confirms it is no
-#     validator on the network before it is imported) is imported into
-#     production through Teku's key manager API with a slashing protection
-#     record, the way the wizard imports keys; the candidate must list the key,
-#     and Teku's own export must still hold the record,
+#     a throwaway key, new and random for every run (scripts/ci/test-keystore.mjs,
+#     so there is no fixed key anyone could deposit to; the node also confirms
+#     it is no validator before it is imported), is imported into production
+#     through Teku's key manager API with a slashing protection record, the way
+#     the wizard imports keys; the candidate must list the key, and Teku's own
+#     export must still hold the record,
 #   - was started once by supervisord and never exited, with no fatal line.
+# Then, for information only (never a failure): going back. The production
+# image starts once more on the volume the candidate wrote; the result says
+# whether the older Teku still opens the newer database or a resync would be
+# needed (boxes never auto-update to a lower version, so going back means a
+# user reinstalling the old version, or a new version built with the old Teku).
 # Exit code 0: pass. 1: a check failed. 2: only outside problems (production
 # never followed the chain, or the candidate's head did not move: peers,
 # checkpoint endpoint), so the workflow tries once more.
@@ -37,6 +42,8 @@ OUT=${4:?usage: upgrade-test.sh <production-image> <candidate-image> <render-dir
 READY_MIN=${BOOT_READY_MINUTES:-10}
 PROD_MIN=${UPGRADE_PRODUCTION_MINUTES:-3}
 WATCH_MIN=${UPGRADE_WATCH_MINUTES:-3}
+DOWNGRADE_READY_MIN=${UPGRADE_DOWNGRADE_READY_MINUTES:-5}
+DOWNGRADE_MIN=${UPGRADE_DOWNGRADE_MINUTES:-1}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
@@ -64,7 +71,7 @@ NET="$id-net"
 VOL="$id-data"
 MOCK="$id-box"
 cleanup() {
-  docker rm -f "$id-production" "$id-candidate" "$MOCK" >/dev/null 2>&1
+  docker rm -f "$id-production" "$id-candidate" "$id-downgrade" "$MOCK" >/dev/null 2>&1
   docker network rm "$NET" >/dev/null 2>&1
   docker volume rm "$VOL" >/dev/null 2>&1
 }
@@ -94,11 +101,17 @@ docker run -d --name "$MOCK" --network "$NET" --platform linux/amd64 \
   die "cannot start the box stand-in"
 
 # --- the validator key ---------------------------------------------------------------
-KEYSTORE="$ROOT/scripts/ci/upgrade-test-keystore.json"
-# The test vector's password "𝔱𝔢𝔰𝔱𝔭𝔞𝔰𝔰𝔴𝔬𝔯𝔡🔑" after EIP-2335 normalisation (NFKD),
-# i.e. its "Encoded Password" 0x7465737470617373776f7264f09f9491.
-KEY_PASSWORD='testpassword🔑'
-PUBKEY=0x$(jq -r .pubkey "$KEYSTORE")
+# A new random key for this run, made by the package image's own node (as the
+# box stand-in). It is never deposited to, so it can never be a validator.
+docker run --rm --platform linux/amd64 -v "$ROOT/scripts/ci/test-keystore.mjs:/test-keystore.mjs:ro" \
+  --entrypoint /bin/sh "$CAND" -c 'exec /root/.nvm/versions/node/*/bin/node /test-keystore.mjs' >"$OUT/test-key.json" 2>"$OUT/test-key.err" ||
+  die "could not make the throwaway validator key: $(head -c 300 "$OUT/test-key.err")"
+KEYSTORE="$OUT/test-keystore.json"
+jq -e '.keystore' "$OUT/test-key.json" >"$KEYSTORE" || die "the throwaway validator key is not readable: $(head -c 300 "$OUT/test-key.json")"
+KEY_PASSWORD=$(jq -r .password "$OUT/test-key.json")
+PUBKEY=$(jq -r .pubkey "$OUT/test-key.json")
+[[ "$PUBKEY" =~ ^0x[0-9a-f]{96}$ ]] && [ -n "$KEY_PASSWORD" ] || die "the throwaway validator key has no public key or password"
+log "$NETWORK: throwaway validator key for this run: $PUBKEY"
 SP_SLOT=12345 SP_SOURCE=100 SP_TARGET=101 # the slashing protection record imported with it
 key_imported="" key_note="" key_listed="" gvr=""
 
@@ -130,7 +143,7 @@ keystores_have_key() {
 # record into the running production container. Sets key_imported (yes, no or
 # outside) and key_note.
 import_key() {
-  local c=$1 i r n req
+  local c=$1 i r n code req
   for i in $(seq 1 18); do
     r=$(keymanager "$c" GET /eth/v1/keystores)
     [ "${r%% *}" = 200 ] && break
@@ -140,17 +153,20 @@ import_key() {
     key_imported=no key_note="production's key manager API did not answer within 3 minutes: $(echo "$r" | cut -c1-160)"
     return
   fi
-  # Never import a key that is a validator on this network (it is not: the
-  # EIP-2335 test vector; this makes sure). The finalized state is the
-  # checkpoint the node started from, so it is always there.
-  r=$(docker exec "$c" curl -s -m 30 "http://localhost:5051/eth/v1/beacon/states/finalized/validators?id=$PUBKEY" 2>/dev/null)
-  n=$(echo "$r" | jq -r '.data | length' 2>/dev/null)
+  # Never import a key that is a validator on this network (a new random key
+  # never is; this makes sure). Only a clear answer counts: HTTP 200 with a
+  # list, empty for "not a validator"; an error body is not a "no". The
+  # finalized state is the checkpoint the node started from, so it is there.
+  r=$(docker exec "$c" curl -s -m 30 -w '\n%{http_code}' "http://localhost:5051/eth/v1/beacon/states/finalized/validators?id=$PUBKEY" 2>/dev/null)
+  code=$(printf '%s\n' "$r" | tail -1)
+  r=$(printf '%s\n' "$r" | sed '$d')
+  n=$(printf '%s\n' "$r" | jq -r 'if (.data | type) == "array" then (.data | length | tostring) else "error" end' 2>/dev/null)
+  if [ "$code" != 200 ] || [ -z "$n" ] || [ "$n" = error ]; then
+    key_imported=outside key_note="could not ask the node whether the test key is a validator (HTTP ${code:-none}): $(echo "$r" | cut -c1-160)"
+    return
+  fi
   if [ "$n" != 0 ]; then
-    if [ -n "$n" ] && [ "$n" != null ]; then
-      key_imported=no key_note="the test key $PUBKEY IS a validator on $NETWORK: not imported; replace scripts/ci/upgrade-test-keystore.json"
-    else
-      key_imported=outside key_note="could not ask the node whether the test key is a validator: $(echo "$r" | cut -c1-160)"
-    fi
+    key_imported=no key_note="the node says the new random test key $PUBKEY IS a validator on $NETWORK (it cannot be: look at the node's answer): not imported: $(echo "$r" | cut -c1-160)"
     return
   fi
   gvr=$(docker exec "$c" curl -s -m 30 http://localhost:5051/eth/v1/beacon/genesis 2>/dev/null | jq -r '.data.genesis_validators_root // empty' 2>/dev/null)
@@ -169,16 +185,17 @@ import_key() {
   fi
 }
 
-# phase <label> <image> <watch minutes>: runs the image on the shared volume,
-# waits for the REST API, watches the head, then stops it the way a box does.
+# phase <label> <image> <watch minutes> [ready minutes]: runs the image on the
+# shared volume, waits for the REST API (default READY_MIN), watches the head,
+# then stops it the way a box does.
 # Sets <label>_ready, <label>_first, <label>_last, <label>_stop.
 phase() {
-  local label=$1 img=$2 watch=$3 c="$id-$1" started ready=0 h first="" last="" until i
+  local label=$1 img=$2 watch=$3 ready_min=${4:-$READY_MIN} c="$id-$1" started ready=0 h first="" last="" until i
   log "$NETWORK: starting the $label image $img on the shared volume"
   started=$(date +%s)
   docker run -d --name "$c" --network "$NET" --platform linux/amd64 -v "$VOL:/data" "${env_args[@]}" "$img" >/dev/null ||
     die "cannot start the $label container"
-  while [ $(($(date +%s) - started)) -lt $((READY_MIN * 60)) ]; do
+  while [ $(($(date +%s) - started)) -lt $((ready_min * 60)) ]; do
     [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = true ] || break
     h=$(docker exec "$c" curl -s -m 10 http://localhost:5051/eth/v1/node/syncing 2>/dev/null | jq -r '.data.head_slot // empty' 2>/dev/null)
     if [ -n "$h" ]; then ready=1; first=$h; last=$h; break; fi
@@ -222,7 +239,6 @@ phase() {
 printf 'phase\ttime\thead_slot\n' >"$OUT/samples.tsv"
 phase production "$PROD" "$PROD_MIN"
 phase candidate "$CAND" "$WATCH_MIN"
-docker logs "$MOCK" >"$OUT/box-standin.log" 2>&1
 # The candidate's own Teku reads the slashing protection data production left
 # (both containers are stopped; run as the teku user, like the package).
 if [ "$key_imported" = yes ]; then
@@ -230,6 +246,13 @@ if [ "$key_imported" = yes ]; then
     "/opt/teku/bin/teku slashing-protection export --data-path=/data/data-$NETWORK --to=/tmp/slashing-protection.json >/tmp/export.log 2>&1 && cat /tmp/slashing-protection.json || cat /tmp/export.log" \
     >"$OUT/slashing-protection-export.json" 2>&1 || true
 fi
+# Going back (information only, after every upgrade check has its data): the
+# production image once more, on the database the candidate wrote.
+downgrade_ready="" downgrade_first="" downgrade_last=""
+if [ "$candidate_ready" = 1 ]; then
+  phase downgrade "$PROD" "$DOWNGRADE_MIN" "$DOWNGRADE_READY_MIN"
+fi
+docker logs "$MOCK" >"$OUT/box-standin.log" 2>&1
 
 # --- verdict ------------------------------------------------------------------------
 fails=0
@@ -322,6 +345,22 @@ else
   check PASS fatal-lines "no fatal line in the candidate's log"
 fi
 check INFO stop "the candidate stopped within 60 s: ${candidate_stop:-?}"
+# Going back: information for the owner, never a failure.
+if [ -z "$downgrade_ready" ]; then
+  check INFO going-back "not tried: the candidate never answered"
+else
+  back_errors=$(clean "$OUT/downgrade.log" | grep -Ei "$DB_ERRORS|$FATAL" | head -3 | cut -c1-200 | tr '\n' ' ')
+  back_fresh=$(clean "$OUT/downgrade.log" | grep -E 'Empty storage|Loading initial state from' | head -1 | cut -c1-160)
+  if [ -n "$back_errors" ]; then
+    check INFO going-back "the production image could NOT use the database this build wrote: $back_errors; going back to the older Teku would need a resync (see downgrade.log)"
+  elif [ -n "$back_fresh" ]; then
+    check INFO going-back "the production image started over instead of using the database this build wrote ($back_fresh): going back to the older Teku would mean a resync from a checkpoint (see downgrade.log)"
+  elif [ "$downgrade_ready" = 1 ]; then
+    check INFO going-back "the production image opened the database this build wrote and answered at head slot $downgrade_first -> ${downgrade_last:-?}: going back to the older Teku keeps the database"
+  else
+    check INFO going-back "the production image did not answer within $DOWNGRADE_READY_MIN minutes on the database this build wrote: going back to the older Teku may need a resync (see downgrade.log)"
+  fi
+fi
 
 if [ "$fails" = 0 ]; then
   echo "PASS: $NETWORK upgraded in place from the production image"
