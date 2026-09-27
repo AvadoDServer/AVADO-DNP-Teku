@@ -1,8 +1,11 @@
 name: Bump Teku
 # Every 4 hours: if a newer stable Teku release exists (and its image is on
 # Docker Hub), open or update ONE pull request on branch avado-bot/bump that
-# moves every network to it (TEKU_VERSION and each variant's version + 1 patch).
-# Details: .github/pipeline/bump.mjs. Pause: repository variable PIPELINE_MODE=off.
+# moves every network that is not held to it (TEKU_VERSION + TEKU_DIGEST, and
+# each variant's version + 1 patch). A version whose PR the owner closed is
+# skipped. Details: .github/pipeline/bump.mjs.
+# Runs unless the repository variable PIPELINE_MODE is off (it only opens PRs;
+# the gate decides about merging).
 on:
   schedule:
     - cron: '23 */4 * * *'
@@ -46,6 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           # Pushes and PRs made with a personal token start the PR checks; see README.
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PIPELINE_OWNER: ${{ vars.PIPELINE_OWNER }}
           INPUT_VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry_run }}
       - name: Tell the owner if this workflow broke
