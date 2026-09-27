@@ -104,6 +104,26 @@ export function combineMandatory(nets, hits) {
   return { mandatory: { tag: hits[found[0]].tag, source: sources.join('; ') }, partial: [] };
 }
 
+// A release required for SOME of the networks the PR releases (a Gnosis fork,
+// for example) still waits for DAppNode or the fallback, because a required
+// release skips DAppNode's second opinion only when every network needs it. It
+// must not wait silently, though: once our checks are green and only DAppNode
+// is missing, the owner gets an issue and can merge by hand. Returns what the
+// issue is about, or null.
+export function partialMandatoryNotice(decision, partial) {
+  if (!partial?.length || decision?.action !== 'wait' || decision.cause !== 'dappnode') return null;
+  const networks = partial.map((p) => p.network);
+  const sources = [...new Set(partial.map((p) => p.source))].join('; ');
+  return {
+    action: 'notify',
+    cause: 'partial-mandatory',
+    networks,
+    sources,
+    fallbackAt: decision.fallbackAt,
+    why: `Teku marks this release as required for ${networks.join(' and ')} only (${sources}); our checks are green, and the gate waits for DAppNode's real-node test until ${decision.fallbackAt ? fmtUtc(decision.fallbackAt) : 'the 72 h fallback'}`,
+  };
+}
+
 // Which files make the PR the owner's to merge (people's commits only).
 export function ownerMergeFiles(files, botOnly) {
   return botOnly ? [] : files.filter((f) => OWNER_MERGE_FILES.test(f));
@@ -235,7 +255,7 @@ async function reconcileReleases(gh, repo, base, root, say) {
 
 // --- the issue text ------------------------------------------------------------------
 
-function issueText({ repo, pr, target, mainTeku, decision, dn, dnText, checks, failed, runUrl, mandatoryHits }) {
+export function issueText({ repo, pr, target, mainTeku, decision, dn, dnText, checks, failed, runUrl, mandatoryHits }) {
   const server = env('GITHUB_SERVER_URL', 'https://github.com');
   const prUrl = `${server}/${repo}/pull/${pr.number}`;
   const headline = {
@@ -246,8 +266,9 @@ function issueText({ repo, pr, target, mainTeku, decision, dn, dnText, checks, f
     conflict: `the Teku ${target} PR conflicts with main`,
     'unexpected-files': `the bump PR changes unexpected files`,
     unclear: `the gate could not decide on Teku ${target}`,
+    'partial-mandatory': `required for ${(decision.networks || []).join(' and ')} only: merge it yourself if it cannot wait for DAppNode`,
   }[decision.cause] || decision.why;
-  const title = `[needs fix] Teku ${target}: ${headline}`;
+  const title = `${decision.cause === 'partial-mandatory' ? '[your call]' : '[needs fix]'} Teku ${target}: ${headline}`;
 
   const facts = [
     `- Pull request: ${prUrl} (branch \`${BOT_BRANCH}\`, Teku ${mainTeku} → ${target})`,
@@ -262,7 +283,7 @@ function issueText({ repo, pr, target, mainTeku, decision, dn, dnText, checks, f
   let prompt = '';
   const rules = `Rules:
 - Never change package names, volumes, host ports or environment variable names in package_variants/*/dappnode_package.json, and keep the versions the bot set there.
-- Keep Teku's command line the same except for what Teku ${target} requires (for example a renamed or removed option in build/startTeku.sh or build/teku-config*.template; compare with \`docker run --rm --entrypoint /opt/teku/bin/teku consensys/teku:${target} --help\`). Hidden \`--X...\` options (such as \`--Xp2p-quic-enabled=false\`, which keeps QUIC off for Gnosis; README "Gnosis") are not in --help: look for them in Teku's release notes and source, and never drop one without keeping what it does (for Gnosis: no QUIC on a port the manifest does not publish).
+- Keep Teku's command line the same except for what Teku ${target} requires (for example a renamed or removed option in build/startTeku.sh or build/teku-config*.template; compare with \`docker run --rm --entrypoint /opt/teku/bin/teku consensys/teku:${target} --help\`). Hidden \`--X...\` options (such as \`--Xp2p-quic-enabled=false\`, which keeps QUIC off for Gnosis; README "Gnosis") are not in --help: the equivalence proof checks them per network (candidate-hidden-options); look for them in Teku's release notes and source, and never drop one without keeping what it does (for Gnosis: no QUIC on a port the manifest does not publish). If Teku no longer lets QUIC be turned off, do not add a port and do not drop the option: stop and tell me to hold gnosis (README "Holds"), so mainnet keeps shipping.
 - Do not edit .github/**, scripts/** (the checks, the proof and its expected differences) or package_variants/<network>/ files other than dappnode_package.json. If the fix really needs that (for example scripts/prove-equivalence.sh --update-expected after a start-script change), make the change in a separate commit, say so clearly, and tell me that I must review and merge the PR myself: the gate never merges such a PR by itself.
 - Before pushing, run the checks that failed locally (README.md, section "Checks"), for example scripts/ci/check-flags.sh on an image built with scripts/render.sh, and scripts/prove-equivalence.sh --manifests-only.
 - Commit with a clear message and push to ${BOT_BRANCH}. Do not merge the PR yourself: the checks run again and the gate merges when they are green.`;
@@ -296,6 +317,18 @@ Read their report and the Teku ${target} release notes (https://github.com/${UPS
 **What to do:** open ${prUrl}, read the changes to those files, and if they are right, merge it yourself with **"Create a merge commit"** (the release then publishes it to staging as usual). If not, remove those commits from the branch.`;
     prompt = `In ${repo}, pull request #${pr.number} (branch ${BOT_BRANCH}, Teku ${mainTeku} → ${target}) has commits by people that change: ${decision.why}.
 Show me those changes (gh pr diff ${pr.number} -R ${repo}) and explain in plain words what each one does and whether it weakens a check or changes what boxes run. Do not change any files and do not merge.`;
+  } else if (decision.cause === 'partial-mandatory') {
+    const nets = (decision.networks || []).join(' and ');
+    const until = decision.fallbackAt ? fmtUtc(decision.fallbackAt) : 'the 72 h fallback';
+    what = `Nothing is broken and nothing was released yet. Teku ${target} is marked as **required** for ${nets} (${decision.sources}), but not for every network in the PR. The gate skips DAppNode's second opinion only when a release is required for every network it releases, so it keeps waiting for DAppNode's real-node test (DAppNode tests Teku on Hoodi, not on Gnosis) and merges by itself at ${until} at the latest. Our checks are green.
+
+This issue is here so a required upgrade never waits silently: decide whether ${until} is soon enough (for example for a fork date in the release notes).
+- **It can wait:** do nothing. The gate merges when DAppNode's test passes or at ${until}, and this issue then closes by itself.
+- **It cannot wait:** merge ${prUrl} yourself with **"Create a merge commit"**. Every network in the PR goes to staging, as after a gate merge; our checks tested all of them. The other networks then reach staging without DAppNode's second opinion: you can wait with promoting those in editstore until the PR comment shows DAppNode's result.${decision.shadow ? `
+
+Note: PIPELINE_MODE is not "on", so the gate only comments and never merges: in this mode the PR is merged by hand either way.` : ''}`;
+    prompt = `In ${repo}, pull request #${pr.number} (branch ${BOT_BRANCH}) moves Teku ${mainTeku} → ${target}. Teku ${target} is marked as required for ${nets}: ${decision.sources}. The gate waits for DAppNode's real-node test and merges by itself at ${until} at the latest.
+Read the release notes of every Teku release after ${mainTeku} up to ${target} (https://github.com/${UPSTREAM_REPO}/releases) and tell me in plain words: why it is required for ${nets}, by when boxes on ${nets} must run it (a fork date or epoch, in UTC), and whether waiting until ${until}, plus the time I need to promote it from staging to production in editstore, is safe. Say clearly whether I should merge PR #${pr.number} myself now. Do not change any files and do not merge.`;
   } else if (decision.cause === 'conflict') {
     what = `The PR cannot be merged because it conflicts with the default branch, and it has commits by people, so the bot does not rebuild it.`;
     prompt = `In ${repo}, pull request #${pr.number} (branch ${BOT_BRANCH}) conflicts with main. Check it out (gh pr checkout ${pr.number} -R ${repo}), merge main into it, resolve the conflicts keeping TEKU_VERSION ${target}, its TEKU_DIGEST and the bot's package versions, and push.
@@ -310,7 +343,7 @@ ${rules}`;
 
 ${what}
 
-**How to fix it with Claude Code** (on your Mac):
+**${decision.cause === 'partial-mandatory' ? 'How to decide with Claude Code' : 'How to fix it with Claude Code'}** (on your Mac):
 \`\`\`bash
 gh pr checkout ${pr.number} -R ${repo}
 claude    # then paste the prompt below
@@ -446,11 +479,17 @@ async function main() {
     headAt,
   });
 
+  const notice = partialMandatoryNotice(decision, partial);
+  if (notice) notice.shadow = !merging;
   const requiredText = mandatory
     ? mandatory.source
     : partial.length
-      ? `only for ${partial.map((p) => `${p.network} (${p.source})`).join('; ')}: waits for DAppNode as usual`
+      ? `only for ${partial.map((p) => `${p.network} (${p.source})`).join('; ')}: waits for DAppNode as usual${notice ? ' (the owner has an issue to decide whether to merge by hand)' : ''}`
       : 'no';
+  // DAppNode's real-node test (the gate's second opinion) runs Teku on Hoodi,
+  // an Ethereum testnet: for the other chains nobody runs a real node before
+  // staging, so the owner tests on the box before promoting (README).
+  const noRealNode = nets.filter((n) => n !== 'mainnet');
   say(`PR #${pr.number} (${sha.slice(0, 7)}): Teku ${mainTeku} -> ${target}; networks: ${nets.join(', ') || 'none'}`);
   say(`- our checks: ${checks.state}${checks.url ? ` (${checks.url})` : ''}${checks.note ? ` (${checks.note})` : ''}`);
   say(`- DAppNode: ${dnText}${dn?.summary?.level ? ` [${dn.summary.level}]` : ''}`);
@@ -476,7 +515,7 @@ ${decision.why}.
 | Teku ${target} released | ${release ? fmtUtc(release.published_at) : '—'} |
 | Fallback (no DAppNode answer) | ${release ? fmtUtc(new Date(release.published_at).getTime() + fallbackHours * 3600000) : '—'} |
 | Required upgrade | ${requiredText} |
-| Release watcher | ${watcher.read} |
+${noRealNode.map((n) => `| Real-node test of ${n} | none: DAppNode tests Teku on Hoodi only, and our checks run ${n} with a stand-in execution client. Test it on the box before you promote it in editstore (README "${n === 'gnosis' ? 'Gnosis' : 'How releases work now'}") |\n`).join('')}| Release watcher | ${watcher.read} |
 | Up to date with ${base} | ${upToDate ? 'yes' : 'no'} |
 | Mode | ${merging ? 'on (merges)' : 'shadow (never merges; set PIPELINE_MODE=on)'} |
 
@@ -495,6 +534,16 @@ Checked ${fmtUtc(now)} by ${runUrl}`;
       changeNote: `New situation for Teku ${target} (head ${sha.slice(0, 7)}): ${decision.why}. The description above is up to date.`,
     });
     say(`- issue: ${issue.html_url}`);
+  } else if (notice) {
+    // Kept open while the gate waits (not closed as "resolved" by the branch
+    // below); closed by the merge, or by the branch below once no network in
+    // the PR is required any more. One comment (email) per Teku version.
+    const { title, body } = issueText({ repo, pr, target, mainTeku, decision: notice, dn, dnText, checks, failed: { runId: null, jobs: [] }, runUrl, mandatoryHits: hits });
+    const issue = await upsertIssue(gh, repo, {
+      key, title, body, assignee: owner, state: `partial-mandatory@${target}`,
+      changeNote: `Teku ${target} is required for ${notice.networks.join(' and ')} only; the gate waits for DAppNode until ${notice.fallbackAt ? fmtUtc(notice.fallbackAt) : 'the fallback'}. Merge the PR yourself if it cannot wait. The description above is up to date.`,
+    });
+    say(`- issue (required for ${notice.networks.join(' and ')} only; the owner decides whether to merge by hand): ${issue.html_url}`);
   } else if (decision.action === 'merge' || decision.cause === 'dappnode') {
     // Closed only when the problem is really gone: not while a fix is still
     // being checked (that would close and reopen it: two extra emails).
