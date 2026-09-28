@@ -9,6 +9,11 @@ for a in "$@"; do
   i=$((i + 1))
   echo "argv[$i]=$a"
 done
+# The whole command line in order, on one line: the proof's allowed differences
+# are sets of lines, so this line is what makes them order-sensitive.
+printf 'command line:'
+printf ' [%s]' "$@"
+echo
 for a in "$@"; do
   case "$a" in
   --config-file=*)

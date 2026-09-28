@@ -23,7 +23,17 @@
  # Options are: JVM, PROCESS, BEACON, DISCOVERY, EVENTBUS, EXECUTOR, LIBP2P, NETWORK, STORAGE, STORAGE_HOT_DB, STORAGE_FINALIZED_DB, REMOTE_VALIDATOR, VALIDATOR, VALIDATOR_PERFORMANCE
  
  # database
-@@ -116,9 +121,12 @@
+@@ -94,7 +99,8 @@
+ user=teku MODE=zerosync JAVA_OPTS=-Xmx8g EXTRA_OPTS=
+ argv[1]=--ee-jwt-secret-file=/data/data-gnosis/jwttoken
+ argv[2]=--config-file=/data/syncing-beaconchain.yml
+-command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/syncing-beaconchain.yml]
++argv[3]=--Xp2p-quic-enabled=false
++command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/syncing-beaconchain.yml] [--Xp2p-quic-enabled=false]
+ jwt secret file /data/data-gnosis/jwttoken: 66 bytes
+ --- config file /data/syncing-beaconchain.yml
+ # Generated file.
+@@ -117,9 +123,12 @@
  # Execution engine
  ee-endpoint: "http://nethermind-gnosis.my.ava.do:8551"
  

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { decide, logExcerpt, combineMandatory, ownerMergeFiles, retryable } from '../gate.mjs';
+import { decide, logExcerpt, combineMandatory, ownerMergeFiles, retryable, partialMandatoryNotice, issueText } from '../gate.mjs';
 import { reportVerdict, summarize } from '../lib/dappnode.js';
 import { checkMandatory } from '../lib/mandatory.js';
 import {
@@ -194,6 +194,34 @@ test('a release required for one network only does not skip the DAppNode wait fo
   assert.equal(decide({ ...base, mandatory: all.mandatory }).cause, 'mandatory');
   assert.ok(combineMandatory(['mainnet'], { mainnet: hit }).mandatory, 'gnosis held: mainnet alone decides');
   assert.equal(combineMandatory([], {}).mandatory, null);
+});
+
+test('a release required for one network only does not wait silently: the owner gets an issue once only DAppNode is missing', () => {
+  const hit = { tag: '26.4.0', source: 'release notes of 26.4.0: "required update for Gnosis nodes"' };
+  const { mandatory, partial } = combineMandatory(['gnosis', 'mainnet'], { gnosis: hit });
+  const waiting = decide({ ...base, mandatory });
+  assert.equal(waiting.cause, 'dappnode');
+  const n = partialMandatoryNotice(waiting, partial);
+  assert.equal(n.cause, 'partial-mandatory');
+  assert.deepEqual(n.networks, ['gnosis']);
+  assert.equal(n.fallbackAt, waiting.fallbackAt);
+  // Not while the checks run, the branch is behind or something blocks, and not without a required network.
+  assert.equal(partialMandatoryNotice(decide({ ...base, mandatory, checks: 'pending' }), partial), null);
+  assert.equal(partialMandatoryNotice(decide({ ...base, mandatory, upToDate: false }), partial), null);
+  assert.equal(partialMandatoryNotice(decide({ ...base, mandatory, checks: 'failure' }), partial), null);
+  assert.equal(partialMandatoryNotice(decide({ ...base, mandatory, now: at(72) }), partial), null, 'the fallback merges');
+  assert.equal(partialMandatoryNotice(waiting, []), null);
+  const text = (shadow) => issueText({
+    repo: 'o/r', pr: { number: 7 }, target: '26.4.0', mainTeku: '26.3.0', decision: { ...n, shadow }, dn: null, dnText: 'pending',
+    checks: { state: 'success' }, failed: { runId: null, jobs: [] }, runUrl: 'https://x/run', mandatoryHits: { gnosis: hit },
+  });
+  const { title, body } = text(false);
+  assert.match(title, /^\[your call\] Teku 26\.4\.0: required for gnosis only/);
+  assert.match(body, /Create a merge commit/);
+  assert.match(body, /Do not change any files and do not merge\./);
+  assert.match(body, /Required upgrade for: gnosis/);
+  assert.doesNotMatch(body, /PIPELINE_MODE is not/);
+  assert.match(text(true).body, /PIPELINE_MODE is not "on"/);
 });
 
 test('the bump PR marker names its Teku version (closing the PR skips that version)', () => {

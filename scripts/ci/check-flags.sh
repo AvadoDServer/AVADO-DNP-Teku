@@ -16,6 +16,15 @@
 # checked against both help texts together: the validator client accepts
 # beacon-node keys in its file (checked with Teku 26.9.0) and refuses only
 # unknown ones. Options users add through EXTRA_OPTS cannot be checked here.
+#
+# Teku's hidden options (--X..., for example --Xp2p-quic-enabled=false, which
+# only Gnosis passes) are never listed by --help, and here they are only LISTED
+# (hidden.txt, not counted). This script reads the text of the start script,
+# which is the same for every network, so checking them here would let an
+# option only Gnosis uses block mainnet as well. The equivalence proof checks
+# them per network instead, from the command lines the start script really
+# produces for that network (scripts/prove-equivalence.sh,
+# candidate-hidden-options).
 set -euo pipefail
 
 IMAGE=${1:?usage: check-flags.sh <image> [out-dir]}
@@ -43,8 +52,9 @@ sort -u "$OUT/options-beacon.txt" "$OUT/options-validator-client.txt" >"$OUT/opt
 [ -s "$OUT/options-beacon.txt" ] && [ -s "$OUT/options-validator-client.txt" ] ||
   { echo "FAIL: could not read any option from teku --help" >&2; exit 1; }
 
-# used.tsv: <checked against> <option> <where>
+# used.tsv: <checked against> <option> <where>; hidden.tsv: the same for --X options
 : >"$OUT/used.tsv"
+: >"$OUT/hidden.tsv"
 awk '
   /\/opt\/teku\/bin\/teku/ { inblk = 1; cmd = ($0 ~ /validator-client/) ? "validator-client" : "beacon"; start = NR; buf = "" }
   inblk {
@@ -52,10 +62,16 @@ awk '
     if ($0 !~ /\\[ \t]*$/) {
       n = split(buf, words, /[ \t"=}{:+$]+/)
       for (i = 1; i <= n; i++) if (words[i] ~ /^--[a-z0-9][a-z0-9-]*$/) print cmd "\t" words[i] "\tstartTeku.sh:" start
+      # hidden options, with the value as written: listed only (see the top)
+      s = buf
+      while (match(s, /--X[A-Za-z0-9][A-Za-z0-9-]*(=[^ \t"}]*)?/)) {
+        print cmd "\t" substr(s, RSTART, RLENGTH) "\tstartTeku.sh:" start >hidden
+        s = substr(s, RSTART + RLENGTH)
+      }
       inblk = 0
     }
   }
-' "$OUT/files/startTeku.sh" >>"$OUT/used.tsv"
+' hidden="$OUT/hidden.tsv" "$OUT/files/startTeku.sh" >>"$OUT/used.tsv"
 for t in "$OUT"/files/teku-config*.template; do
   cmd=config-file
   grep -nE '^[a-z][a-z0-9-]*:' "$t" | while IFS=: read -r line key _; do
@@ -64,12 +80,15 @@ for t in "$OUT"/files/teku-config*.template; do
 done
 [ -s "$OUT/used.tsv" ] || { echo "FAIL: found no Teku option in the start script or templates" >&2; exit 1; }
 
-missing=0
 printf '%-17s %-52s %-8s %s\n' "CHECKED AGAINST" OPTION RESULT "USED IN"
 sort -u "$OUT/used.tsv" | while IFS=$'\t' read -r cmd opt where; do
   if grep -qxF -- "$opt" "$OUT/options-$cmd.txt"; then r=ok; else r=MISSING; fi
   printf '%-17s %-52s %-8s %s\n' "$cmd" "$opt" "$r" "$where"
 done | tee "$OUT/result.txt"
+if [ -s "$OUT/hidden.tsv" ]; then
+  echo "Hidden options in the start script (not in --help, not counted here; the equivalence proof checks the ones each network really passes: candidate-hidden-options):"
+  sort -u "$OUT/hidden.tsv" | awk -F'\t' '{ printf "  INFO %-17s %-45s %s\n", $1, $2, $3 }' | tee "$OUT/hidden.txt"
+fi
 missing=$(grep -c ' MISSING ' "$OUT/result.txt" || true)
 total=$(wc -l <"$OUT/result.txt" | tr -d ' ')
 if [ "$missing" != 0 ]; then

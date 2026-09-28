@@ -65,7 +65,17 @@
 #   runtime   the whole container under supervisord: the monitor's /network,
 #             /name and /defaultsettings, and the wizard page served by nginx
 # and hard checks on the candidate alone: Teku is exactly TEKU_VERSION, the UIs
-# and default settings name the variant's network, the UI builds are present.
+# and default settings name the variant's network, the UI builds are present,
+# in every start profile the beacon node runs with QUIC off or on a UDP port
+# the manifest publishes (candidate-quic), and Teku accepts every hidden --X
+# option the start script passes to this network (candidate-hidden-options;
+# --help never lists them, so scripts/ci/check-flags.sh cannot).
+#
+# The stub prints each command line twice: numbered (argv[N]=..., one line per
+# argument) and whole, in order ("command line: [a] [b] ..."). The whole line
+# makes the allowed differences order-sensitive: an extra argument shifts the
+# numbered lines, so they alone would also allow a start script that drops or
+# reorders arguments (for example the user's EXTRA_OPTS).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -478,6 +488,97 @@ CHECK
     if grep -q "^network: \"$net\"$" "$c/start-mode-$mode.txt" && grep -q '^=== teku start$' "$c/start-mode-$mode.txt"; then r=0; else r=1; fi
     assert "$net" "candidate-start-$mode" $r "MODE=$mode: the start script starts Teku with network $net"
   done
+  # QUIC (Teku 26.7.0 and later, on by default): every beacon node the start
+  # script starts, in every MODE and for a box with existing settings, runs with
+  # QUIC off or on a UDP port the manifest publishes. The boot test checks the
+  # running node (default MODE only); this covers every start profile.
+  docker run --rm --platform "$PLATFORM" --entrypoint /opt/teku/bin/teku "$cand_tag" --help >"$c/help.txt" 2>&1 || true
+  quic_default=$(awk '/^ +--p2p-quic-port=/ { f = 1; next } f && /Default:/ { print $2; exit } f && /^ +-/ { exit }' "$c/help.txt")
+  if ! grep -qE '^ +(-[A-Za-z], )?--network=' "$c/help.txt"; then
+    record "$net" candidate-quic FAIL "teku --help did not run or has no --network option ($c/help.txt); update this check"
+  elif ! grep -qE '^ +--p2p-quic-port=' "$c/help.txt"; then
+    # Only a Teku whose --help never mentions QUIC has none (Teku 26.4.0 and
+    # older). One that mentions it without --p2p-quic-port renamed the option:
+    # the check must learn the new name, not skip.
+    if grep -qi quic "$c/help.txt"; then
+      record "$net" candidate-quic FAIL "teku --help mentions QUIC but has no --p2p-quic-port (renamed?): $(grep -i -m 3 -oE -- '--[a-z0-9-]*quic[a-z0-9-]*' "$c/help.txt" | sort -u | tr '\n' ' '); update this check ($c/help.txt)"
+    else
+      record "$net" candidate-quic INFO "this Teku has no QUIC (its --help does not mention QUIC)"
+    fi
+  elif [ -z "$quic_default" ]; then
+    record "$net" candidate-quic FAIL "could not read the default of --p2p-quic-port from teku --help ($c/help.txt); update this check"
+  else
+    published_udp=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | last | sub("/udp$"; "")' "$render/dappnode_package.json" | tr '\n' ' ')
+    quic_seen="" quic_bad=""
+    for f in "$c"/start-mode-unset.txt "$c"/start-mode-syncing.txt "$c"/start-mode-zerosync.txt "$c"/start-existing-settings.txt; do
+      p=$(basename "$f" .txt)
+      p=${p#start-}
+      while read -r state; do
+        quic_seen="$quic_seen $p:$state"
+        case "$state" in
+        off) ;;
+        *) echo " $published_udp " | grep -q " ${state#port=} " || quic_bad="$quic_bad $p:$state" ;;
+        esac
+      done < <(awk -v def="$quic_default" '
+        /^=== teku start$/ { inb = 1; vc = 0; off = 0; port = def; next }
+        !inb { next }
+        /^argv\[1\]=validator-client$/ { vc = 1 }
+        /^argv\[[0-9]+\]=--Xp2p-quic-enabled=false$/ { off = 1 }
+        /^argv\[[0-9]+\]=--Xp2p-quic-enabled(=true)?$/ { off = 0 }
+        /^argv\[[0-9]+\]=--p2p-quic-port=[0-9]+$/ { v = $0; sub(/.*=/, "", v); port = v }
+        /^p2p-quic-port: *[0-9]+/ { v = $0; sub(/^p2p-quic-port: */, "", v); port = v + 0 }
+        /^=== teku end$/ { if (!vc) print (off ? "off" : "port=" port); inb = 0 }' "$f")
+    done
+    if [ -z "$quic_seen" ]; then
+      record "$net" candidate-quic FAIL "no beacon node start found in the start profiles"
+    elif [ -z "$quic_bad" ]; then
+      record "$net" candidate-quic PASS "QUIC per start profile:$quic_seen (manifest publishes UDP ${published_udp% })"
+    else
+      record "$net" candidate-quic FAIL "QUIC listens on a UDP port the manifest does not publish:$quic_bad (publishes UDP ${published_udp% }); turn QUIC off or publish the port (README)"
+    fi
+  fi
+  # Hidden options (--X..., never listed by --help; for example
+  # --Xp2p-quic-enabled=false, which keeps QUIC off for Gnosis): every one the
+  # start script really passes to THIS network's Teku, in any start profile, is
+  # checked by starting the candidate's Teku with it, exactly as passed, and an
+  # unknown network. Teku reads every option first and stops with "Unknown
+  # option" (the option is gone) or "Invalid value for option" (the value is no
+  # longer accepted); only when both are fine does it get as far as the network,
+  # which it cannot load. Per network, from the real command lines: an option
+  # only Gnosis uses never blocks mainnet (holding gnosis lets mainnet ship).
+  hidden=$(awk '
+    /^=== teku start$/ { inb = 1; cmd = "beacon"; next }
+    !inb { next }
+    /^argv\[1\]=validator-client$/ { cmd = "validator-client" }
+    /^argv\[[0-9]+\]=--X/ { v = $0; sub(/^argv\[[0-9]+\]=/, "", v); print cmd "\t" v }
+    /^=== teku end$/ { inb = 0 }' "$c"/start-mode-unset.txt "$c"/start-mode-syncing.txt "$c"/start-mode-zerosync.txt "$c"/start-existing-settings.txt |
+    LC_ALL=C sort -u)
+  if [ -z "$hidden" ]; then
+    record "$net" candidate-hidden-options INFO "the start script passes no hidden --X option to $net's Teku in any start profile"
+  else
+    hidden_ok="" hidden_bad=""
+    while IFS=$'\t' read -r cmd tok; do
+      name=${tok%%=*}
+      sub=()
+      [ "$cmd" = validator-client ] && sub=(validator-client)
+      out=$(docker run --rm --platform "$PLATFORM" --entrypoint /opt/teku/bin/teku "$cand_tag" ${sub[@]+"${sub[@]}"} "$tok" --network=avado-option-probe </dev/null 2>&1 || true)
+      printf '%s\n' "teku ${sub[*]+${sub[*]} }$tok --network=avado-option-probe" "$out" >"$c/probe-$cmd$name.txt"
+      if grep -qF "Unknown option: '$name" <<<"$out"; then
+        hidden_bad="$hidden_bad $cmd:$tok=MISSING"
+      elif grep -qF "Invalid value for option '$name'" <<<"$out"; then
+        hidden_bad="$hidden_bad $cmd:$tok=INVALID"
+      elif grep -qF 'avado-option-probe' <<<"$out"; then
+        hidden_ok="$hidden_ok $cmd:$tok"
+      else
+        hidden_bad="$hidden_bad $cmd:$tok=UNCLEAR"
+      fi
+    done <<<"$hidden"
+    if [ -z "$hidden_bad" ]; then
+      record "$net" candidate-hidden-options PASS "Teku accepts every hidden option $net's start script passes:$hidden_ok"
+    else
+      record "$net" candidate-hidden-options FAIL "hidden option gone (MISSING), value refused (INVALID) or no clear answer (UNCLEAR):$hidden_bad (Teku's answers: $c/probe-*.txt)"
+    fi
+  fi
 done
 
 # ---------------------------------------------------------------------------

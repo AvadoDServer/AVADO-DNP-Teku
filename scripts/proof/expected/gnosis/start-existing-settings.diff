@@ -1,6 +1,20 @@
 --- production
 +++ candidate
-@@ -31,9 +31,12 @@
+@@ -7,9 +7,10 @@
+ argv[3]=--validators-proposer-default-fee-recipient=0x1111111111111111111111111111111111111111
+ argv[4]=--builder-endpoint=http://mevboost.my.ava.do:18550
+ argv[5]=--validators-builder-registration-default-enabled=true
+-argv[6]=--p2p-subscribe-all-subnets-enabled=true
+-argv[7]=--log-destination=CONSOLE
+-command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/config.yml] [--validators-proposer-default-fee-recipient=0x1111111111111111111111111111111111111111] [--builder-endpoint=http://mevboost.my.ava.do:18550] [--validators-builder-registration-default-enabled=true] [--p2p-subscribe-all-subnets-enabled=true] [--log-destination=CONSOLE]
++argv[6]=--Xp2p-quic-enabled=false
++argv[7]=--p2p-subscribe-all-subnets-enabled=true
++argv[8]=--log-destination=CONSOLE
++command line: [--ee-jwt-secret-file=/data/data-gnosis/jwttoken] [--config-file=/data/config.yml] [--validators-proposer-default-fee-recipient=0x1111111111111111111111111111111111111111] [--builder-endpoint=http://mevboost.my.ava.do:18550] [--validators-builder-registration-default-enabled=true] [--Xp2p-quic-enabled=false] [--p2p-subscribe-all-subnets-enabled=true] [--log-destination=CONSOLE]
+ jwt secret file /data/data-gnosis/jwttoken: 66 bytes
+ --- config file /data/config.yml
+ # Generated file.
+@@ -32,9 +33,12 @@
  # Execution engine
  ee-endpoint: "http://nethermind-gnosis.my.ava.do:8551"
  

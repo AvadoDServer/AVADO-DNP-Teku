@@ -27,7 +27,13 @@
 #     (unknown option, out of memory, "Teku failed to start", ...) was logged,
 #   - every UDP port Teku listens on (discovery, QUIC) is published by the
 #     manifest, so peers can reach it (for example QUIC, on by default since
-#     Teku 26.7.0 on 9001/udp).
+#     Teku 26.7.0 on 9001/udp),
+#   - every libp2p port Teku advertises to peers (its p2p addresses in
+#     /eth/v1/node/identity: TCP and QUIC) is a port the manifest publishes
+#     with that protocol, so it never sends peers to a port that leads nowhere
+#     or to another package (teku-gnosis runs with QUIC off). The discovery
+#     address is only shown: its UDP port is the one peers saw through the
+#     runner's NAT (for example 44033 for 9006), not a setting.
 # Logs, samples and the command line Teku ran with are written to <out-dir>.
 # Exit code 0: pass. 1: a check failed. 2: only checks that depend on the
 # public network failed (checkpoint sync, peers, head moving), so the workflow
@@ -161,6 +167,7 @@ docker exec "$TEKU" sh -c 'cat /proc/net/udp /proc/net/udp6 2>/dev/null' >"$OUT/
 ephemeral=$(docker exec "$TEKU" cat /proc/sys/net/ipv4/ip_local_port_range 2>/dev/null | tr -s ' \t' ' ')
 docker exec "$TEKU" sh -c 'cat /data/config.yml; echo "--- /data/settings.json"; cat /data/settings.json' >"$OUT/config.txt" 2>&1
 monitor_network=$(docker exec "$TEKU" curl -s -m 5 http://localhost:9999/network 2>/dev/null)
+api /eth/v1/node/identity >"$OUT/identity.json"
 stopped_clean=unknown
 if running; then
   log "$NETWORK: stopping the container (60 s grace)"
@@ -243,6 +250,42 @@ elif [ -z "$unpublished" ]; then
   check PASS udp-ports "Teku listens on UDP $listen_udp; the manifest publishes $published_udp ($dials outgoing sockets on ephemeral ports $eph_lo-$eph_hi not counted)"
 else
   check FAIL udp-ports "Teku listens on UDP$unpublished, which the manifest does not publish (it publishes: ${published_udp:-none}); peers cannot reach it. QUIC? Turn it off or give it a published port (README)"
+fi
+# libp2p ports Teku advertises (multiaddrs like /ip4/<ip>/tcp/9006/p2p/<id> and
+# /ip4/<ip>/udp/9001/quic-v1/p2p/<id>, from its settings) against the host ports
+# the manifest publishes: peers dial what is advertised. The discovery address
+# (/ip4/<ip>/udp/<port>/p2p/<id>) carries the address and port peers observed
+# through NAT, so it is shown, not judged.
+advertised=$(jq -r '(.data.p2p_addresses // [])[]' "$OUT/identity.json" 2>/dev/null)
+discovery=$(jq -r '(.data.discovery_addresses // [])[]' "$OUT/identity.json" 2>/dev/null | sed -nE 's#^/ip[46]/[^/]+/(udp/[0-9]+).*#\1#p' | sort -u | tr '\n' ' ' | sed 's/ $//')
+check INFO discovery "discovery address: ${discovery:-none} (as seen by peers through NAT; Teku listens on the p2p port)"
+if [ -z "$advertised" ]; then
+  check INFO advertised "Teku's /eth/v1/node/identity gave no address (see identity.json)"
+else
+  adv_bad="" adv_list=""
+  while IFS= read -r a; do
+    proto=$(echo "$a" | sed -nE 's#^/ip[46]/[^/]+/(tcp|udp)/[0-9]+.*#\1#p')
+    port=$(echo "$a" | sed -nE 's#^/ip[46]/[^/]+/(tcp|udp)/([0-9]+).*#\2#p')
+    [ -n "$port" ] || continue
+    kind=$proto
+    case "$a" in */quic*) kind=quic ;; esac
+    adv_list="$adv_list $kind/$port"
+    if [ "$proto" = udp ]; then
+      pub=$(jq -r '.image.ports[] | select(endswith("/udp")) | split(":") | first' "$RENDER/dappnode_package.json")
+    else
+      pub=$(jq -r '.image.ports[] | select(endswith("/udp") | not) | sub("/tcp$"; "") | split(":") | first' "$RENDER/dappnode_package.json")
+    fi
+    echo "$pub" | grep -qx "$port" || adv_bad="$adv_bad $kind/$port"
+  done <<<"$advertised"
+  adv_list=$(echo $adv_list | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
+  adv_bad=$(echo $adv_bad | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
+  if [ -z "$adv_list" ]; then
+    check INFO advertised "no TCP or UDP port in Teku's addresses (see identity.json)"
+  elif [ -z "$adv_bad" ]; then
+    check PASS advertised "Teku advertises $adv_list to peers; all published by the manifest"
+  else
+    check FAIL advertised "Teku advertises $adv_bad, which the manifest does not publish (it advertises: $adv_list); peers are sent to a port that leads nowhere or to another package. QUIC? Turn it off or give it a published port (README)"
+  fi
 fi
 errors=$(grep -cE '\| ERROR|ERROR  *\|' "$OUT/container.log" || true)
 check INFO error-lines "$errors ERROR line(s) in the log (see container.log)"
