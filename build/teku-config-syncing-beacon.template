@@ -28,7 +28,10 @@ metrics-categories: ["JVM","PROCESS","BEACON","DISCOVERY","EVENTBUS","EXECUTOR",
 
 # database
 data-path: "${DATA_PATH}"
-data-storage-mode: "prune"
+# minimal is the Teku default and keeps only recent blocks. Teku applies the configured mode to an
+# existing database too (it no longer reads the stored data-storage-mode.txt, Consensys/teku#8371);
+# the Admin's "Free up space" rebuilds a large prune-era database as a small minimal one.
+data-storage-mode: "minimal"
 
 # rest api
 
