@@ -1,11 +1,18 @@
 ARG TEKU_VERSION
-FROM node:18.15.0 as builder
 
-# build wizard
-WORKDIR /usr/src/app/wizard
-COPY wizard .
-RUN yarn
-RUN rm -Rf build && yarn run build
+# Build the shared AVADO Client UI (https://github.com/AvadoDServer/AVADO-Client-UI)
+# Exact Node patch tag so a rebuild of this release uses the same toolchain;
+# the UI source is pinned by its release tag below.
+FROM node:20.20.2-bookworm-slim AS ui
+ARG CLIENT_UI_VERSION=v0.1.1
+ARG CLIENT_UI_REPO=https://github.com/AvadoDServer/AVADO-Client-UI
+RUN apt-get -y update && apt-get -y install --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch ${CLIENT_UI_VERSION} ${CLIENT_UI_REPO} /ui
+WORKDIR /ui
+RUN yarn install --frozen-lockfile && yarn build
+
+FROM node:18.15.0 as builder
 
 
 # build monitor
@@ -48,7 +55,24 @@ ENV PATH      $NVM_DIR/$NODE_VERSION/bin:$PATH
 RUN mkdir /data  && chown teku /data
 VOLUME /data
 
-COPY --from=builder /usr/src/app/wizard/build /usr/local/wizard
+COPY --from=ui /ui/dist /usr/local/wizard
+
+# The UI build ships no client-config.json; tell it which client and network it
+# serves. The network comes from the monitor's config (set by setNetwork.sh).
+COPY monitor/server_config.json /tmp/server_config.json
+RUN NETWORK=$(jq -r .network /tmp/server_config.json) \
+    && test -n "${NETWORK}" && test "${NETWORK}" != null \
+    && if [ "${NETWORK}" = "mainnet" ]; then PREFIX=teku; else PREFIX="teku-${NETWORK}"; fi \
+    && jq -n --arg network "${NETWORK}" --arg prefix "${PREFIX}" '{ \
+        client: "teku", \
+        network: $network, \
+        packageName: ($prefix + ".avado.dnp.dappnode.eth"), \
+        apiUrl: ("http://" + $prefix + ".my.ava.do:9999"), \
+        backend: "monitor", \
+        features: { batchImport: true, backup: false, zeroSync: false } \
+    }' > /usr/local/wizard/client-config.json \
+    && cat /usr/local/wizard/client-config.json \
+    && rm /tmp/server_config.json
 COPY --from=builder /usr/src/monitor/ /usr/local/monitor
 
 COPY startTeku.sh /opt/teku

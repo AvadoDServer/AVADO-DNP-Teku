@@ -150,65 +150,6 @@ server.get("/service/status", (req: restify.Request, res: restify.Response, next
         });
 });
 
-////////////////////////
-// Checkpoint API    ///
-////////////////////////
-
-// checkpoints APIs
-server.get("/:name/checkpointz/v1/beacon/slots/:slot", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const slot = req.params.slot;
-    const name = req.params.name;
-    const url = `https://${name}/checkpointz/v1/beacon/slots/${slot}`
-    get(url, res, next)
-});
-
-////////////////////////
-// beaconcha.in API   //
-////////////////////////
-server.get("/beaconcha.in/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const path = req.params["*"]
-    const url = `https://beaconcha.in/${path}`
-    get(url, res, next)
-});
-server.get("/prater.beaconcha.in/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const path = req.params["*"]
-    const url = `https://prater.beaconcha.in/${path}`
-    get(url, res, next)
-});
-server.get("/beacon.gnosischain.com/*", (req: restify.Request, res: restify.Response, next: restify.Next) => {
-    const path = req.params["*"]
-    const url = `https://beacon.gnosischain.com/${path}`
-    get(url, res, next)
-});
-
-const get = (url: string, res: restify.Response, next: restify.Next) => {
-    axios.get(url, {
-        headers: { 'Content-Type': 'application/json' },
-    }).then(
-        (response: any) => {
-            // console.dir(response.data.data)
-            res.send(response.status, response.data.data)
-            next();
-        }
-    ).catch(function (error) {
-        console.log("Error contacting ", url, error);
-        console.log("config", JSON.stringify(error.config));
-        if (error.response) {
-            console.log('Error', error.response.data);
-            res.send(error.response.status, error.response.data)
-            next();
-        } else if (error.request) {
-            console.log(error.request);
-            res.send(500, error.request)
-            next();
-        } else {
-            console.log('Error', error.message);
-            res.send(500, error.message)
-            next();
-        }
-    })
-}
-
 ///////////////////////////////////
 // Local Beacon chain rest API   //
 ///////////////////////////////////
@@ -316,7 +257,8 @@ const axiosRequest = (url: string, headers: object, req: restify.Request, res: r
             res.send(500, error.message)
             next();
         }
-        console.log("config", JSON.stringify(error.config));
+        // Never log error.config: for keymanager requests it holds keystores and passwords.
+        console.log("request failed:", error.config && error.config.method, url);
     });
 
 }
