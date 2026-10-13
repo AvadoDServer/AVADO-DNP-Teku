@@ -106,9 +106,15 @@ until $(curl --silent --fail "http://dappmanager.my.ava.do/jwttoken.txt" --outpu
   sleep 5
 done
 
+P2P_QUIC_DISABLED=""
 case ${NETWORK} in
   "gnosis")
     P2P_PORT=9006
+    # QUIC stays off on Gnosis. Teku turns it on by default since 26.7.0 on
+    # 9001/udp, but teku-gnosis publishes only 9006, and on a box that also runs
+    # mainnet Teku, host port 9001/udp belongs to that package. Gnosis keeps
+    # peering over TCP and discovery on 9006, as it did up to Teku 26.4.0.
+    P2P_QUIC_DISABLED=true
     ;;
   "prater")
     P2P_PORT=9003
@@ -171,6 +177,7 @@ echo "---"
   exec /opt/teku/bin/teku \
     --ee-jwt-secret-file="${JWT_SECRET}" \
     --config-file="/data/syncing-beaconchain.yml" \
+    ${P2P_QUIC_DISABLED:+--Xp2p-quic-enabled=false} \
     ${DISCOVERY_BOOTNODES:+--p2p-discovery-bootnodes=${DISCOVERY_BOOTNODES}} &
   
   sleep 5
@@ -206,6 +213,7 @@ else
     ${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT:+--validators-proposer-default-fee-recipient=${VALIDATORS_PROPOSER_DEFAULT_FEE_RECIPIENT}} \
     ${MEV_BOOST_ENABLED:+--builder-endpoint="http://mevboost.my.ava.do:18550"} \
     ${MEV_BOOST_ENABLED:+--validators-builder-registration-default-enabled=${MEV_BOOST_ENABLED}} \
+    ${P2P_QUIC_DISABLED:+--Xp2p-quic-enabled=false} \
     ${DISCOVERY_BOOTNODES:+--p2p-discovery-bootnodes=${DISCOVERY_BOOTNODES}} \
     ${EXTRA_OPTS}
 
