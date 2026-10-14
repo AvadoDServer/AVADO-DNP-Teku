@@ -78,6 +78,10 @@ server.post("/settings", (req: restify.Request, res: restify.Response, next: res
     restart().then((result) => {
         res.send(200, `Saved settings and restarted`);
         return next();
+    }).catch((error) => {
+        console.log("Settings saved, but the restart failed:", error);
+        res.send(500, `Settings saved, but ${server_config.name} could not be restarted: ${(error && error.message) || error}`);
+        return next();
     })
 });
 
@@ -93,13 +97,24 @@ server.get("/defaultsettings", (req: restify.Request, res: restify.Response, nex
 
 const supervisorCtl = new SupervisorCtl(`localhost`, 5555, '/RPC2')
 
+// supervisord refuses to stop a program that is not running (it crashed, gave up after
+// failed starts, or the user stopped it). For a restart that is fine: the program only
+// has to be started again.
+const isNotRunning = (error: any): boolean =>
+    /NOT_RUNNING/.test(String((error && (error.faultString || error.message)) || error));
+
+const stopIfRunning = async (name: string) => {
+    try {
+        await supervisorCtl.callMethod('supervisor.stopProcess', [name, true]);
+    } catch (error) {
+        if (!isNotRunning(error)) throw error;
+        console.log(`${name} is not running, starting it`);
+    }
+}
+
 const restart = async () => {
-    await Promise.all([
-        supervisorCtl.callMethod('supervisor.stopProcess', [server_config.name, true]),
-    ])
-    return Promise.all([
-        supervisorCtl.callMethod('supervisor.startProcess', [server_config.name, true]),
-    ])
+    await stopIfRunning(server_config.name);
+    return supervisorCtl.callMethod('supervisor.startProcess', [server_config.name, true]);
 }
 
 server.post("/service/restart", (req: restify.Request, res: restify.Response, next: restify.Next) => {
