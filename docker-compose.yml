@@ -13,4 +13,3 @@ services:
       - EXTRA_OPTS=
 volumes:
   data: {}
-
