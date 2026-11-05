@@ -3,7 +3,7 @@ ARG TEKU_VERSION
 # Build the shared AVADO Client UI (https://github.com/AvadoDServer/AVADO-Client-UI)
 # Exact Node patch tag so a rebuild of this release uses the same toolchain;
 # the UI source is pinned by its release tag below.
-FROM node:20.20.2-bookworm-slim AS ui
+FROM node:24.22.2-bookworm-slim AS ui
 ARG CLIENT_UI_VERSION=v0.1.1
 ARG CLIENT_UI_REPO=https://github.com/AvadoDServer/AVADO-Client-UI
 RUN apt-get -y update && apt-get -y install --no-install-recommends git ca-certificates \
