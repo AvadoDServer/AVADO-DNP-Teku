@@ -4,6 +4,13 @@ on:
     branches:
       - master
       - main
+  # Release a merged pull request by hand when GitHub dropped its push event:
+  # sha = the pull request's head commit (its Build must have passed).
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Head commit of the merged pull request to release"
+        required: true
 jobs:
   release:
     runs-on: ubuntu-22.04
@@ -11,3 +18,4 @@ jobs:
       - uses: AvadoDServer/ci-release-action@main
         with:
           rpcToken: ${{ secrets.RPC_TOKEN }}
+          sha: ${{ inputs.sha }}
