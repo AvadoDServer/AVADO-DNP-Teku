@@ -1,13 +1,13 @@
-version: "3.4"
+version: '3.4'
 services:
   teku-gnosis.avado.dnp.dappnode.eth:
-    image: "teku-gnosis.avado.dnp.dappnode.eth:0.0.29"
+    image: 'teku-gnosis.avado.dnp.dappnode.eth:0.0.29'
     build:
       context: ./build
       args:
         TEKU_VERSION: 26.11.0
     volumes:
-      - "data:/data"
+      - 'data:/data'
     environment:
       - JAVA_OPTS=-Xmx8g
       - EXTRA_OPTS=
